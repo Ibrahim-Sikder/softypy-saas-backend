@@ -8,5 +8,5 @@ export const USER_ROLE = {
 } as const
 
 
-export const UserStatus = ['active', 'inactive'];
+export const UserStatus = ['active', 'inactive', 'role'];
   
