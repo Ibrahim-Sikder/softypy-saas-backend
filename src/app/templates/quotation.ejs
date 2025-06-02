@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>quotation</title>
+    <style>
+        @page {
+            margin: 15px 5px 15px 5px;
+        }
+
+        @page: first {
+            margin-top: 0;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .invoicePrint {
+            padding-bottom: 20px;
+            padding-left: 56px;
+            padding-right: 56px;
+        }
+
+        .qoutationTitle {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .invoiceCustomerInfo {
+            font-size: 12px;
+        }
+
+        .invoiceTable2 {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .invoiceTable2 th,
+        .invoiceTable2 td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .serialNo {
+            width: 5%;
+        }
+
+        .divider {
+            border-bottom: 2px solid #351E98;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .header-row {
+            background-color: #7493B8;
+            color: white
+        }
+
+        .dot {
+            margin-right: 3px;
+        }
+
+        .tableWrap {
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        .tableWrap td {
+            word-wrap: break-word;
+            white-space: normal;
+        }
+
+        .serviceCell {
+            width: 480px;
+        }
+
+        .indexCell {
+            width: 47px
+        }
+    </style>
+</head>
+
+
+<body>
+    <div id="content-to-print"
+        style="padding-bottom: 20px; padding-left: 20px; padding-right: 20px; width: 8.27in; margin: 0 auto; background-color: #fff; min-height: 11in; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+            <div
+                style="margin-bottom: 8px; margin-left: auto; margin-right: auto; text-align: center; border-bottom: 2px solid #351E98; padding-bottom: 8px;">
+                <div
+                    style="display: flex; align-items: center; justify-content: space-between; width: 100%; ; margin-bottom: 8px;">
+
+
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between;  margin-bottom: 8px;">
+                        <% if (logoBase64) { %>
+                        <img style="width: 120px;" src="data:image/png;base64,<%= logoBase64 %>"
+                            alt="Trust Auto Solutions" />
+                        <% } else { %>
+                        <img style="width: 120px;" src="<%= imageUrl %>/images/logo.png" alt="Trust Auto Solutions"
+                            onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';" />
+                        <% } %>
+
+                    </div>
+
+
+                    <div>
+                        <small style="font-size: 36px; color: #4671A1;display: block;font-weight: 800;">Trust Auto
+                            Solution</small>
+                        <small style="margin-top: -20px;">Office: Ka-93/4/C, Kuril Bishawroad, Dhaka-1229</small>
+                    </div>
+                    <div style="text-align: left;">
+                        <small style="display: block;"><small style="font-weight: bold;">Mobile:</small> +88
+                            01821-216465</small>
+                        <small style="display: block;"><small style="font-weight: bold;">Email:</small>
+                            trustautosolution@gmail.com</small>
+                        <small style="display: block; font-weight: bold;">www.trustautosolution.com</small>
+                    </div>
+                </div>
+            </div>
+
+
+            <div style="padding-left: 8px; padding-right: 8px;">
+                <div
+                    style="display: flex; font-size: 12px; align-items: center; justify-content: space-between; border-bottom: 2px solid #351E98; padding-bottom: 4px;">
+                    <span style="width: 200px;"><b>ID:</b>
+                        <%= quotation && quotation.job_no ? quotation.job_no : 'N/A' %></span>
+                    <b style="margin-right: 88px; text-transform: uppercase;">quotation</b>
+                    <b>Date: <%= quotation && quotation.date ? quotation.date : 'N/A' %></b>
+                </div>
+
+                <div
+                    style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; width:775px;margin:auto;">
+                    <div style="display: flex;  width: 50%;">
+                        <div style="display: flex;flex-direction: column; width:140px;  row-gap: 3px;">
+                            <b style="font-size: 10px;">Quotation No</b>
+                            <% if (quotation?.customer?.customer_name) { %>
+                            <b style="font-size: 10px;">Customer Name</b>
+                            <% } %>
+
+                            <% if (quotation?.company?.company_name) { %>
+                            <b style="font-size: 10px;">Company Name</b>
+                            <% } %>
+
+                            <% if (quotation?.showRoom?.showRoom_name) { %>
+                            <b style="font-size: 10px;">Showroom Name</b>
+                            <% } %>
+                            <% if (quotation?.customer?.company_name) { %>
+                            <b style="font-size: 10px;">Company Name</b>
+                            <% } %>
+
+                            <% if (quotation?.company?.vehicle_username) { %>
+                            <b style="font-size: 10px;">Vehicle User Name</b>
+                            <% } %>
+
+                            <% if (quotation?.showRoom?.vehicle_username) { %>
+                            <b style="font-size: 10px;">Show Room Owner Name </b>
+                            <% } %>
+                            <% if (quotation?.customer?.fullCustomerNum) { %>
+                            <b style="font-size: 10px;">Phone</b>
+                            <% } %>
+                            <% if (quotation?.company?.fullCompanyNum) { %>
+                            <b style="font-size: 10px;">Phone</b>
+                            <% } %>
+                            <% if (quotation?.showRoom?.fullCompanyNum) { %>
+                            <b style="font-size: 10px;">Phone</b>
+                            <% } %>
+                            <% if (quotation?.customer?.customer_address) { %>
+                            <b style="font-size: 10px;">Address</b>
+                            <% } %>
+                            <% if (quotation?.company?.company_address) { %>
+                            <b style="font-size: 10px;">Address</b>
+                            <% } %>
+                            <% if (quotation?.showRoom?.showRoom_address) { %>
+                            <b style="font-size: 10px;">Address</b>
+                            <% } %>
+
+
+                        </div>
+                        <div style="display: flex;flex-direction: column; row-gap: 3px;">
+                            <small style="font-size: 10px;"><span class="dot">:</span>
+                                <%= quotation && quotation.quotation_no ? quotation.quotation_no : 'N/A' %></small>
+                            <small style="font-size: 10px;"><span class="dot">:</span>
+                                <% if (quotation.customer) { %>
+                                <%=quotation.customer.customer_name %>
+                                <% } else if (quotation.company) { %>
+                                <%= quotation.company.company_name %>
+                                <% } else if (quotation.showRoom) { %>
+                                <%= quotation.showRoom.showRoom_name %>
+                                <% } %>
+
+                            </small>
+                            <% if ((quotation.customer && quotation.customer.company_name) || 
+                            (quotation.company && quotation.company.vehicle_username) || 
+                            (quotation.showRoom && quotation.showRoom.vehicle_username)) { %>
+                            <small style="font-size: 10px;">
+                                <span class="dot">:</span>
+                                <% if (quotation.customer && quotation.customer.company_name) { %>
+                                <%= quotation.customer.company_name %>
+                                <% } else if (quotation.company && quotation.company.vehicle_username) { %>
+                                <%= quotation.company.vehicle_username %>
+                                <% } else if (quotation.showRoom && quotation.showRoom.vehicle_username) { %>
+                                <%= quotation.showRoom.vehicle_username %>
+                                <% } %>
+                            </small>
+                            <% } %>
+
+
+                            <% if ((quotation.customer && quotation.customer.fullCustomerNum) || 
+                            (quotation.company && quotation.company.fullCompanyNum) || 
+                            (quotation.showRoom && quotation.showRoom.fullCompanyNum)) { %>
+                            <small style="font-size: 10px;">
+                                <span class="dot">:</span>
+                                <% if (quotation.customer && quotation.customer.fullCustomerNum) { %>
+                                <%= quotation.customer.fullCustomerNum %>
+                                <% } else if (quotation.company && quotation.company.fullCompanyNum) { %>
+                                <%= quotation.company.fullCompanyNum %>
+                                <% } else if (quotation.showRoom && quotation.showRoom.fullCompanyNum) { %>
+                                <%= quotation.showRoom.fullCompanyNum %>
+                                <% } %>
+                            </small>
+                            <% } %>
+
+                            <% if ((quotation.customer && quotation.customer.customer_address) || 
+                            (quotation.company && quotation.company.company_address) || 
+                            (quotation.showRoom && quotation.showRoom.showRoom_address)) { %>
+                            <small style="font-size: 10px;">
+                                <span class="dot">:</span>
+                                <% if (quotation.customer && quotation.customer.customer_address) { %>
+                                <%= quotation.customer.customer_address %>
+                                <% } else if (quotation.company && quotation.company.company_address) { %>
+                                <%= quotation.company.company_address %>
+                                <% } else if (quotation.showRoom && quotation.showRoom.showRoom_address) { %>
+                                <%= quotation.showRoom.showRoom_address %>
+                                <% } %>
+                            </small>
+                            <% } %>
+
+                        </div>
+                    </div>
+                    <div style="width: 1px; height: 80px; background-color:black !important;"></div>
+
+
+                    <div style="display: flex; width: 50%;">
+                        <div style=" width:140px; display: flex; flex-direction: column; row-gap: 3px;">
+                            <b style="font-size: 10px;">Registration No</b>
+                            <b style="font-size: 10px;">Chassis No</b>
+                            <b style="font-size: 10px;">Engine & CC</b>
+                            <b style="font-size: 10px;">Vehicle Name</b>
+                            <b style="font-size: 10px;">Mileage</b>
+                        </div>
+                        <div style="display: flex; column-gap: 10px; flex-direction: column;  row-gap: 3px;">
+                            <small style="font-size: 10px;"><span class="dot">:</span>
+                                <%= quotation.vehicle && quotation.vehicle.car_registration_no ? quotation.vehicle.car_registration_no : 'N/A' %></small>
+                            <small style="font-size: 10px;"><span class="dot">:</span>
+                                <%= quotation.vehicle && quotation.vehicle.chassis_no ? quotation.vehicle.chassis_no : 'N/A' %>
+                            </small>
+                            <small style="font-size: 10px;"><span class="dot">:</span>
+                                <%= quotation.vehicle && quotation.vehicle.engine_no ? quotation.vehicle.engine_no : 'N/A' %></small>
+                            <small style="font-size: 10px;"><span class="dot">:</span>
+                                <%= quotation.vehicle && quotation.vehicle.vehicle_name ? quotation.vehicle.vehicle_name : 'N/A' %>
+                            </small>
+                            <small style="font-size: 10px;"><span class="dot">:</span>
+                                <%= quotation.vehicle && quotation?.vehicle?.mileageHistory && quotation.vehicle.mileageHistory.length > 0 ? quotation.vehicle.mileageHistory[0].mileage : 'N/A' %></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+
+
+            <table class="tableWrap" style="margin-top: 20px; width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr class="header-row">
+                        <th class="indexCell"
+                            style="text-align: center; font-size: 14px; font-weight: 700; padding:5px">SL No</th>
+                        <th class="serviceCell"
+                            style="text-align: center; font-size: 14px; font-weight: 700; padding:5px">Service
+                            Description</th>
+                        <th class="indexCell"
+                            style="text-align: center; font-size: 14px; font-weight: 700; padding:5px">Qty</th>
+                        <th class="ratCell" style="text-align: center; font-size: 14px; font-weight: 700; padding:5px">
+                            Rate</th>
+                        <th style="text-align: center; font-size: 14px; font-weight: 700; padding:5px">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (quotation && quotation.service_input_data && quotation.service_input_data.length > 0) { %>
+                    <% quotation.service_input_data.forEach((item, index) => { %>
+                    <tr>
+                        <td style="text-align: center; font-size: 14px;  border: 1px solid #c0c2c1;padding:5px">
+                            <%= index + 1 %>
+                        </td>
+                        <td class="serviceCell"
+                            style="text-align: center; font-size: 14px;  border: 1px solid #c0c2c1;padding:5px">
+                            <%= item.description ? item.description : 'N/A' %>
+                        </td>
+                        <td style="text-align: center; font-size: 14px;  border: 1px solid #c0c2c1;padding:5px">
+                            <%= item.quantity ? item.quantity : 'N/A' %> <%= item.unit ? item.unit : '' %>
+                        </td>
+                        <td style="text-align: center; font-size: 14px;  border: 1px solid #c0c2c1;padding:5px">
+                            <%= item.rate ? item.rate : 'N/A' %>
+                        </td>
+                        <td style="text-align: center; font-size: 14px;  border: 1px solid #c0c2c1;padding:5px">
+                            <%= item.total ? formatToIndianCurrency(item.total) : 'N/A' %>
+                        </td>
+                    </tr>
+                    <% }); %>
+                    <% } else { %>
+                    <tr>
+                        <td colspan="5"
+                            style="text-align: center; font-size: 14px; font-weight: 700; border: 1px solid #c0c2c1;">
+                            No data available
+                        </td>
+                    </tr>
+                    <% } %>
+                </tbody>
+            </table>
+            <div
+                style="display: flex; align-items: center; justify-content: flex-end; font-size: 12px; margin-top: 8px;">
+                <span>Total Services Amount:</span>
+                <b style="margin-left: 12px;"> <%= formatToIndianCurrency(quotation.service_total) %> tk
+                </b>
+            </div>
+
+            <table class="tableWrap" style="margin-top: 20px; width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr class="header-row">
+                        <th class="indexCell"
+                            style="text-align: center; font-size: 14px; font-weight: 700; padding:5px">
+                            SL No</th>
+                        <th class="serviceCell"
+                            style="text-align: center; font-size: 14px; font-weight: 700; padding:5px">
+                            Parts Description</th>
+                        <th class="indexCell"
+                            style="text-align: center; font-size: 14px; font-weight: 700; padding:5px">
+                            Qty</th>
+                        <th class="ratCell" style="text-align: center; font-size: 14px; font-weight: 700; padding:5px">
+                            Rate</th>
+                        <th style="text-align: center; font-size: 14px; font-weight: 700; padding:5px">
+                            Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (quotation && quotation.input_data && quotation.input_data.length > 0) { %>
+                    <% quotation.input_data.forEach((item, index) => { %>
+                    <tr>
+                        <td style="text-align: center; font-size: 14px;  border: 1px solid #c0c2c1;padding:5px">
+                            <%= index + 1 %>
+                        </td>
+                        <td style="text-align: center; font-size: 14px;  border: 1px solid #c0c2c1;padding:5px">
+                            <%= item.description ? item.description : 'N/A' %>
+                        </td>
+                        <td style="text-align: center; font-size: 14px;  border: 1px solid #c0c2c1;padding:5px">
+                            <%= item.quantity ? item.quantity : 'N/A' %> <%= item.unit ? item.unit : '' %>
+                        </td>
+                        <td style="text-align: center; font-size: 14px;  border: 1px solid #c0c2c1;padding:5px">
+                            <%= item.rate ? item.rate : 'N/A' %>
+                        </td>
+                        <td style="text-align: center; font-size: 14px;  border: 1px solid #c0c2c1;padding:5px">
+                            <%= item.total ? formatToIndianCurrency( item.total) : 'N/A' %>
+                        </td>
+                    </tr>
+                    <% }); %>
+                    <% } else { %>
+                    <tr>
+                        <td colspan="5"
+                            style="text-align: center; font-size: 14px; font-weight: 700; border: 1px solid #c0c2c1;">
+                            No data available
+                        </td>
+                    </tr>
+                    <% } %>
+                </tbody>
+            </table>
+            <div
+                style="display: flex; align-items: center; justify-content: flex-end; font-size: 12px; margin-top: 8px;">
+                <span>Total Parts Amount:</span>
+                <b style="margin-left: 12px;">
+                    <%= formatToIndianCurrency(quotation.parts_total) %> tk
+                </b>
+            </div>
+
+            <div style="display: flex;justify-items: end; align-items: end; width: 100%;justify-content: end;">
+                <div
+                    style="display: flex;margin-top: 15px; width:200px;justify-content: space-between; align-items: center;">
+                    <div style="display: flex;flex-direction: column;">
+                        <b style="font-size: 12px;">Sub Total</b>
+
+                        <% if (quotation && quotation.discount && quotation.discount !== 0) { %>
+                        <b style="font-size: 12px;">Discount</b>
+                        <% } %>
+
+                        <% if (quotation && quotation.vat && quotation.vat !== 0) { %>
+                        <b style="font-size: 12px;">VAT</b>
+                        <% } %>
+                        <b style="font-size: 12px;">Grand Total</b>
+                        <% if (quotation && quotation.advance && quotation.advance !== 0) { %>
+                        <b style="font-size: 12px;">Advance</b>
+                        <% } %>
+
+                        <% if (quotation && quotation.due && quotation.due !== 0) { %>
+                        <b style="font-size: 12px;">Due</b>
+                        <% } %>
+
+                    </div>
+
+
+
+                    <div style="display: flex; flex-direction: column;">
+                        <small>: <%= formatToIndianCurrency(quotation.parts_total + quotation.service_total) %> tk
+                        </small>
+                        <% if (quotation && quotation.discount && quotation.discount !== 0) { %>
+                        <small>: <%= formatToIndianCurrency(quotation.discount) %> tk </small>
+                        <% } %>
+
+                        <% if (quotation && quotation.vat && quotation.vat !== 0) { %>
+                        <small>: <%= quotation.vat %>%</small>
+                        <% } %>
+
+                        <small>:
+                            <%= quotation.net_total !== undefined ? formatToIndianCurrency(quotation.net_total) : 0 %>
+                            tk
+                        </small>
+
+                        <% if (quotation && quotation.advance && quotation.advance !== 0) { %>
+                        <small>: <%= formatToIndianCurrency(quotation.advance) %> tk </small>
+                        <% } %>
+                        <% if (quotation && quotation.due && quotation.due !==0) { %>
+                        <small>: <%= formatToIndianCurrency(quotation.due) %> tk </small>
+                        <% } %>
+
+
+
+                    </div>
+
+
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; font-size: 12px;">
+                <b>In words:</b> <span style="font-size: 12px"><%= quotation.net_total_in_words %> </span>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

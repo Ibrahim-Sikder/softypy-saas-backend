@@ -1,0 +1,72 @@
+swagger: '3.1.0'
+info:
+  title: Your API Documentation
+  version: 1.0.0
+paths:
+  /barcode/all:
+    get:
+      tags:
+        - Barcode service
+      summary: Retrieve Barcode
+      responses:
+        '200':
+          description: Successful operation
+      security:
+        - bearerAuth: []
+
+  /barcode/create:
+    post:
+      tags:
+        - Barcode service
+      summary: Create a Barcode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BarcodeInput'
+      responses:
+        '201':
+          description: Barcode created successfully
+        '409':
+          description: Conflict - Barcode already exists
+        '500':
+          description: Internal Server Error
+      security:
+        - bearerAuth: []
+
+  /barcode/{id}:
+    delete:
+      tags:
+        - Barcode service
+      summary: Delete Barcode by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Barcode deleted successfully
+        '404':
+          description: Barcode not found
+        '500':
+          description: Internal Server Error
+      security:
+        - bearerAuth: []
+components:
+  schemas:
+    BarcodeInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          required: true
+        description:
+          type: string
+        product_id:
+          type: string
+          minLength: 1
+          required: true

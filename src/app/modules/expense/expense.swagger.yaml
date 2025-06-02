@@ -1,0 +1,307 @@
+---
+components:
+  schemas:
+    CreateExpense:
+      properties:
+        amount:
+          type: string
+        attachDocument:
+          properties:
+            publicId:
+              type: string
+            url:
+              type: string
+          required: false
+          type: object
+        category:
+          type: string
+        date:
+          format: date
+          type: string
+        note:
+          type: string
+        reference:
+          type: string
+      required:
+        - date
+        - reference
+        - category
+        - amount
+        - note
+      type: object
+    CreateExpenseCategory:
+      properties:
+        code:
+          type: string
+        expenses:
+          items:
+            type: string
+          type: array
+        name:
+          type: string
+      required:
+        - name
+        - code
+      type: object
+    Expense:
+      properties:
+        _id:
+          type: string
+        amount:
+          type: number
+        attachDocument:
+          properties:
+            publicId:
+              type: string
+            url:
+              type: string
+          required: false
+          type: object
+        category:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        date:
+          format: date
+          type: string
+        note:
+          type: string
+        reference:
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+      type: object
+    ExpenseCategory:
+      properties:
+        _id:
+          type: string
+        code:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        expenses:
+          items:
+            type: string
+          type: array
+        name:
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+      type: object
+    UpdateExpense:
+      properties:
+        amount:
+          type: string
+        attachDocument:
+          properties:
+            publicId:
+              type: string
+            url:
+              type: string
+          type: object
+        category:
+          type: string
+        date:
+          format: date
+          type: string
+        note:
+          type: string
+        reference:
+          type: string
+      type: object
+    UpdateExpenseCategory:
+      properties:
+        code:
+          type: string
+        expenses:
+          items:
+            type: string
+          type: array
+        name:
+          type: string
+      type: object
+info:
+  title: Expense Management API
+  version: 1.0.0
+paths:
+  /expense-categories:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ExpenseCategory'
+                type: array
+          description: A list of expense categories
+      summary: Get all expense categories
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExpenseCategory'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseCategory'
+          description: Expense category created successfully
+        '400':
+          description: Invalid input
+      summary: Create a new expense category
+  /expense-categories/{id}:
+    delete:
+      parameters:
+        - description: The ID of the expense category to delete
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Expense category deleted successfully
+        '404':
+          description: Expense category not found
+      summary: Delete an expense category
+    get:
+      parameters:
+        - description: The ID of the expense category to retrieve
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseCategory'
+          description: Expense category details
+        '404':
+          description: Expense category not found
+      summary: Get an expense category by ID
+    put:
+      parameters:
+        - description: The ID of the expense category to update
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExpenseCategory'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseCategory'
+          description: Expense category updated successfully
+        '400':
+          description: Invalid input
+        '404':
+          description: Expense category not found
+      summary: Update an expense category
+  /expenses:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Expense'
+                type: array
+          description: A list of expenses
+      summary: Get all expenses
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExpense'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: Expense created successfully
+        '400':
+          description: Invalid input
+      summary: Create a new expense
+  /expenses/{id}:
+    delete:
+      parameters:
+        - description: The ID of the expense to delete
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Expense deleted successfully
+        '404':
+          description: Expense not found
+      summary: Delete an expense
+    get:
+      parameters:
+        - description: The ID of the expense to retrieve
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: Expense details
+        '404':
+          description: Expense not found
+      summary: Get an expense by ID
+    put:
+      parameters:
+        - description: The ID of the expense to update
+          in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExpense'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: Expense updated successfully
+        '400':
+          description: Invalid input
+        '404':
+          description: Expense not found
+      summary: Update an expense
+swagger: 3.1.0

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Money Receipt</title>
+</head>
+<style>
+  @page {
+    margin: 20px 25px 20px 25px;
+  }
+
+  @page: first {
+    margin-top: 0;
+  }
+
+  body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+  }
+
+  .receivedBtn {
+    background: #82017f;
+    color: #fff;
+    width: 180px;
+    height: 30px;
+    border-radius: 20px;
+    margin: auto;
+
+  }
+</style>
+
+<body>
+  <div>
+    <div
+      style="display: flex; align-items: center; justify-content: space-between; flex-direction: row; gap: 3px; align-items: center ;">
+      <div style="display: flex; align-items: center; justify-content: space-between;  margin-bottom: 8px;">
+        <% if (logoBase64) { %>
+        <img style="width: 120px;" src="data:image/png;base64,<%= logoBase64 %>" alt="Trust Auto Solutions" />
+        <% } else { %>
+        <img style="width: 120px;" src="<%= imageUrl %>/images/logo.png" alt="Trust Auto Solutions"
+          onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';" />
+        <% } %>
+
+      </div>
+
+      <div style="width: 570px; text-align: center; color: #0950a1;">
+        <span style="font-size: 40px; font-family: Merriweather, serif;">
+          Trust Auto Solution
+        </span>
+        <span
+          style="margin-top: 1px; display: block; width: 377px; margin: 3px auto; font-size: 10px; line-height: 14px;">
+          It's trusted computerized Organization for all kinds of vehicle check up & maintenance such as computerized
+          Engine Analysis, Engine tune up, Denting, Painting, Engine, AC, Electrical Works & Car Wash.
+        </span>
+      </div>
+
+
+      <div style="display: flex; flex-direction: column; gap:3px ;margin-top: 30px ;">
+        <div style="display: flex; align-items: center;gap: 5px;">
+
+          <small>+880 1821-216465</small>
+
+        </div>
+        <div style="display: flex; align-items: center;gap: 5px;">
+
+          <small>+88 01710-700324 </small>
+        </div>
+        <div style="display: flex; align-items: center;gap: 5px;">
+
+          <small>trustautosolution@gmail.com </small>
+        </div>
+        <div style="display: flex; align-items: center;gap: 5px;">
+
+          <small>
+            Ka-93/4/C Kuril Bishawroad,
+            Dhaka-1212
+
+
+          </small>
+        </div>
+
+      </div>
+    </div>
+
+    <div style=" display: flex;justify-content: center; align-items: center; width:100%">
+      <button class="receivedBtn">Money Receipt</button>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; font-style: italic;">
+      <small>Money receipt ID: <%= money && money.moneyReceiptId ? money.moneyReceiptId : 'N/A' %> </small>
+      <small>Date: <%= money && money.default_date ? money.default_date : 'N/A' %> </small>
+    </div>
+
+
+    <div>
+      <div style="display: flex; margin-top:10px ">
+        <small style="width: 210px; font-style: italic; font-style: italic ;">
+          Received with thanks from
+        </small>
+        <span style="font-size: small;font-style: italic; border-bottom: 1px dashed #81027e; width:100%;">
+          <%= money && money.thanks_from ? money.thanks_from : 'N/A' %>
+        </span>
+      </div>
+
+      <div style="display: flex; align-items: center; margin-top:20px; width:100% ; gap:10px ">
+        <div style="display: flex; align-items: center; width:50% ">
+          <small style="font-style: italic; width:350px">
+            <% if (money && money.against_bill_no_method) { %>
+            <% if (money.against_bill_no_method === 'Final payment against bill no') { %>
+            <%= 'Final payment against bill no' %>
+            <% } else if (money.against_bill_no_method === 'Advance against bill no') { %>
+            <%= 'Advance against bill no' %>
+            <% } else { %>
+            <%= money.against_bill_no_method %>
+            <% } %>
+            <% } else { %>
+            N/A
+            <% } %> :
+          </small>
+          <span style="font-size: small;font-style: italic; border-bottom: 1px dashed #81027e; width:100%">
+            <%= money && money.job_no ? money.job_no : 'N/A' %>
+          </span>
+        </div>
+        <div style="display: flex; align-items: center;width:50% ">
+          <small style="font-style: italic;width:90px ">Vehicle No :</small>
+          <span style="font-size: small;font-style: italic; border-bottom: 1px dashed #81027e; width:100% ">
+            <%= money && money?.vehicle?.fullRegNum ? money?.vehicle?.fullRegNum : 'N/A' %>
+          </span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; margin-top:20px; width:100% ;gap:10px">
+        <div style="display: flex; align-items: center; width:100% ">
+          <small style="font-style: italic; width:150px">Payment Method :</small>
+          <span style="font-size: small;font-style: italic; border-bottom: 1px dashed #81027e; width:100%">
+            <% if (money && money.payment_method) { %>
+            <% if (money.payment_method === 'Bkash') { %>
+            <%= 'Bkash' %>
+            <% } else if (money.payment_method === 'Nagad') { %>
+            <%= 'Nagad' %>
+
+            <% } else if (money.payment_method === 'Rocket') { %>
+            <%= 'Rocket' %>
+
+            <% } else if (money.payment_method === 'Cash') { %>
+            <%= 'Cash' %>
+
+            <% }else if (money.payment_method === 'Check') { %>
+            <%= 'Check' %>
+
+            <% }else if (money.payment_method === 'Bank Transfer') { %>
+            <%= 'Bank Transfer' %>
+
+            <% } else { %>
+            <%= money.payment_method %>
+            <% } %>
+            <% } else { %>
+            N/A
+            <% } %>
+          </span>
+        </div>
+        <% if (money && money.default_date) { %>
+        <div style="display: flex; align-items: center; width:50%">
+          <small style="font-style: italic; width:50px">Date :</small>
+          <span style="font-size: small; font-style: italic; border-bottom: 1px dashed #81027e; width:100%">
+            <%= new Date(money.default_date).toLocaleDateString('en-GB') %>
+            <!-- Formats as day/month/year -->
+          </span>
+        </div>
+        <% } %>
+
+
+
+      </div>
+      <div style="display: flex; align-items: center;  width:100% ;gap:10px">
+        <% if (money && money.account_number) { %>
+        <div style="display: flex; margin-top:20px; align-items: center; width:50% ">
+          <small style="font-style: italic; width:160px">Account Number :</small>
+          <span style="font-size: small; font-style: italic; border-bottom: 1px dashed #81027e; width:100%">
+            <%= money.account_number %>
+          </span>
+        </div>
+        <% } %>
+
+        <% if (money && money.transaction_id) { %>
+        <div style="display: flex;  margin-top:20px; align-items: center; width:50% ">
+          <small style="font-style: italic; width:120px">Transition ID :</small>
+          <span style="font-size: small; font-style: italic; border-bottom: 1px dashed #81027e; width:100%">
+            <%= money && money.transaction_id %>
+          </span>
+        </div>
+        <% } %>
+      </div>
+      <div style="display: flex; align-items: center; width:100% ;gap:10px">
+        <% if (money && money.cash_by) { %>
+        <div style="display: flex;  margin-top:20px; align-items: center; width:50% ">
+          <small style="font-style: italic; width:120px">Cash By :</small>
+          <span style="font-size: small; font-style: italic; border-bottom: 1px dashed #81027e; width:100%">
+            <%= money && money.cash_by %>
+          </span>
+        </div>
+        <% } %>
+      </div>
+      <div style="display: flex; align-items: center; width:100% ;gap:10px">
+
+        <% if (money && money.check_number) { %>
+        <div style="display: flex;  margin-top:20px; align-items: center; width:50% ">
+          <small style="font-style: italic; width:140px">Check Number :</small>
+          <span style="font-size: small; font-style: italic; border-bottom: 1px dashed #81027e; width:100%">
+            <%= money && money.check_number %>
+          </span>
+        </div>
+        <% } %>
+
+        <% if (money && money.bank_name) { %>
+        <div style="display: flex;  margin-top:20px; align-items: center; width:50% ">
+          <small style="font-style: italic; width:120px">Bank Name :</small>
+          <span style="font-size: small; font-style: italic; border-bottom: 1px dashed #81027e; width:100%">
+            <%= money && money.bank_name %>
+          </span>
+        </div>
+        <% } %>
+
+
+
+      </div>
+
+
+      <div style="display: flex; align-items: center; width:100% ;gap:10px">
+
+        <% if (money && money.check_date && money.check_date !== 'NaN-NaN-NaN') { %>
+        <div style="display: flex;  margin-top:20px; align-items: center; width:50% ">
+          <small style="font-style: italic; width:120px">Check Date :</small>
+          <span style="font-size: small; font-style: italic; border-bottom: 1px dashed #81027e; width:100%">
+            <%= money && money.check_date%>
+          </span>
+        </div>
+        <% } %>
+
+
+
+        <% if (money && money.payment_date && money.payment_date !== 'NaN-NaN-NaN') { %>
+        <div style="display: flex;  margin-top:20px; align-items: center; width:50% ">
+          <small style="font-style: italic; width:140px">Payment Date :</small>
+          <span style="font-size: small; font-style: italic; border-bottom: 1px dashed #81027e; width:100%">
+            <%= money && money.payment_date %>
+          </span>
+        </div>
+        <% } %>
+
+
+      </div>
+
+
+      <div style="margin-top: 20px; display: flex; align-items: center;gap: 30px;">
+        <div style="display: flex; align-items: center; justify-content: center;">
+          <small style="width: 120px;font-style: italic;">Total Amount Tk :</small>
+          <span
+            style="font-weight: bold; font-style: italic; font-size:12px"><%= money && money.total_amount ? formatToIndianCurrency(money.total_amount) : 'N/A' %></span>
+        </div>
+
+
+        <% if (money && money.advance) { %>
+        <div style="width: 130px; display: flex; align-items: center; justify-content: space-between;">
+          <small style="font-style: italic;">
+            <%= money.total_amount === money.advance ? "Paid" : "Advance" %> :
+          </small>
+          <span style="font-style: italic; font-size:12px; font-weight: bold;">
+            <%= formatToIndianCurrency(money.advance) %>
+          </span>
+        </div>
+        <% } %>
+
+
+        <% if (money && money.remaining) { %>
+        <div style="width: 120px; display: flex; align-items: center; justify-content: space-between;">
+          <small style="font-style: italic;">
+            <%= money && money.against_bill_no_method === 'Final payment against bill no' ? 'Paid' : 'Remaining' %>
+          </small> :
+          <span
+            style="font-style: italic; font-size:12px; font-weight: bold;"><%= money && formatToIndianCurrency(money.remaining) %></span>
+        </div>
+        <% } %>
+
+      </div>
+
+      <div style="margin-top:20px; display: flex; align-items: center; justify-content: center;">
+        <small style="font-style: italic;width:110px; font-style: italic;">In words (taka):</small>
+        <span style="font-size: 12px; width: 100%; border-bottom: 1px dashed #81027e; font-style: italic;">
+          <%= money && money. total_amount_in_words ? money. total_amount_in_words : 'N/A' %>
+        </span>
+      </div>
+
+    </div>
+
+    <div style="margin-top: 50px; display: flex; align-items: center; justify-content: end;">
+      <small style="font-style: italic; border-top: 1px dashed #81027e">Authorized Signature</small>
+    </div>
+  </div>
+</body>
+
+</html>
