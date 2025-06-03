@@ -6,22 +6,35 @@ import { connectToTenantDatabase } from '../../server';
 import { unitSchema } from '../modules/unit/unit.model';
 import { userSchema } from '../modules/user/user.model';
 import { brandSchema } from '../modules/brand/brand.model';
+import { customerSchema } from '../modules/customer/customer.model';
+import { vehicleSchema } from '../modules/vehicle/vehicle.model';
+import { addToJobCardSchema } from '../modules/jobCard/job-card.model';
+import { quotationSchema } from '../modules/quotation/quotation.model';
+import { moneyReceiptSchema } from '../modules/money-receipt/money-receipt.model';
+import { invoiceSchema } from '../modules/invoice/invoice.model';
 
 type SchemaMap = {
   [key: string]: mongoose.Schema;
 };
 
 const schemas: SchemaMap = {
-  User: userSchema,
+ User: userSchema,
   Unit: unitSchema,
   Brand: brandSchema,
+  Customer: customerSchema,
+  Vehicle: vehicleSchema,
+  JobCard: addToJobCardSchema,
+  Quotation: quotationSchema,
+  Invoice: invoiceSchema,
+  MoneyReceipt: moneyReceiptSchema,
 };
 
 export const getTenantModel = async (
   tenantDomain: string,
-  modelName: keyof typeof schemas
+  modelName: keyof typeof schemas,
 ) => {
-  // Case-insensitive search for tenant domain
+  console.log(tenantDomain);
+
   const tenant = await Tenant.findOne({
     domain: { $regex: new RegExp(`^${tenantDomain}$`, 'i') },
   });
@@ -32,7 +45,7 @@ export const getTenantModel = async (
 
   const tenantConnection = await connectToTenantDatabase(
     tenant._id.toString(),
-    tenant.dbUri
+    tenant.dbUri,
   );
 
   const schema = schemas[modelName];
@@ -45,5 +58,6 @@ export const getTenantModel = async (
     tenantConnection.models[modelNameStr] ||
     tenantConnection.model(modelNameStr, schema);
 
-  return { Model, tenant };
+  // Add connection to the returned object here
+  return { Model, tenant, connection: tenantConnection };
 };

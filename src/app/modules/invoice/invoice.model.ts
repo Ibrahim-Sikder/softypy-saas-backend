@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { TInvoice } from './invoice.interface';
 
-const invoiceSchema: Schema<TInvoice> = new Schema<TInvoice>(
+export const invoiceSchema: Schema<TInvoice> = new Schema<TInvoice>(
   {
     invoice_no: {
       type: String,

@@ -4,7 +4,14 @@ import sendResponse from '../../utils/sendResponse';
 import { CustomerServices } from './customer.service';
 
 const createCustomer = catchAsync(async (req, res) => {
-  const customer = await CustomerServices.createCustomerDetails(req.body);
+  //  const domain = (req.headers.origin as string) || (req.headers.host as string) || '';
+  const { tenantDomain } = req.body;
+  console.log(req.body);
+
+  const customer = await CustomerServices.createCustomerDetails(
+    tenantDomain,
+    req.body,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -16,10 +23,13 @@ const createCustomer = catchAsync(async (req, res) => {
 const getAllCustomers = catchAsync(async (req, res) => {
   const limit = parseInt(req.query.limit as string);
   const page = parseInt(req.query.page as string);
-  const isRecycled = req.query.isRecycled as string; 
+  const isRecycled = req.query.isRecycled as string;
   const searchTerm = req.query.searchTerm as string;
+  const host = req.headers.host || '';
+   const tenantDomain = req.query.tenantDomain as string;
 
   const result = await CustomerServices.getAllCustomersFromDB(
+    tenantDomain,
     limit,
     page,
     searchTerm,
@@ -34,19 +44,25 @@ const getAllCustomers = catchAsync(async (req, res) => {
   });
 });
 
-
 const getSingleCustomerDetails = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const tenantDomain = (req.headers.origin as string) || (req.headers.host as string) || '';
+  console.log('Customer ID:', id);
+  console.log('Tenant Domain:', tenantDomain);
 
-  const result = await CustomerServices.getSingleCustomerDetails(id);
+  const result = await CustomerServices.getSingleCustomerDetails(
+    tenantDomain,
+    id
+  );
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
-    message: 'Customer retrieved successful!',
+    message: 'Customer retrieved successfully!',
     data: result,
   });
 });
+
 
 const updateCustomer = catchAsync(async (req, res) => {
   const { id } = req.params;
@@ -133,5 +149,5 @@ export const customerController = {
   permanantlyDeleteCustomer,
   restoreFromRecycledCustomer,
   restoreAllFromRecycledBinMoneyReceipts,
-  moveAllToRecycledBinMoneyReceipts
+  moveAllToRecycledBinMoneyReceipts,
 };

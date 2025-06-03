@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { TCustomer } from './customer.interface';
 
-const customerSchema: Schema<TCustomer> = new Schema<TCustomer>(
+export const customerSchema: Schema<TCustomer> = new Schema<TCustomer>(
   {
     customerId: {
       type: String,

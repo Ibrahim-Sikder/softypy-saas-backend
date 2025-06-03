@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { TMoneyReceipt } from './money-receipt.interface';
 
-const moneyReceiptSchema: Schema<TMoneyReceipt> = new Schema<TMoneyReceipt>(
+export const moneyReceiptSchema: Schema<TMoneyReceipt> = new Schema<TMoneyReceipt>(
   {
     customer: {
       type: Schema.ObjectId,

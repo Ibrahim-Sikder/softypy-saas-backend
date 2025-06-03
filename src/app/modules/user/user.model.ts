@@ -23,10 +23,8 @@ export const userSchema = new Schema<TUser>(
       required: [true, 'Password is required'],
       select: false,
     },
-    tenantId: {
-      type: Schema.Types.ObjectId,
-      ref: 'Tenant',
-      required: [true, 'Tenant ID is required'],
+    tenantDomain: {
+      type: String
     },
     createdBy: {
       type: String,
@@ -38,9 +36,7 @@ export const userSchema = new Schema<TUser>(
       default: 'active',
     },
     role: {
-      type: Schema.Types.ObjectId,
-      ref: 'Role',
-      required: [true, 'Role is required'],
+      type: String
     },
     lastLogin: {
       type: Date,

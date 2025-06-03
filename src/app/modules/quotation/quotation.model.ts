@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { TQuotation } from './quotation.interface';
 
-const quotationSchema: Schema<TQuotation> = new Schema<TQuotation>(
+export const quotationSchema: Schema<TQuotation> = new Schema<TQuotation>(
   {
     quotation_no: {
       type: String,

@@ -21,7 +21,7 @@ export const createTenant = async (
     }
 
     const dbName = domain.replace(/\./g, '_');
-    const dbUri = `mongodb+srv://softypy:softypy123@cluster0.nbrgdem.mongodb.net/${dbName}?retryWrites=true&w=majority`;
+    const dbUri = `mongodb+srv://softypy_saas:saas_softypy33@cluster0.ywst3am.mongodb.net/${dbName}?retryWrites=true&w=majority&appName=Cluster0`;
 
     const subscription = createSubscription(plan);
 
