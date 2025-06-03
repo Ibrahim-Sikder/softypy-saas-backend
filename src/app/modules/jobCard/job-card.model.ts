@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { TJobCard } from './job-card.interface';
 
-const addToJobCardSchema: Schema<TJobCard> = new Schema<TJobCard>(
+export const addToJobCardSchema: Schema<TJobCard> = new Schema<TJobCard>(
   {
     Id: {
       type: String,

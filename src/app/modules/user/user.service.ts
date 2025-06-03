@@ -9,8 +9,8 @@ import config from '../../config';
 import AppError from '../../errors/AppError';
 import { getTenantModel } from '../../utils/getTenantModels';
 
-export const createUser = async (tenantDomain: string, payload: TUser) => {
-  const { Model: User, tenant } = await getTenantModel(tenantDomain, 'User');
+export const createUser = async (payload: TUser) => {
+  const { Model: User, tenant } = await getTenantModel(payload.tenantDomain, 'User');
   console.log(payload)
 
   const userByEmail = await User.findOne({ email: payload.email });

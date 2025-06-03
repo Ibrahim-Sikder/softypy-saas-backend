@@ -7,8 +7,7 @@ import { brandServices } from './brand.service';
 
 const createBrand = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const domain =
-      (req.headers.origin as string) || (req.headers.host as string) || '';
+    const domain = (req.headers.origin as string) || (req.headers.host as string) || '';
     const result = await brandServices.createBrand(domain, req.body);
 
     sendResponse(res, {

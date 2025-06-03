@@ -9,109 +9,106 @@ import { Vehicle } from '../vehicle/vehicle.model';
 import { TCustomer } from './customer.interface';
 import { TVehicle } from '../vehicle/vehicle.interface';
 import { CustomerSearchableFields, vehicleFields } from './customer.const';
+import { getTenantModel } from '../../utils/getTenantModels';
 
-const createCustomerDetails = async (payload: {
-  customer: TCustomer;
-  vehicle: TVehicle;
-}) => {
-  const session = await mongoose.startSession();
+const createCustomerDetails = async (
+  tenantDomain: string,
+  payload: { customer: TCustomer; vehicle: TVehicle },
+) => {
+  const { Model: Customer, connection: customerConnection } =
+    await getTenantModel(tenantDomain, 'Customer');
+
+  const { Model: Vehicle, connection: vehicleConnection } =
+    await getTenantModel(tenantDomain, 'Vehicle');
+
+  if (customerConnection !== vehicleConnection) {
+    throw new Error(
+      'Customer and Vehicle models must be from the same tenant connection',
+    );
+  }
+
+  const session = await customerConnection.startSession();
   session.startTransaction();
 
   try {
     const { customer, vehicle } = payload;
-
     const customerId = await generateCustomerId();
-
-    // Create and save the customer
-    const sanitizeData = sanitizePayload(customer);
+    const sanitizedCustomer = sanitizePayload(customer);
 
     const customerData = new Customer({
-      ...sanitizeData,
+      ...sanitizedCustomer,
       customerId,
     });
+
     const savedCustomer = await customerData.save({ session });
 
-    if (
-      savedCustomer.user_type &&
-      savedCustomer.user_type === 'customer' &&
-      vehicle
-    ) {
-      const sanitizeData = sanitizePayload(vehicle);
+    if (savedCustomer.user_type === 'customer' && vehicle) {
+      const sanitizedVehicle = sanitizePayload(vehicle);
 
       const vehicleData = new Vehicle({
-        ...sanitizeData,
+        ...sanitizedVehicle,
         customer: savedCustomer._id,
         Id: savedCustomer.customerId,
         user_type: savedCustomer.user_type,
       });
-      if (!vehicleData.company) {
-        vehicleData.company = undefined; // Ensure no null value
-      }
 
-      if (!vehicleData.showRoom) {
-        vehicleData.showRoom = undefined; // Ensure no null value
-      }
+      if (!vehicleData.company) vehicleData.company = undefined;
+      if (!vehicleData.showRoom) vehicleData.showRoom = undefined;
 
       await vehicleData.save({ session });
 
       savedCustomer.vehicles.push(vehicleData._id);
-
       await savedCustomer.save({ session });
     } else {
-      throw new AppError(StatusCodes.CONFLICT, 'Something went wrong');
+      throw new AppError(
+        StatusCodes.CONFLICT,
+        'Vehicle data is missing or user type mismatch',
+      );
     }
 
     await session.commitTransaction();
     session.endSession();
 
-    return null;
+    return savedCustomer;
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-
     throw error;
   }
 };
 
 const getAllCustomersFromDB = async (
+  tenantDomain: string,
   limit: number,
   page: number,
   searchTerm: string,
-  isRecycled?: string
+  isRecycled?: string,
 ) => {
-  // Define the searchQuery type as an object that can have any key with any value
-  let searchQuery: { [key: string]: any } = {};
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
 
-  // Handle search term if provided
+  let searchQuery: { [key: string]: any } = {};
   if (searchTerm) {
     const escapedFilteringData = searchTerm.replace(
       /[.*+?^${}()|[\]\\]/g,
-      '\\$&'
+      '\\$&',
     );
 
-    
     const customerSearchQuery = CustomerSearchableFields.map((field) => ({
       [field]: { $regex: escapedFilteringData, $options: 'i' },
     }));
 
     const vehicleSearchQuery = vehicleFields.map((field) => {
-      if (field === "vehicles.vehicle_model") {
+      if (field === 'vehicles.vehicle_model') {
         return { [field]: { $eq: Number(searchTerm) } };
       }
       return { [field]: { $regex: escapedFilteringData, $options: 'i' } };
     });
-    
 
-    
     searchQuery = {
-      $or: [
-        ...vehicleSearchQuery,
-        ...customerSearchQuery,
-      ],
+      $or: [...vehicleSearchQuery, ...customerSearchQuery],
     };
   }
 
-  // Handle isRecycled filter 
   if (isRecycled !== undefined) {
     searchQuery.isRecycled = isRecycled === 'true';
   }
@@ -150,15 +147,14 @@ const getAllCustomersFromDB = async (
       },
     },
     {
-      $match: searchQuery, // Apply the dynamic search query
+      $match: searchQuery,
     },
     {
       $sort: { createdAt: -1 },
     },
-    ...(page && limit ? [
-      { $skip: (page - 1) * limit },
-      { $limit: limit },
-    ] : []),
+    ...(page && limit
+      ? [{ $skip: (page - 1) * limit }, { $limit: limit }]
+      : []),
   ]);
 
   const totalData = await Customer.countDocuments(searchQuery);
@@ -176,9 +172,12 @@ const getAllCustomersFromDB = async (
   };
 };
 
+export const getSingleCustomerDetails = async (
+  tenantDomain: string,
+  id: string,
+) => {
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
 
-
-const getSingleCustomerDetails = async (id: string) => {
   const singleCustomer = await Customer.findById(id)
     .populate('jobCards')
     .populate({
@@ -190,9 +189,7 @@ const getSingleCustomerDetails = async (id: string) => {
       populate: { path: 'vehicle' },
     })
     .populate('money_receipts')
-    .populate({
-      path: 'vehicles',
-    })
+    .populate('vehicles')
     .exec();
 
   if (!singleCustomer) {
@@ -225,7 +222,7 @@ const updateCustomer = async (
       {
         new: true,
         runValidators: true,
-        session, // use session for transaction
+        session, 
       },
     );
 
@@ -249,7 +246,7 @@ const updateCustomer = async (
           {
             new: true,
             runValidators: true,
-            session, // use session for transaction
+            session,
           },
         );
       } else {
@@ -344,9 +341,8 @@ const permanantlyDeleteCustomer = async (id: string) => {
   }
 };
 const moveToRecycledCustomer = async (id: string) => {
-
   try {
-    const existingCustomer = await Customer.findById(id)
+    const existingCustomer = await Customer.findById(id);
     if (!existingCustomer) {
       throw new AppError(StatusCodes.NOT_FOUND, 'No customer exist.');
     }
@@ -354,22 +350,19 @@ const moveToRecycledCustomer = async (id: string) => {
     const customer = await Customer.findByIdAndUpdate(
       existingCustomer._id,
       { isRecycled: true, recycledAt: new Date() },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     if (!customer) {
       throw new AppError(StatusCodes.NOT_FOUND, 'No customer available');
     }
 
-
-    return customer; 
+    return customer;
   } catch (error) {
-
     throw error;
   }
 };
 const restoreFromRecycledCustomer = async (id: string) => {
-
   try {
     const recycledCustomer = await Customer.findById(id);
     if (!recycledCustomer) {
@@ -378,17 +371,18 @@ const restoreFromRecycledCustomer = async (id: string) => {
     const restoredCustomer = await Customer.findByIdAndUpdate(
       recycledCustomer._id,
       { isRecycled: false, recycledAt: null },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     if (!restoredCustomer) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No customer available for restoration.');
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        'No customer available for restoration.',
+      );
     }
-
 
     return restoredCustomer;
   } catch (error) {
-
     throw error;
   }
 };
@@ -404,7 +398,7 @@ const moveAllToRecycledBin = async () => {
     },
     {
       runValidators: true,
-    }
+    },
   );
 
   return result;
@@ -422,7 +416,7 @@ const restoreAllFromRecycledBin = async () => {
     },
     {
       runValidators: true,
-    }
+    },
   );
 
   return result;
@@ -437,5 +431,5 @@ export const CustomerServices = {
   moveToRecycledCustomer,
   permanantlyDeleteCustomer,
   moveAllToRecycledBin,
-  restoreAllFromRecycledBin
+  restoreAllFromRecycledBin,
 };

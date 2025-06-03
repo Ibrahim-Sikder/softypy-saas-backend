@@ -18,6 +18,7 @@ const createBrand = async (tenantDomain: string, payload:any) => {
   }
 };
 
+
 const getAllBrand = async (query: Record<string, unknown>) => {
   const categoryQuery = new QueryBuilder(Brand.find(), query)
     .search(brandSearch)

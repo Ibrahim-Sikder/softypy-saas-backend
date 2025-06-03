@@ -7,10 +7,10 @@ export interface TUser {
   name: string;
   email: string;
   password: string;
-  tenantId:Types.ObjectId;
+  tenantDomain:string;
   createdBy: string;
   status: 'active' | 'inactive';
-  role: Types.ObjectId;
+  role: string;
   lastLogin?: Date;
   passwordChangeAt: Date;
   isDeleted: boolean;

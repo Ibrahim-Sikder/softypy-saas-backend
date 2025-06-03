@@ -2,7 +2,7 @@
 import mongoose, { Schema, Types } from 'mongoose';
 import { TVehicle } from './vehicle.interface';
 
-const vehicleSchema: Schema<TVehicle> = new Schema<TVehicle>(
+export const vehicleSchema: Schema<TVehicle> = new Schema<TVehicle>(
   {
     Id: {
       type: String,
