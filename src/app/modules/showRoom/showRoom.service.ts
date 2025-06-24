@@ -8,77 +8,81 @@ import { TVehicle } from '../vehicle/vehicle.interface';
 import { ShowRoomSearchableFields, vehicleFields } from './showRoom.const';
 import { TShowRoom } from './showRoom.interface';
 import { ShowRoom } from './showRoom.model';
+import { getTenantModel } from '../../utils/getTenantModels';
 
-const createShowRoomDetails = async (payload: {
-  showroom: TShowRoom;
-  vehicle: TVehicle;
-}) => {
-  const session = await mongoose.startSession();
+const createShowRoomDetails = async (
+  tenantDomain: string,
+  payload: {
+    showroom: TShowRoom;
+    vehicle: TVehicle;
+  },
+) => {
+  const { Model: ShowRoom, connection } = await getTenantModel(
+    tenantDomain,
+    'ShowRoom',
+  );
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+
+  const session = await connection.startSession();
   session.startTransaction();
 
   try {
     const { showroom, vehicle } = payload;
 
     const showRoomId = await generateShowRoomId();
-
-    // Create and save the customer
-    const sanitizeData = sanitizePayload(showroom);
+    const sanitizeShowRoom = sanitizePayload(showroom);
 
     const showRoomData = new ShowRoom({
-      ...sanitizeData,
+      ...sanitizeShowRoom,
       showRoomId,
     });
 
     const savedShowRoom = await showRoomData.save({ session });
 
-    if (
-      savedShowRoom.user_type &&
-      savedShowRoom.user_type === 'showRoom' &&
-      vehicle
-    ) {
-      const sanitizeData = sanitizePayload(vehicle);
+    if (savedShowRoom.user_type === 'showRoom' && vehicle) {
+      const sanitizeVehicle = sanitizePayload(vehicle);
 
       const vehicleData = new Vehicle({
-        ...sanitizeData,
+        ...sanitizeVehicle,
         showRoom: savedShowRoom._id,
         Id: savedShowRoom.showRoomId,
         user_type: savedShowRoom.user_type,
       });
-      if (!vehicleData.customer) {
-        vehicleData.customer = undefined;
-      }
 
-      if (!vehicleData.company) {
-        vehicleData.company = undefined;
-      }
+      if (!vehicleData.customer) vehicleData.customer = undefined;
+      if (!vehicleData.company) vehicleData.company = undefined;
 
       await vehicleData.save({ session });
 
       savedShowRoom.vehicles.push(vehicleData._id);
-
       await savedShowRoom.save({ session });
     } else {
-      throw new AppError(StatusCodes.CONFLICT, 'Something went wrong');
+      throw new AppError(
+        StatusCodes.CONFLICT,
+        'Invalid vehicle data or user type mismatch.',
+      );
     }
 
     await session.commitTransaction();
     session.endSession();
 
-    return null;
+    return savedShowRoom;
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-
     throw error;
   }
 };
 
 const getAllShowRoomFromDB = async (
+  tenantDomain: string,
   limit: number,
   page: number,
   searchTerm: string,
   isRecycled?: string,
 ) => {
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
   let searchQuery: any = {};
 
   if (searchTerm) {
@@ -101,9 +105,8 @@ const getAllShowRoomFromDB = async (
     searchQuery.$or = [...companySearchQuery, ...vehicleSearchQuery];
   }
 
-  // Handle isRecycled filter
   if (isRecycled !== undefined) {
-    searchQuery.isRecycled = isRecycled === 'true'; // Convert to boolean
+    searchQuery.isRecycled = isRecycled === 'true';
   }
 
   const showrooms = await ShowRoom.aggregate([
@@ -141,7 +144,14 @@ const getAllShowRoomFromDB = async (
   };
 };
 
-const getSingleShowRoomDetails = async (id: string) => {
+const getSingleShowRoomDetails = async (tenantDomain: string, id: string) => {
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+  await getTenantModel(tenantDomain, 'JobCard');
+  await getTenantModel(tenantDomain, 'Quotation');
+  await getTenantModel(tenantDomain, 'Invoice');
+  await getTenantModel(tenantDomain, 'Vehicle');
+  await getTenantModel(tenantDomain, 'MoneyReceipt');
+
   const singleShowRoom = await ShowRoom.findById(id)
     .populate('jobCards')
     .populate({
@@ -166,6 +176,7 @@ const getSingleShowRoomDetails = async (id: string) => {
 };
 
 const updatedShowRoom = async (
+  tenantDomain: string,
   id: string,
   payload: {
     showroom: Partial<TShowRoom>;
@@ -174,29 +185,29 @@ const updatedShowRoom = async (
 ) => {
   const { showroom, vehicle } = payload;
 
-  // Start a session for transaction management
-  const session = await mongoose.startSession();
+  const { Model: ShowRoom, connection } = await getTenantModel(
+    tenantDomain,
+    'ShowRoom',
+  );
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+
+  const session = await connection.startSession();
   session.startTransaction();
 
   try {
     const sanitizedShowRoomData = sanitizePayload(showroom);
+
     const updatedShowRoom = await ShowRoom.findByIdAndUpdate(
       id,
-      {
-        $set: sanitizedShowRoomData,
-      },
-      {
-        new: true,
-        runValidators: true,
-        session, // use session for transaction
-      },
+      { $set: sanitizedShowRoomData },
+      { new: true, runValidators: true, session },
     );
 
     if (!updatedShowRoom) {
       throw new AppError(StatusCodes.NOT_FOUND, 'No showroom available');
     }
 
-    if (vehicle.chassis_no) {
+    if (vehicle?.chassis_no) {
       const sanitizedVehicleData = sanitizePayload(vehicle);
 
       const existingVehicle = await Vehicle.findOne({
@@ -206,14 +217,8 @@ const updatedShowRoom = async (
       if (existingVehicle) {
         await Vehicle.findByIdAndUpdate(
           existingVehicle._id,
-          {
-            $set: sanitizedVehicleData,
-          },
-          {
-            new: true,
-            runValidators: true,
-            session, // use session for transaction
-          },
+          { $set: sanitizedVehicleData },
+          { new: true, runValidators: true, session },
         );
       } else {
         const newVehicle = new Vehicle({
@@ -240,6 +245,7 @@ const updatedShowRoom = async (
     throw error;
   }
 };
+
 const deleteShowRoom = async (id: string) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -270,8 +276,11 @@ const deleteShowRoom = async (id: string) => {
     throw error;
   }
 };
-const permanantlyDeleteShowRoom = async (id: string) => {
-  const session = await mongoose.startSession();
+const permanantlyDeleteShowRoom = async (tenantDomain: string, id: string) => {
+  const { Model: ShowRoom, connection } = await getTenantModel(tenantDomain, 'ShowRoom');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+
+  const session = await connection.startSession();
   session.startTransaction();
   try {
     const existingShowroom = await ShowRoom.findById(id).session(session);
@@ -283,13 +292,12 @@ const permanantlyDeleteShowRoom = async (id: string) => {
       Id: existingShowroom.showRoomId,
     }).session(session);
 
-    const customer = await ShowRoom.findByIdAndDelete(
-      existingShowroom._id,
-    ).session(session);
+    const deletedShowroom = await ShowRoom.findByIdAndDelete(existingShowroom._id).session(session);
 
-    if (!customer || !vehicle) {
+    if (!deletedShowroom || !vehicle) {
       throw new AppError(StatusCodes.NOT_FOUND, 'No showroom available');
     }
+
     await session.commitTransaction();
     session.endSession();
 
@@ -300,60 +308,61 @@ const permanantlyDeleteShowRoom = async (id: string) => {
     throw error;
   }
 };
-const moveToRecycledbinShowRoom = async (id: string) => {
-  try {
-    const existingShowroom = await ShowRoom.findById(id);
-    if (!existingShowroom) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No showroom exist.');
-    }
-    const deletedShowroom = await ShowRoom.findByIdAndUpdate(
-      existingShowroom._id,
-      {
-        isRecycled: true,
-        recycledAt: new Date(),
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
 
-    if (!deletedShowroom) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No showroom available');
-    }
+const moveToRecycledbinShowRoom = async (tenantDomain: string, id: string) => {
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
 
-    return deletedShowroom;
-  } catch (error) {
-    throw error;
+  const existingShowroom = await ShowRoom.findById(id);
+  if (!existingShowroom) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No showroom exist.');
   }
-};
-const restoreFromRecyledbinShowRoom = async (id: string) => {
-  try {
-    const existingShowroom = await ShowRoom.findById(id);
-    if (!existingShowroom) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No showroom exist.');
-    }
-    const deletedShowroom = await ShowRoom.findByIdAndUpdate(
-      existingShowroom._id,
-      {
-        isRecycled: false,
-        recycledAt: new Date(),
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
 
-    if (!deletedShowroom) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No showroom available');
+  const deletedShowroom = await ShowRoom.findByIdAndUpdate(
+    existingShowroom._id,
+    {
+      isRecycled: true,
+      recycledAt: new Date(),
+    },
+    {
+      new: true,
+      runValidators: true,
     }
+  );
 
-    return deletedShowroom;
-  } catch (error) {
-    throw error;
+  if (!deletedShowroom) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No showroom available');
   }
+
+  return deletedShowroom;
 };
+
+const restoreFromRecyledbinShowRoom = async (tenantDomain: string, id: string) => {
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
+  const existingShowroom = await ShowRoom.findById(id);
+  if (!existingShowroom) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No showroom exist.');
+  }
+
+  const restoredShowroom = await ShowRoom.findByIdAndUpdate(
+    existingShowroom._id,
+    {
+      isRecycled: false,
+      recycledAt: new Date(),
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+
+  if (!restoredShowroom) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No showroom available');
+  }
+
+  return restoredShowroom;
+};
+
 const moveAllToRecycledBin = async () => {
   const result = await ShowRoom.updateMany(
     {}, // Match all documents

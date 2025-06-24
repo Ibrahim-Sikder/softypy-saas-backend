@@ -814,7 +814,7 @@ const generateInvoicePDF = async (
     .populate('company')
     .populate('showRoom')
     .populate('vehicle');
-  console.log(invoice);
+
   if (!invoice) {
     throw new Error('Invoice not found');
   }

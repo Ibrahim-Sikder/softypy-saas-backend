@@ -14,7 +14,7 @@ import { Tenant } from '../tenant/tenant.model';
 
 
 export const loginUser = async (payload: TLoginUser) => {
-  console.log(payload)
+
   // Step 1: Find the tenant by domain
   const tenant = await Tenant.findOne({ domain: payload.tenantDomain });
   if (!tenant || !tenant.isActive) {

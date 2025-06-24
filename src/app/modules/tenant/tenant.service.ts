@@ -11,7 +11,7 @@ export const createTenant = async (
   payload: ITenant,
   plan: 'Monthly' | 'HalfYearly' | 'Yearly'
 ) => {
-  console.log(payload)
+
   try {
     const { name, domain } = payload;
 
@@ -38,8 +38,6 @@ export const createTenant = async (
     const connection = await connectToTenantDatabase(tenant._id.toString(), dbUri);
     const DummyModel = connection.model('Dummy', new mongoose.Schema({ name: String }));
     await DummyModel.create({ name: 'trigger' });
-
-    console.log('✅ Tenant created successfully.');
     return tenant;
   } catch (error: any) {
     throw new AppError(500, error.message || 'Error creating tenant');

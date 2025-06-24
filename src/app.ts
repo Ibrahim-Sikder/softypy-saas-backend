@@ -105,13 +105,6 @@ app.get('/api/v1/backup-logs',  (req: Request, res: Response) => {
   }
 });
 
-// Scheduled backup every day at midnight
-// cron.schedule('0 0 * * *', () => {
-//   console.log('Running daily scheduled backup...');
-//   backupMongoDB()
-//     .then(() => console.log('Backup completed successfully'))
-//     .catch((error) => console.error('Backup failed:', error));
-// });
 
 
 app.use(globalErrorHandler);

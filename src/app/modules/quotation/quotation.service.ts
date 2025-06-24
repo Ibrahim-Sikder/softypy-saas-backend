@@ -29,19 +29,32 @@ import { Stocks } from '../stocks/stocks.model';
 import httpStatus from 'http-status';
 import { StockTransaction } from '../stockTransaction/stockTransaction.model';
 import { Product } from '../product/product.model';
+import { getTenantModel } from '../../utils/getTenantModels';
 
-export const createQuotationDetails = async (payload: {
-  customer: TCustomer;
-  company: TCompany;
-  showroom: TShowRoom;
-  quotation: TQuotation;
-  vehicle: TVehicle;
-}) => {
+export const createQuotationDetails = async (
+  tenantDomain: string,
+  payload: {
+    customer: TCustomer;
+    company: TCompany;
+    showroom: TShowRoom;
+    quotation: TQuotation;
+    vehicle: TVehicle;
+  },
+) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     const { customer, company, showroom, quotation, vehicle } = payload;
+
+    const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
+    const Customer = (await getTenantModel(tenantDomain, 'Customer')).Model;
+    const Company = (await getTenantModel(tenantDomain, 'Company')).Model;
+    const ShowRoom = (await getTenantModel(tenantDomain, 'ShowRoom')).Model;
+    const Vehicle = (await getTenantModel(tenantDomain, 'Vehicle')).Model;
+    const Stocks = (await getTenantModel(tenantDomain, 'Stocks')).Model;
+    const StockTransaction = (await getTenantModel(tenantDomain, 'StockTransaction')).Model;
+    const Product = (await getTenantModel(tenantDomain, 'Product')).Model;
 
     // Sanitize input data
     const sanitizeCustomer = sanitizePayload(customer);
@@ -78,12 +91,10 @@ export const createQuotationDetails = async (payload: {
 
     const { input_data = [], service_input_data = [] } = quotation;
 
-    // ✅ Only use `input_data` for stock reduction
     const productItems = input_data.filter(
       (item) => item.product && item.warehouse && item.quantity
     );
 
-    // Prepare stock reduction map
     const stockUpdateMap = new Map<
       string,
       {
@@ -122,7 +133,6 @@ export const createQuotationDetails = async (payload: {
       }
     }
 
-    // Process stock and product quantity update
     for (const {
       product,
       warehouse,
@@ -146,11 +156,9 @@ export const createQuotationDetails = async (payload: {
         );
       }
 
-      // Reduce stock quantity
       existingStock.quantity -= totalQuantity;
       await existingStock.save({ session });
 
-      // Create stock transaction
       const stockTransaction = new StockTransaction({
         product,
         warehouse,
@@ -165,7 +173,6 @@ export const createQuotationDetails = async (payload: {
 
       await stockTransaction.save({ session });
 
-      // Update Product model quantity
       const productData = await Product.findById(product).session(session);
       if (!productData) {
         throw new AppError(404, `Product not found.`);
@@ -183,7 +190,6 @@ export const createQuotationDetails = async (payload: {
       await productData.save({ session });
     }
 
-    // Handle user assignment
     if (quotation.user_type === 'customer') {
       const existingCustomer = await Customer.findOne({
         customerId: quotation.Id,
@@ -237,7 +243,6 @@ export const createQuotationDetails = async (payload: {
       }
     }
 
-    // Vehicle handling
     if (vehicle && vehicle.chassis_no) {
       const vehicleData = await Vehicle.findOneAndUpdate(
         { chassis_no: vehicle.chassis_no },
@@ -264,6 +269,7 @@ export const createQuotationDetails = async (payload: {
 
 
 const getAllQuotationsFromDB = async (
+  tenantDomain: string,
   id: string | null,
   limit: number,
   page: number,
@@ -271,10 +277,11 @@ const getAllQuotationsFromDB = async (
   isRecycled?: string,
   status?: string,
 ) => {
+  const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
+
   let idMatchQuery: any = {};
   let searchQuery: { [key: string]: any } = {};
 
-  // If id is provided, filter by the id in customer, company, vehicle, or showRoom
   if (id) {
     idMatchQuery = {
       $or: [
@@ -286,12 +293,8 @@ const getAllQuotationsFromDB = async (
     };
   }
 
-  // If a search term is provided, apply regex filtering
   if (searchTerm) {
-    const escapedFilteringData = searchTerm.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      '\\$&',
-    );
+    const escapedFilteringData = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     const quotationSearchQuery = QuotationSearchableFields.map((field) => ({
       [field]: { $regex: escapedFilteringData, $options: 'i' },
@@ -307,9 +310,11 @@ const getAllQuotationsFromDB = async (
     const customerSearchQuery = customerFields.map((field) => ({
       [field]: { $regex: escapedFilteringData, $options: 'i' },
     }));
+
     const companySearchQuery = companyFields.map((field) => ({
       [field]: { $regex: escapedFilteringData, $options: 'i' },
     }));
+
     const showRoomSearchQuery = showRoomFields.map((field) => ({
       [field]: { $regex: escapedFilteringData, $options: 'i' },
     }));
@@ -325,158 +330,85 @@ const getAllQuotationsFromDB = async (
     };
   }
 
-  // Handle isRecycled filter
   if (isRecycled !== undefined) {
     searchQuery.isRecycled = isRecycled === 'true';
   }
   if (status) {
-    searchQuery.status = status; // Filter by the status if it is provided
+    searchQuery.status = status;
   }
-  // Construct the aggregation pipeline for fetching data
-  const quotations = await Quotation.aggregate([
-    {
-      $lookup: {
-        from: 'vehicles',
-        localField: 'vehicle',
-        foreignField: '_id',
-        as: 'vehicle',
-      },
-    },
-    {
-      $unwind: {
-        path: '$vehicle',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
 
-    {
-      $lookup: {
-        from: 'companies',
-        localField: 'company',
-        foreignField: '_id',
-        as: 'company',
-      },
-    },
-    {
-      $unwind: {
-        path: '$company',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $lookup: {
-        from: 'customers',
-        localField: 'customer',
-        foreignField: '_id',
-        as: 'customer',
-      },
-    },
-    {
-      $unwind: {
-        path: '$customer',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $lookup: {
-        from: 'showrooms',
-        localField: 'showRoom',
-        foreignField: '_id',
-        as: 'showRoom',
-      },
-    },
-    {
-      $unwind: {
-        path: '$showRoom',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $match: id ? idMatchQuery : {}, // Apply id filtering if id exists
-    },
-    {
-      $match: searchQuery, // Apply search term filtering
-    },
-    {
-      $sort: { createdAt: -1 },
-    },
-    ...(page && limit
-      ? [{ $skip: (page - 1) * limit }, { $limit: limit }]
-      : []),
-  ]);
+  // Use tenant-aware collection names
+  const vehicleCollection = (await getTenantModel(tenantDomain, 'Vehicle')).Model.collection.name;
+  const companyCollection = (await getTenantModel(tenantDomain, 'Company')).Model.collection.name;
+  const customerCollection = (await getTenantModel(tenantDomain, 'Customer')).Model.collection.name;
+  const showRoomCollection = (await getTenantModel(tenantDomain, 'ShowRoom')).Model.collection.name;
 
-  // Calculate total data count using an aggregation pipeline for consistency
-  const totalDataAggregation = await Quotation.aggregate([
-    {
-      $lookup: {
-        from: 'vehicles',
-        localField: 'vehicle',
-        foreignField: '_id',
-        as: 'vehicle',
+  const buildAggregationPipeline = (): mongoose.PipelineStage[] => {
+    const pipeline: mongoose.PipelineStage[] = [
+      {
+        $lookup: {
+          from: vehicleCollection,
+          localField: 'vehicle',
+          foreignField: '_id',
+          as: 'vehicle',
+        },
       },
-    },
-    {
-      $unwind: {
-        path: '$vehicle',
-        preserveNullAndEmptyArrays: true,
+      { $unwind: { path: '$vehicle', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: companyCollection,
+          localField: 'company',
+          foreignField: '_id',
+          as: 'company',
+        },
       },
-    },
-    {
-      $lookup: {
-        from: 'companies',
-        localField: 'company',
-        foreignField: '_id',
-        as: 'company',
+      { $unwind: { path: '$company', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: customerCollection,
+          localField: 'customer',
+          foreignField: '_id',
+          as: 'customer',
+        },
       },
-    },
-    {
-      $unwind: {
-        path: '$company',
-        preserveNullAndEmptyArrays: true,
+      { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: showRoomCollection,
+          localField: 'showRoom',
+          foreignField: '_id',
+          as: 'showRoom',
+        },
       },
-    },
-    {
-      $lookup: {
-        from: 'customers',
-        localField: 'customer',
-        foreignField: '_id',
-        as: 'customer',
-      },
-    },
-    {
-      $unwind: {
-        path: '$customer',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $lookup: {
-        from: 'showrooms',
-        localField: 'showRoom',
-        foreignField: '_id',
-        as: 'showRoom',
-      },
-    },
-    {
-      $unwind: {
-        path: '$showRoom',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $match: id ? idMatchQuery : {}, // Apply id filtering if id exists
-    },
-    {
-      $match: searchQuery, // Apply search term filtering
-    },
-    {
-      $count: 'totalCount',
-    },
-  ]);
+      { $unwind: { path: '$showRoom', preserveNullAndEmptyArrays: true } },
+    ];
 
-  // Extract total data count
-  const totalData =
-    totalDataAggregation.length > 0 ? totalDataAggregation[0].totalCount : 0;
+    if (id) {
+      pipeline.push({ $match: idMatchQuery });
+    }
+    if (Object.keys(searchQuery).length > 0) {
+      pipeline.push({ $match: searchQuery });
+    }
+    pipeline.push({ $sort: { createdAt: -1 } });
+    if (page && limit) {
+      pipeline.push({ $skip: (page - 1) * limit });
+      pipeline.push({ $limit: limit });
+    }
+    return pipeline;
+  };
+
+  const quotations = await Quotation.aggregate(buildAggregationPipeline());
+
+  const totalDataAggregation = await Quotation.aggregate(
+    [
+      ...buildAggregationPipeline().filter(
+        (stage) => !('$skip' in stage) && !('$limit' in stage)
+      ),
+      { $count: 'totalCount' },
+    ] as any[]
+  );
+
+  const totalData = totalDataAggregation.length > 0 ? totalDataAggregation[0].totalCount : 0;
   const totalPages = Math.ceil(totalData / limit);
 
   return {
@@ -489,6 +421,7 @@ const getAllQuotationsFromDB = async (
   };
 };
 
+
 const getAllQuotationsFromDBForDashboard = async () => {
   const completedQuotations = await Quotation.find({ isCompleted: true })
     .select('_id')
@@ -497,7 +430,7 @@ const getAllQuotationsFromDBForDashboard = async () => {
   return completedQuotations;
 };
 
-const getSingleQuotationDetails = async (id: string) => {
+const getSingleQuotationDetails = async (tenantDomain: string,id: string) => {
   const singleQuotation = await Quotation.findById(id)
     .populate('customer')
     .populate('company')
@@ -521,6 +454,7 @@ const getSingleQuotationDetails = async (id: string) => {
 };
 
 const updateQuotationIntoDB = async (
+  tenantDomain: string,
   id: string,
   payload: {
     customer: TCustomer;
@@ -783,6 +717,7 @@ const updateQuotationIntoDB = async (
 };
 
 const removeQuotationFromUpdate = async (
+  tenantDomain: string,
   id: string,
   index: number,
   quotation_name: string,
@@ -909,7 +844,7 @@ const generateQuotationPdf = async (
   }
 };
 
-const deleteQuotation = async (id: string) => {
+const deleteQuotation = async (tenantDomain: string, id: string) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -982,7 +917,7 @@ const deleteQuotation = async (id: string) => {
 
   return null;
 };
-const permanentlyDeleteQuotation = async (id: string) => {
+const permanentlyDeleteQuotation = async (tenantDomain: string,id: string) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -1060,7 +995,7 @@ const permanentlyDeleteQuotation = async (id: string) => {
   }
 };
 
-const moveToRecyclebinQuotation = async (id: string) => {
+const moveToRecyclebinQuotation = async (tenantDomain: string,id: string) => {
   try {
     const existingQuotation = await Quotation.findById(id);
 
@@ -1090,7 +1025,7 @@ const moveToRecyclebinQuotation = async (id: string) => {
   }
 };
 
-const restoreFromRecyclebinQuotation = async (id: string) => {
+const restoreFromRecyclebinQuotation = async (tenantDomain: string,id: string) => {
   try {
     const existingQuotation = await Quotation.findById(id);
 

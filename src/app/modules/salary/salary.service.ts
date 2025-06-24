@@ -12,7 +12,6 @@ const createSalaryIntoDB = async (payload: TSalary[]) => {
   session.startTransaction()
 
   try {
-    console.log("🚀 Creating salary records for", payload.length, "employees")
 
     // Extract unique employee IDs from the payload
     const employeeIds = [...new Set(payload.map((entry) => entry.employee))]
@@ -86,8 +85,6 @@ const createSalaryIntoDB = async (payload: TSalary[]) => {
         payment_history: paymentHistory,
         // Let the pre-save middleware calculate everything
       })
-
-      console.log("💾 Saving salary for employee:", existingEmployee.full_name)
       await salary.save({ session })
 
       // Update employee's salary array
@@ -104,8 +101,6 @@ const createSalaryIntoDB = async (payload: TSalary[]) => {
 
     await session.commitTransaction()
     session.endSession()
-
-    console.log("✅ Successfully created", createdSalaries.length, "salary records")
     return createdSalaries
   } catch (error) {
     await session.abortTransaction()
@@ -120,8 +115,6 @@ const addPartialPayment = async (paymentData: TPartialPayment) => {
   session.startTransaction()
 
   try {
-    console.log("💰 Adding partial payment:", paymentData)
-
     const salary = await Salary.findById(paymentData.salaryId).session(session)
 
     if (!salary) {
@@ -153,14 +146,10 @@ const addPartialPayment = async (paymentData: TPartialPayment) => {
       payment_method: paymentData.payment_method || "cash",
       created_by: paymentData.created_by,
     })
-
-    console.log("💾 Saving salary with new payment")
     await salary.save({ session })
 
     await session.commitTransaction()
     session.endSession()
-
-    console.log("✅ Partial payment added successfully")
     return salary
   } catch (error) {
     await session.abortTransaction()
@@ -175,8 +164,6 @@ const updateSalaryIntoDB = async (id: string, payload: Partial<TSalary>) => {
   session.startTransaction()
 
   try {
-    console.log("🔄 Updating salary with ID:", id)
-    console.log("📝 Update payload:", payload)
 
     // Don't use .lean() to preserve methods
     const existingSalary = await Salary.findById(id).session(session)
@@ -185,12 +172,7 @@ const updateSalaryIntoDB = async (id: string, payload: Partial<TSalary>) => {
       throw new AppError(StatusCodes.NOT_FOUND, "Salary record not found.")
     }
 
-    console.log("📊 Current salary state:", {
-      totalPayment: existingSalary.total_payment,
-      paidAmount: existingSalary.paid_amount,
-      dueAmount: existingSalary.due_amount,
-      paymentStatus: existingSalary.payment_status,
-    })
+
 
     // Fields that should not be directly updated (calculated fields)
     const excludedFields = [
@@ -207,7 +189,7 @@ const updateSalaryIntoDB = async (id: string, payload: Partial<TSalary>) => {
     // Update only allowed fields
     Object.keys(payload).forEach((key) => {
       if (!excludedFields.includes(key)) {
-        console.log(`🔧 Updating field ${key}:`, (payload as any)[key])
+       
         ;(existingSalary as any)[key] = (payload as any)[key]
       }
     })
@@ -218,8 +200,7 @@ const updateSalaryIntoDB = async (id: string, payload: Partial<TSalary>) => {
     )
 
     if (salaryComponentsChanged) {
-      console.log("💰 Salary components changed - will recalculate total payment")
-
+   
       // Manual calculation if method is not available
       const bonus = Number(existingSalary.bonus) || 0
       const overtimeAmount = Number(existingSalary.overtime_amount) || 0
@@ -229,8 +210,6 @@ const updateSalaryIntoDB = async (id: string, payload: Partial<TSalary>) => {
 
       const newTotalPayment = Math.max(0, bonus + overtimeAmount + salaryAmount + previousDue - cutSalary)
       existingSalary.total_payment = newTotalPayment
-
-      console.log("📊 New total payment:", newTotalPayment)
     }
 
     // Force recalculation by marking relevant fields as modified
@@ -241,20 +220,12 @@ const updateSalaryIntoDB = async (id: string, payload: Partial<TSalary>) => {
       existingSalary.markModified("payment_history")
     }
 
-    console.log("💾 Saving updated salary")
     await existingSalary.save({ session })
 
-    console.log("📊 Updated salary state:", {
-      totalPayment: existingSalary.total_payment,
-      paidAmount: existingSalary.paid_amount,
-      dueAmount: existingSalary.due_amount,
-      paymentStatus: existingSalary.payment_status,
-    })
+ 
 
     await session.commitTransaction()
     session.endSession()
-
-    console.log("✅ Salary updated successfully")
     return existingSalary
   } catch (error) {
     await session.abortTransaction()
@@ -269,8 +240,6 @@ const deleteSalaryFromDB = async (id: string) => {
   session.startTransaction()
 
   try {
-    console.log("🗑️ Deleting salary with ID:", id)
-
     const salary = await Salary.findById(id).session(session)
 
     if (!salary) {
@@ -285,8 +254,6 @@ const deleteSalaryFromDB = async (id: string) => {
 
     await session.commitTransaction()
     session.endSession()
-
-    console.log("✅ Salary deleted successfully")
     return result
   } catch (error) {
     await session.abortTransaction()
@@ -585,8 +552,6 @@ const recalculateAllSalaries = async () => {
   session.startTransaction()
 
   try {
-    console.log("🔄 Starting recalculation of all salaries...")
-
     const salaries = await Salary.find({}).session(session)
 
     let updatedCount = 0
@@ -597,14 +562,12 @@ const recalculateAllSalaries = async () => {
       if (oldDueAmount !== salary.due_amount) {
         await salary.save({ session })
         updatedCount++
-        console.log(`✅ Updated salary for ${salary.full_name}: Due ${oldDueAmount} -> ${salary.due_amount}`)
       }
     }
 
     await session.commitTransaction()
     session.endSession()
 
-    console.log(`🎉 Recalculation complete. Updated ${updatedCount} out of ${salaries.length} salaries.`)
     return { total: salaries.length, updated: updatedCount }
   } catch (error) {
     await session.abortTransaction()

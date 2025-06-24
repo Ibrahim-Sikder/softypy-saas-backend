@@ -4,7 +4,6 @@ import catchAsync from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 
 const createUser = catchAsync(async (req, res) => {
-  console.log('submit data console ',req.body);
   const domain =
     (req.headers.origin as string) || (req.headers.host as string) || '';
   const result = await UserServices.createUser(req.body);
