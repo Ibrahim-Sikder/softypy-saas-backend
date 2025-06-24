@@ -11,8 +11,6 @@ import { getTenantModel } from '../../utils/getTenantModels';
 
 export const createUser = async (payload: TUser) => {
   const { Model: User, tenant } = await getTenantModel(payload.tenantDomain, 'User');
-  console.log(payload)
-
   const userByEmail = await User.findOne({ email: payload.email });
   if (userByEmail) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Email is already registered!');

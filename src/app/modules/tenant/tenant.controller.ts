@@ -11,7 +11,6 @@ const createTenant = async (
 ) => {
   try {
     const { plan } = req.body;
-console.log(req.body)
     // Validate the plan value
     if (!['Monthly', 'HalfYearly', 'Yearly'].includes(plan)) {
       throw new Error('Invalid subscription plan. Choose Monthly, HalfYearly, or Yearly.');

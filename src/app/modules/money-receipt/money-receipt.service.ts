@@ -606,8 +606,6 @@ const deleteMoneyReceipt = async (id: string) => {
     throw new Error('Money receipt not found');
   }
   let logoBase64 = '';
-
-  console.log(money)
   try {
     const logoUrl = `${imageUrl}/images/logo.png`;
     const logoResponse = await fetch(logoUrl);

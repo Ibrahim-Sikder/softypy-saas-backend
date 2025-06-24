@@ -12,16 +12,20 @@ import { addToJobCardSchema } from '../modules/jobCard/job-card.model';
 import { quotationSchema } from '../modules/quotation/quotation.model';
 import { moneyReceiptSchema } from '../modules/money-receipt/money-receipt.model';
 import { invoiceSchema } from '../modules/invoice/invoice.model';
+import { companySchema } from '../modules/company/company.model';
+import { showRoomSchema } from '../modules/showRoom/showRoom.model';
 
 type SchemaMap = {
   [key: string]: mongoose.Schema;
 };
 
 const schemas: SchemaMap = {
- User: userSchema,
+  User: userSchema,
   Unit: unitSchema,
   Brand: brandSchema,
   Customer: customerSchema,
+  ShowRoom: showRoomSchema,
+  Company: companySchema,
   Vehicle: vehicleSchema,
   JobCard: addToJobCardSchema,
   Quotation: quotationSchema,
@@ -33,8 +37,6 @@ export const getTenantModel = async (
   tenantDomain: string,
   modelName: keyof typeof schemas,
 ) => {
-  console.log(tenantDomain);
-
   const tenant = await Tenant.findOne({
     domain: { $regex: new RegExp(`^${tenantDomain}$`, 'i') },
   });

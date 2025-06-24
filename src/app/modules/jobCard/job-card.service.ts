@@ -21,14 +21,26 @@ import mongoose from 'mongoose';
 import puppeteer from 'puppeteer';
 import { join } from 'path';
 import ejs from 'ejs';
-const createJobCardDetails = async (payload: {
-  jobCard: TJobCard;
-  customer: TCustomer;
-  company: TCompany;
-  showroom: TShowRoom;
-  vehicle: TVehicle;
-}) => {
-  const session = await mongoose.startSession();
+import { getTenantModel } from '../../utils/getTenantModels';
+
+const createJobCardDetails = async (
+  tenantDomain: string,
+  payload: {
+    jobCard: TJobCard;
+    customer: TCustomer;
+    company: TCompany;
+    showroom: TShowRoom;
+    vehicle: TVehicle;
+  },
+) => {
+  const { Model: Customer, connection: tenantConnection } =
+    await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+  const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
+
+  const session = await tenantConnection.startSession();
   session.startTransaction();
 
   try {
@@ -50,20 +62,15 @@ const createJobCardDetails = async (payload: {
       if (id) {
         return await findQuery.findOneAndUpdate(
           { [`${userType}Id`]: id },
-          {
-            $set: sanitizedData,
-          },
-          {
-            new: true,
-            runValidators: true,
-            session, // add session to ensure the operation is part of the transaction
-          },
+          { $set: sanitizedData },
+          { new: true, runValidators: true, session },
         );
       } else {
         return createNewUser();
       }
     };
 
+    // Determine user type
     switch (jobCard.user_type) {
       case 'customer':
         newUserForJobCard = await updateOrCreateUserForJobCard(
@@ -73,11 +80,7 @@ const createJobCardDetails = async (payload: {
           Customer,
           async () => {
             const customerId = await generateCustomerId();
-            return new Customer({
-              ...sanitizeCustomerData,
-              customerId,
-              session, // add session to ensure the operation is part of the transaction
-            });
+            return new Customer({ ...sanitizeCustomerData, customerId });
           },
         );
         break;
@@ -89,11 +92,7 @@ const createJobCardDetails = async (payload: {
           Company,
           async () => {
             const companyId = await generateCompanyId();
-            return new Company({
-              ...sanitizeCompanyData,
-              companyId,
-              session, // add session to ensure the operation is part of the transaction
-            });
+            return new Company({ ...sanitizeCompanyData, companyId });
           },
         );
         break;
@@ -105,11 +104,7 @@ const createJobCardDetails = async (payload: {
           ShowRoom,
           async () => {
             const showRoomId = await generateShowRoomId();
-            return new ShowRoom({
-              ...sanitizeShowRoomData,
-              showRoomId,
-              session, // add session to ensure the operation is part of the transaction
-            });
+            return new ShowRoom({ ...sanitizeShowRoomData, showRoomId });
           },
         );
         break;
@@ -124,10 +119,8 @@ const createJobCardDetails = async (payload: {
     }
 
     let vehicleData;
-
     if (vehicle.chassis_no) {
       const sanitizedVehicleData = sanitizePayload(vehicle);
-
       const existingVehicle = await Vehicle.findOne(
         { chassis_no: vehicle.chassis_no },
         null,
@@ -137,14 +130,8 @@ const createJobCardDetails = async (payload: {
       if (existingVehicle) {
         vehicleData = await Vehicle.findByIdAndUpdate(
           existingVehicle._id,
-          {
-            $set: sanitizedVehicleData,
-          },
-          {
-            new: true,
-            runValidators: true,
-            session, // add session to ensure the operation is part of the transaction
-          },
+          { $set: sanitizedVehicleData },
+          { new: true, runValidators: true, session },
         );
       } else {
         vehicleData = new Vehicle({
@@ -156,27 +143,15 @@ const createJobCardDetails = async (payload: {
             jobCard.user_type === 'company' ? updateJobCard._id : undefined,
           showRoom:
             jobCard.user_type === 'showRoom' ? updateJobCard._id : undefined,
+          Id:
+            jobCard.user_type === 'customer'
+              ? updateJobCard.customerId
+              : jobCard.user_type === 'company'
+                ? updateJobCard.companyId
+                : jobCard.user_type === 'showRoom'
+                  ? updateJobCard.showRoomId
+                  : undefined,
         });
-
-        switch (jobCard.user_type) {
-          case 'customer':
-            vehicleData.customer = updateJobCard._id;
-            vehicleData.Id = updateJobCard.customerId;
-            break;
-          case 'company':
-            vehicleData.company = updateJobCard._id;
-            vehicleData.Id = updateJobCard.companyId;
-            break;
-          case 'showRoom':
-            vehicleData.showRoom = updateJobCard._id;
-            vehicleData.Id = updateJobCard.showRoomId;
-            break;
-          default:
-            throw new AppError(
-              StatusCodes.CONFLICT,
-              'Invalid user type provided',
-            );
-        }
 
         await vehicleData.save({ session });
 
@@ -185,10 +160,10 @@ const createJobCardDetails = async (payload: {
       }
     }
 
-    const createJobCard = new JobCard({
+    const newJobCard = new JobCard({
       ...jobCard,
-      vehicle: vehicleData?._id,
       job_no: await generateJobCardNo(),
+      vehicle: vehicleData?._id,
       customer:
         jobCard.user_type === 'customer' ? updateJobCard._id : undefined,
       company: jobCard.user_type === 'company' ? updateJobCard._id : undefined,
@@ -204,18 +179,16 @@ const createJobCardDetails = async (payload: {
               : undefined,
     });
 
-    await createJobCard.save({ session });
+    await newJobCard.save({ session });
 
-    updateJobCard.jobCards.push(createJobCard._id);
+    updateJobCard.jobCards.push(newJobCard._id);
     await updateJobCard.save({ session });
 
-    // Commit the transaction
     await session.commitTransaction();
     session.endSession();
 
-    return createJobCard;
+    return newJobCard;
   } catch (error) {
-    // If any error occurs, abort the transaction
     await session.abortTransaction();
     session.endSession();
     throw error;
@@ -223,16 +196,22 @@ const createJobCardDetails = async (payload: {
 };
 
 const getAllJobCardsFromDB = async (
+  tenantDomain: string,
   id: string | null,
   limit: number,
   page: number,
   searchTerm: string,
   isRecycled?: string,
 ) => {
-  let idMatchQuery: any = {};
-  let searchQuery: { [key: string]: any } = {};
+  const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
 
-  // If id is provided, filter by the id
+  let idMatchQuery: any = {};
+  let searchQuery: Record<string, any> = {};
+
   if (id) {
     idMatchQuery = {
       $or: [
@@ -243,22 +222,15 @@ const getAllJobCardsFromDB = async (
     };
   }
 
-  // If a search term is provided, apply regex filtering
   if (searchTerm) {
     const escapedFilteringData = searchTerm.replace(
       /[.*+?^${}()|[\]\\]/g,
       '\\$&',
     );
 
-
     const userSearchQuery = SearchableFields.map((field) => ({
       [field]: { $regex: escapedFilteringData, $options: 'i' },
     }));
-
-    
-    // const usersSearchQuery = usersFields.map((field) => ({
-    //   [field]: { $regex: escapedFilteringData, $options: 'i' },
-    // }));
 
     const usersSearchQuery = usersFields.map((field) => {
       if (field === 'vehicle.vehicle_model') {
@@ -272,16 +244,14 @@ const getAllJobCardsFromDB = async (
     };
   }
 
-  // Handle isRecycled filter
   if (isRecycled !== undefined) {
     searchQuery.isRecycled = isRecycled === 'true';
   }
 
-  // Construct the aggregation pipeline for fetching data
   const jobCards = await JobCard.aggregate([
     {
       $lookup: {
-        from: 'customers',
+        from: Customer.collection.name,
         localField: 'customer',
         foreignField: '_id',
         as: 'customer',
@@ -289,7 +259,7 @@ const getAllJobCardsFromDB = async (
     },
     {
       $lookup: {
-        from: 'companies',
+        from: Company.collection.name,
         localField: 'company',
         foreignField: '_id',
         as: 'company',
@@ -297,57 +267,35 @@ const getAllJobCardsFromDB = async (
     },
     {
       $lookup: {
-        from: 'showrooms',
+        from: ShowRoom.collection.name,
         localField: 'showRoom',
         foreignField: '_id',
         as: 'showRoom',
       },
     },
-    {
-      $unwind: {
-        path: '$customer',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $unwind: {
-        path: '$company',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $unwind: {
-        path: '$showRoom',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
+    { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
+    { $unwind: { path: '$company', preserveNullAndEmptyArrays: true } },
+    { $unwind: { path: '$showRoom', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: 'vehicles',
+        from: Vehicle.collection.name,
         localField: 'vehicle',
         foreignField: '_id',
         as: 'vehicle',
       },
     },
-    {
-      $match: id ? idMatchQuery : {},
-    },
-    {
-      $match: searchQuery,
-    },
-    {
-      $sort: { createdAt: -1 },
-    },
+    ...(id ? [{ $match: idMatchQuery }] : []),
+    { $match: searchQuery },
+    { $sort: { createdAt: -1 } },
     ...(page && limit
       ? [{ $skip: (page - 1) * limit }, { $limit: limit }]
       : []),
   ]);
 
-  // Calculate total data count using aggregation for consistency
   const totalDataAggregation = await JobCard.aggregate([
     {
       $lookup: {
-        from: 'customers',
+        from: Customer.collection.name,
         localField: 'customer',
         foreignField: '_id',
         as: 'customer',
@@ -355,7 +303,7 @@ const getAllJobCardsFromDB = async (
     },
     {
       $lookup: {
-        from: 'companies',
+        from: Company.collection.name,
         localField: 'company',
         foreignField: '_id',
         as: 'company',
@@ -363,42 +311,20 @@ const getAllJobCardsFromDB = async (
     },
     {
       $lookup: {
-        from: 'showrooms',
+        from: ShowRoom.collection.name,
         localField: 'showRoom',
         foreignField: '_id',
         as: 'showRoom',
       },
     },
-    {
-      $unwind: {
-        path: '$customer',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $unwind: {
-        path: '$company',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $unwind: {
-        path: '$showRoom',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $match: id ? idMatchQuery : {},
-    },
-    {
-      $match: searchQuery,
-    },
-    {
-      $count: 'totalCount',
-    },
+    { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
+    { $unwind: { path: '$company', preserveNullAndEmptyArrays: true } },
+    { $unwind: { path: '$showRoom', preserveNullAndEmptyArrays: true } },
+    ...(id ? [{ $match: idMatchQuery }] : []),
+    { $match: searchQuery },
+    { $count: 'totalCount' },
   ]);
 
-  // Calculate total data count
   const totalData =
     totalDataAggregation.length > 0 ? totalDataAggregation[0].totalCount : 0;
   const totalPages = Math.ceil(totalData / limit);
@@ -415,28 +341,41 @@ const getAllJobCardsFromDB = async (
   };
 };
 
-const getSingleJobCardDetails = async (id: string) => {
+const getSingleJobCardDetails = async (tenantDomain: string, id: string) => {
+  const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+
   const singleJobCard = await JobCard.findById(id)
     .populate({
       path: 'showRoom',
+      model: ShowRoom,
       populate: {
         path: 'vehicles',
+        model: Vehicle,
       },
     })
     .populate({
       path: 'customer',
+      model: Customer,
       populate: {
         path: 'vehicles',
+        model: Vehicle,
       },
     })
     .populate({
       path: 'company',
+      model: Company,
       populate: {
         path: 'vehicles',
+        model: Vehicle,
       },
     })
     .populate({
       path: 'vehicle',
+      model: Vehicle,
     });
 
   if (!singleJobCard) {
@@ -445,28 +384,45 @@ const getSingleJobCardDetails = async (id: string) => {
 
   return singleJobCard;
 };
-const getSingleJobCardDetailsWithJobNo = async (jobNo: string) => {
+
+const getSingleJobCardDetailsWithJobNo = async (
+  tenantDomain: string,
+  jobNo: string,
+) => {
+  const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+
   const singleJobCard = await JobCard.findOne({ job_no: jobNo })
     .populate({
       path: 'showRoom',
+      model: ShowRoom,
       populate: {
         path: 'vehicles',
+        model: Vehicle,
       },
     })
     .populate({
       path: 'customer',
+      model: Customer,
       populate: {
         path: 'vehicles',
+        model: Vehicle,
       },
     })
     .populate({
       path: 'company',
+      model: Company,
       populate: {
         path: 'vehicles',
+        model: Vehicle,
       },
     })
     .populate({
       path: 'vehicle',
+      model: Vehicle,
     });
 
   if (!singleJobCard) {
@@ -477,6 +433,7 @@ const getSingleJobCardDetailsWithJobNo = async (jobNo: string) => {
 };
 
 const updateJobCardDetails = async (
+  tenantDomain: string,
   id: string,
   payload: {
     jobCard: TJobCard;
@@ -486,6 +443,12 @@ const updateJobCardDetails = async (
     vehicle: TVehicle;
   },
 ) => {
+  const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+
   const { jobCard, customer, company, showroom, vehicle } = payload;
 
   const existingJobCard = await JobCard.findById(id);
@@ -502,39 +465,24 @@ const updateJobCardDetails = async (
   if (jobCard.user_type === 'customer') {
     newUserForJobCard = await Customer.findOneAndUpdate(
       { customerId: existingJobCard.Id },
-      {
-        $set: sanitizeCustomerData,
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
+      { $set: sanitizeCustomerData },
+      { new: true, runValidators: true },
     );
   }
 
   if (jobCard.user_type === 'company') {
     newUserForJobCard = await Company.findOneAndUpdate(
       { companyId: existingJobCard.Id },
-      {
-        $set: sanitizeCompanyData,
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
+      { $set: sanitizeCompanyData },
+      { new: true, runValidators: true },
     );
   }
 
   if (jobCard.user_type === 'showRoom') {
     newUserForJobCard = await ShowRoom.findOneAndUpdate(
       { showRoomId: existingJobCard.Id },
-      {
-        $set: sanitizeShowRoomData,
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
+      { $set: sanitizeShowRoomData },
+      { new: true, runValidators: true },
     );
   }
 
@@ -545,16 +493,10 @@ const updateJobCardDetails = async (
   }
 
   if (vehicle.chassis_no) {
-    // Replace the entire mileageHistory array instead of pushing to it
     await Vehicle.findOneAndUpdate(
       { chassis_no: vehicle.chassis_no },
-      {
-        $set: { mileageHistory: vehicle.mileageHistory || [] },
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
+      { $set: { mileageHistory: vehicle.mileageHistory || [] } },
+      { new: true, runValidators: true },
     );
   }
 
@@ -562,19 +504,19 @@ const updateJobCardDetails = async (
 
   const updateCard = await JobCard.findByIdAndUpdate(
     existingJobCard._id,
-    {
-      $set: sanitizeJobCard,
-    },
-    {
-      new: true,
-      runValidators: true,
-    },
+    { $set: sanitizeJobCard },
+    { new: true, runValidators: true },
   );
 
   return updateCard;
 };
 
-const deleteJobCard = async (id: string) => {
+const deleteJobCard = async (tenantDomain: string, id: string) => {
+  const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
   const existingJobCard = await JobCard.findById(id);
   if (!existingJobCard) {
     throw new AppError(StatusCodes.NOT_FOUND, 'No job card exist.');
@@ -582,99 +524,21 @@ const deleteJobCard = async (id: string) => {
 
   if (existingJobCard.user_type === 'customer') {
     await Customer.findOneAndUpdate(
-      {
-        customerId: existingJobCard.Id,
-      },
-      {
-        $pull: { jobCards: existingJobCard._id },
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
+      { customerId: existingJobCard.Id },
+      { $pull: { jobCards: existingJobCard._id } },
+      { new: true, runValidators: true },
     );
   } else if (existingJobCard.user_type === 'company') {
     await Company.findOneAndUpdate(
-      {
-        companyId: existingJobCard.Id,
-      },
-      {
-        $pull: { jobCards: existingJobCard._id },
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
+      { companyId: existingJobCard.Id },
+      { $pull: { jobCards: existingJobCard._id } },
+      { new: true, runValidators: true },
     );
   } else if (existingJobCard.user_type === 'showRoom') {
     await ShowRoom.findOneAndUpdate(
-      {
-        showRoomId: existingJobCard.Id,
-      },
-      {
-        $pull: { jobCards: existingJobCard._id },
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
-  } else {
-    throw new AppError(StatusCodes.BAD_REQUEST, 'Invalid user type');
-  }
-
-  const jobCard = await JobCard.findByIdAndDelete(existingJobCard._id);
-
-  if (!jobCard) {
-    throw new AppError(StatusCodes.NOT_FOUND, 'No job card available');
-  }
-
-  return null;
-};
-const permanatlyDeleteJobCard = async (id: string) => {
-  const existingJobCard = await JobCard.findById(id);
-  if (!existingJobCard) {
-    throw new AppError(StatusCodes.NOT_FOUND, 'No job card exist.');
-  }
-
-  if (existingJobCard.user_type === 'customer') {
-    await Customer.findOneAndUpdate(
-      {
-        customerId: existingJobCard.Id,
-      },
-      {
-        $pull: { jobCards: existingJobCard._id },
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
-  } else if (existingJobCard.user_type === 'company') {
-    await Company.findOneAndUpdate(
-      {
-        companyId: existingJobCard.Id,
-      },
-      {
-        $pull: { jobCards: existingJobCard._id },
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
-  } else if (existingJobCard.user_type === 'showRoom') {
-    await ShowRoom.findOneAndUpdate(
-      {
-        showRoomId: existingJobCard.Id,
-      },
-      {
-        $pull: { jobCards: existingJobCard._id },
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
+      { showRoomId: existingJobCard.Id },
+      { $pull: { jobCards: existingJobCard._id } },
+      { new: true, runValidators: true },
     );
   } else {
     throw new AppError(StatusCodes.BAD_REQUEST, 'Invalid user type');
@@ -689,14 +553,58 @@ const permanatlyDeleteJobCard = async (id: string) => {
   return null;
 };
 
-const movetoRecyclebinJobcard = async (id: string) => {
+const permanatlyDeleteJobCard = async (tenantDomain: string, id: string) => {
+  const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
+  const existingJobCard = await JobCard.findById(id);
+  if (!existingJobCard) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No job card exist.');
+  }
+
+  if (existingJobCard.user_type === 'customer') {
+    await Customer.findOneAndUpdate(
+      { customerId: existingJobCard.Id },
+      { $pull: { jobCards: existingJobCard._id } },
+      { new: true, runValidators: true },
+    );
+  } else if (existingJobCard.user_type === 'company') {
+    await Company.findOneAndUpdate(
+      { companyId: existingJobCard.Id },
+      { $pull: { jobCards: existingJobCard._id } },
+      { new: true, runValidators: true },
+    );
+  } else if (existingJobCard.user_type === 'showRoom') {
+    await ShowRoom.findOneAndUpdate(
+      { showRoomId: existingJobCard.Id },
+      { $pull: { jobCards: existingJobCard._id } },
+      { new: true, runValidators: true },
+    );
+  } else {
+    throw new AppError(StatusCodes.BAD_REQUEST, 'Invalid user type');
+  }
+
+  const jobCard = await JobCard.findByIdAndDelete(existingJobCard._id);
+
+  if (!jobCard) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No job card available');
+  }
+
+  return null;
+};
+
+const movetoRecyclebinJobcard = async (tenantDomain: string, id: string) => {
+  const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
+
   const existingJobCard = await JobCard.findById(id);
   if (!existingJobCard) {
     throw new AppError(StatusCodes.NOT_FOUND, 'No job card exists.');
   }
 
   const recycledJobCard = await JobCard.findByIdAndUpdate(
-    existingJobCard,
+    existingJobCard._id,
     {
       isRecycled: true,
       recycledAt: new Date(),
@@ -716,15 +624,20 @@ const movetoRecyclebinJobcard = async (id: string) => {
 
   return recycledJobCard;
 };
-const restorefromRecyclebinJobcard = async (id: string) => {
-  // Check if the job card exists and is in the recycle bin
+
+const restorefromRecyclebinJobcard = async (
+  tenantDomain: string,
+  id: string,
+) => {
+  const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
+
   const existingJobCard = await JobCard.findById(id);
   if (!existingJobCard) {
     throw new AppError(StatusCodes.NOT_FOUND, 'No job card exists.');
   }
 
   const restoredJobCard = await JobCard.findByIdAndUpdate(
-    existingJobCard,
+    existingJobCard._id,
     {
       isRecycled: false,
       recycledAt: null,
@@ -745,30 +658,33 @@ const restorefromRecyclebinJobcard = async (id: string) => {
   return restoredJobCard;
 };
 
-const getUserDetailsForJobCard = async (id: string, userType: string) => {
+
+const getUserDetailsForJobCard = async (
+  tenantDomain: string,
+  id: string,
+  userType: string,
+) => {
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
   let userDetails;
 
   switch (userType) {
     case 'customer':
-      userDetails = await Customer.findOne({ customerId: id }).populate(
-        'vehicles',
-      );
+      userDetails = await Customer.findOne({ customerId: id }).populate('vehicles');
       if (!userDetails) {
         throw new AppError(StatusCodes.NOT_FOUND, 'Customer not found.');
       }
       break;
     case 'company':
-      userDetails = await Company.findOne({ companyId: id }).populate(
-        'vehicles',
-      );
+      userDetails = await Company.findOne({ companyId: id }).populate('vehicles');
       if (!userDetails) {
         throw new AppError(StatusCodes.NOT_FOUND, 'Company not found.');
       }
       break;
     case 'showRoom':
-      userDetails = await ShowRoom.findOne({ showRoomId: id }).populate(
-        'vehicles',
-      );
+      userDetails = await ShowRoom.findOne({ showRoomId: id }).populate('vehicles');
       if (!userDetails) {
         throw new AppError(StatusCodes.NOT_FOUND, 'Showroom not found.');
       }
@@ -779,6 +695,7 @@ const getUserDetailsForJobCard = async (id: string, userType: string) => {
 
   return userDetails;
 };
+
 
 export const generateJobCardPdf = async (
   id: string,

@@ -176,6 +176,12 @@ export const getSingleCustomerDetails = async (
   tenantDomain: string,
   id: string,
 ) => {
+  await getTenantModel(tenantDomain, 'JobCard');
+  await getTenantModel(tenantDomain, 'Quotation');
+  await getTenantModel(tenantDomain, 'Invoice');
+  await getTenantModel(tenantDomain, 'Vehicle');
+  await getTenantModel(tenantDomain, 'MoneyReceipt');
+
   const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
 
   const singleCustomer = await Customer.findById(id)
@@ -200,29 +206,41 @@ export const getSingleCustomerDetails = async (
 };
 
 const updateCustomer = async (
+  tenantDomain: string,
   id: string,
   payload: {
     customer: Partial<TCustomer>;
     vehicle: Partial<TVehicle>;
   },
 ) => {
+  console.log(tenantDomain);
+  console.log(payload);
   const { customer, vehicle } = payload;
+  const { Model: Customer, connection: customerConnection } =
+    await getTenantModel(tenantDomain, 'Customer');
 
-  // Start a session for transaction management
-  const session = await mongoose.startSession();
+  const { Model: Vehicle, connection: vehicleConnection } =
+    await getTenantModel(tenantDomain, 'Vehicle');
+
+  if (customerConnection !== vehicleConnection) {
+    throw new Error(
+      'Customer and Vehicle models must be from the same tenant connection',
+    );
+  }
+
+  const session = await customerConnection.startSession();
   session.startTransaction();
 
   try {
     const sanitizedCustomerData = sanitizePayload(customer);
+
     const updatedCustomer = await Customer.findByIdAndUpdate(
       id,
-      {
-        $set: sanitizedCustomerData,
-      },
+      { $set: sanitizedCustomerData },
       {
         new: true,
         runValidators: true,
-        session, 
+        session,
       },
     );
 
@@ -230,7 +248,8 @@ const updateCustomer = async (
       throw new AppError(StatusCodes.NOT_FOUND, 'No customer available');
     }
 
-    if (vehicle.chassis_no) {
+    // If vehicle data exists and has chassis_no, try to update or create
+    if (vehicle?.chassis_no) {
       const sanitizedVehicleData = sanitizePayload(vehicle);
 
       const existingVehicle = await Vehicle.findOne({
@@ -257,10 +276,14 @@ const updateCustomer = async (
           user_type: updatedCustomer.user_type,
         });
 
+        // Optional: ensure optional fields like company/showRoom are undefined if empty
+        if (!newVehicle.company) newVehicle.company = undefined;
+        if (!newVehicle.showRoom) newVehicle.showRoom = undefined;
+
         await newVehicle.save({ session });
 
+        // Update the customer's vehicle list
         updatedCustomer.vehicles.push(newVehicle._id);
-
         await updatedCustomer.save({ session });
       }
     }
@@ -308,8 +331,11 @@ const deleteCustomer = async (id: string) => {
     throw error;
   }
 };
-const permanantlyDeleteCustomer = async (id: string) => {
-  const session = await mongoose.startSession();
+const permanantlyDeleteCustomer = async (tenantDomain: string, id: string) => {
+  const { Model: Customer, connection } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+
+  const session = await connection.startSession();
   session.startTransaction();
 
   try {
@@ -322,11 +348,9 @@ const permanantlyDeleteCustomer = async (id: string) => {
       Id: existingCustomer.customerId,
     }).session(session);
 
-    const customer = await Customer.findByIdAndDelete(
-      existingCustomer._id,
-    ).session(session);
+    const deletedCustomer = await Customer.findByIdAndDelete(existingCustomer._id).session(session);
 
-    if (!customer || !vehicle) {
+    if (!deletedCustomer || !vehicle) {
       throw new AppError(StatusCodes.NOT_FOUND, 'No customer available');
     }
 
@@ -340,52 +364,52 @@ const permanantlyDeleteCustomer = async (id: string) => {
     throw error;
   }
 };
-const moveToRecycledCustomer = async (id: string) => {
-  try {
-    const existingCustomer = await Customer.findById(id);
-    if (!existingCustomer) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No customer exist.');
-    }
 
-    const customer = await Customer.findByIdAndUpdate(
-      existingCustomer._id,
-      { isRecycled: true, recycledAt: new Date() },
-      { new: true, runValidators: true },
-    );
+const moveToRecycledCustomer = async (tenantDomain: string, id: string) => {
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
 
-    if (!customer) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No customer available');
-    }
-
-    return customer;
-  } catch (error) {
-    throw error;
+  const existingCustomer = await Customer.findById(id);
+  if (!existingCustomer) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No customer exist.');
   }
-};
-const restoreFromRecycledCustomer = async (id: string) => {
-  try {
-    const recycledCustomer = await Customer.findById(id);
-    if (!recycledCustomer) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No customer exist.');
-    }
-    const restoredCustomer = await Customer.findByIdAndUpdate(
-      recycledCustomer._id,
-      { isRecycled: false, recycledAt: null },
-      { new: true, runValidators: true },
-    );
 
-    if (!restoredCustomer) {
-      throw new AppError(
-        StatusCodes.NOT_FOUND,
-        'No customer available for restoration.',
-      );
-    }
+  const updatedCustomer = await Customer.findByIdAndUpdate(
+    existingCustomer._id,
+    { isRecycled: true, recycledAt: new Date() },
+    { new: true, runValidators: true }
+  );
 
-    return restoredCustomer;
-  } catch (error) {
-    throw error;
+  if (!updatedCustomer) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No customer available');
   }
+
+  return updatedCustomer;
 };
+
+const restoreFromRecycledCustomer = async (tenantDomain: string, id: string) => {
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+
+  const recycledCustomer = await Customer.findById(id);
+  if (!recycledCustomer) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No customer exist.');
+  }
+
+  const restoredCustomer = await Customer.findByIdAndUpdate(
+    recycledCustomer._id,
+    { isRecycled: false, recycledAt: null },
+    { new: true, runValidators: true }
+  );
+
+  if (!restoredCustomer) {
+    throw new AppError(
+      StatusCodes.NOT_FOUND,
+      'No customer available for restoration.'
+    );
+  }
+
+  return restoredCustomer;
+};
+
 
 const moveAllToRecycledBin = async () => {
   const result = await Customer.updateMany(

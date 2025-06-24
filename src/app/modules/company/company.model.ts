@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { TCompany } from './company.interface';
 
-const companySchema: Schema<TCompany> = new Schema<TCompany>(
+export const companySchema: Schema<TCompany> = new Schema<TCompany>(
   {
     companyId: {
       type: String,

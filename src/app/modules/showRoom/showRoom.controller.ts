@@ -4,7 +4,11 @@ import sendResponse from '../../utils/sendResponse';
 import { ShowRoomServices } from './showRoom.service';
 
 const createShowRoom = catchAsync(async (req, res) => {
-  const showRoom = await ShowRoomServices.createShowRoomDetails(req.body);
+  const { tenantDomain } = req.body;
+  const showRoom = await ShowRoomServices.createShowRoomDetails(
+    tenantDomain,
+    req.body,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -14,16 +18,17 @@ const createShowRoom = catchAsync(async (req, res) => {
 });
 
 const getAllShowRooms = catchAsync(async (req, res) => {
-  const limit = parseInt(req.query.limit as string) || 10; 
-  const page = parseInt(req.query.page as string) || 1; 
-  const searchTerm = req.query.searchTerm as string || '';
-  const isRecycled = req.query.isRecycled as string; 
-
+  const limit = parseInt(req.query.limit as string) || 10;
+  const page = parseInt(req.query.page as string) || 1;
+  const searchTerm = (req.query.searchTerm as string) || '';
+  const isRecycled = req.query.isRecycled as string;
+  const tenantDomain = req.query.tenantDomain as string;
   const result = await ShowRoomServices.getAllShowRoomFromDB(
+    tenantDomain,
     limit,
     page,
     searchTerm,
-    isRecycled, 
+    isRecycled,
   );
 
   sendResponse(res, {
@@ -34,11 +39,13 @@ const getAllShowRooms = catchAsync(async (req, res) => {
   });
 });
 
-
 const getSingleShowRoomDetails = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const result = await ShowRoomServices.getSingleShowRoomDetails(id);
+  const tenantDomain = req.query.tenantDomain as string;
+  const result = await ShowRoomServices.getSingleShowRoomDetails(
+    tenantDomain,
+    id,
+  );
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -50,8 +57,8 @@ const getSingleShowRoomDetails = catchAsync(async (req, res) => {
 
 const updateShowRoom = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const showRoom = await ShowRoomServices.updatedShowRoom(id, req.body);
+  const { tenantDomain } = req.body;
+  const showRoom = await ShowRoomServices.updatedShowRoom(tenantDomain,id, req.body);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -72,8 +79,8 @@ const deleteShowRoom = catchAsync(async (req, res) => {
 });
 const permanantlyDeleteShowRoom = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const service = await ShowRoomServices.permanantlyDeleteShowRoom(id);
+  const tenantDomain = req.query.tenantDomain as string;
+  const service = await ShowRoomServices.permanantlyDeleteShowRoom(tenantDomain,id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -83,8 +90,8 @@ const permanantlyDeleteShowRoom = catchAsync(async (req, res) => {
 });
 const moveToRecycledbinShowRoom = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const service = await ShowRoomServices.moveToRecycledbinShowRoom(id);
+  const tenantDomain = req.query.tenantDomain as string;
+  const service = await ShowRoomServices.moveToRecycledbinShowRoom(tenantDomain,id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -94,8 +101,8 @@ const moveToRecycledbinShowRoom = catchAsync(async (req, res) => {
 });
 const restoreFromRecyledbinShowRoom = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const service = await ShowRoomServices.restoreFromRecyledbinShowRoom(id);
+  const tenantDomain = req.query.tenantDomain as string;
+  const service = await ShowRoomServices.restoreFromRecyledbinShowRoom(tenantDomain,id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -105,7 +112,6 @@ const restoreFromRecyledbinShowRoom = catchAsync(async (req, res) => {
 });
 const moveAllToRecycledBinMoneyReceipts = catchAsync(async (req, res) => {
   const result = await ShowRoomServices.moveAllToRecycledBin();
-
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
