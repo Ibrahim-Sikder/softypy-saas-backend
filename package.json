@@ -1,12 +1,12 @@
 {
-  "name": "trust auto solution",
+  "name": "SofyPy Garage",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "build": "concurrently \"tsc\" \"npm run copy-files\" ",
-    "start": "node ./dist/server.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "start": "PORT=7000 node ./dist/server.js",
+    "dev": "PORT=7000 ts-node-dev --respawn --transpile-only src/server.ts",
     "lint": "npx eslint src --ignore-pattern .ts",
     "lint:fix": "npx eslint src --fix",
     "prettier": "prettier --ignore-path .gitignore --write \"./src/**/*.+(js|ts|json)\"",
