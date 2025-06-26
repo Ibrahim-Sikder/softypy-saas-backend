@@ -1,7 +1,7 @@
 import { Schema, model } from 'mongoose';
 import { IStock } from './stock.interface';
 
-const stockSchema = new Schema<IStock>(
+export const stockSchema = new Schema<IStock>(
   {
     product: {
       type: Schema.Types.ObjectId,

@@ -14,6 +14,10 @@ import { moneyReceiptSchema } from '../modules/money-receipt/money-receipt.model
 import { invoiceSchema } from '../modules/invoice/invoice.model';
 import { companySchema } from '../modules/company/company.model';
 import { showRoomSchema } from '../modules/showRoom/showRoom.model';
+import { stockSchema } from '../modules/stocks/stocks.model';
+import { StockTransactionSchema } from '../modules/stockTransaction/stockTransaction.model';
+import { ProductSchema } from '../modules/product/product.model';
+import { LeaveRequestSchema } from '../modules/leave/leave.model';
 
 type SchemaMap = {
   [key: string]: mongoose.Schema;
@@ -29,8 +33,12 @@ const schemas: SchemaMap = {
   Vehicle: vehicleSchema,
   JobCard: addToJobCardSchema,
   Quotation: quotationSchema,
+  Stocks: stockSchema,
   Invoice: invoiceSchema,
+  Product: ProductSchema,
+  StockTransaction: StockTransactionSchema,
   MoneyReceipt: moneyReceiptSchema,
+  LeaveRequest: LeaveRequestSchema,
 };
 
 export const getTenantModel = async (

@@ -9,7 +9,8 @@ const getAllCustomer = async (
   next: NextFunction,
 ) => {
   try {
-    const result = await metServices.getAllCustomer(req.query);
+     const tenantDomain = req.query.tenantDomain as string;
+    const result = await metServices.getAllCustomer(tenantDomain,req.query);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -28,7 +29,8 @@ const getAllMetaFromDB = async (
   next: NextFunction,
 ) => {
   try {
-    const result = await metServices.getAllMetaFromDB(req.query);
+     const tenantDomain = req.query.tenantDomain as string;
+    const result = await metServices.getAllMetaFromDB(tenantDomain , req.query);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

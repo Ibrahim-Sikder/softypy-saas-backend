@@ -6,7 +6,11 @@ import { MoneyReceiptServices } from './money-receipt.service';
 import { RequestHandler } from 'express';
 
 const createMoneyReceipt = catchAsync(async (req, res) => {
-  const result = await MoneyReceiptServices.createMoneyReceiptDetails(req.body);
+  const { tenantDomain } = req.body;
+  const result = await MoneyReceiptServices.createMoneyReceiptDetails(
+    tenantDomain,
+    req.body,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -21,8 +25,10 @@ const getAllMoneyReceipts = catchAsync(async (req, res) => {
   const page = parseInt(req.query.page as string);
   const isRecycled = req.query.isRecycled as string;
   const searchTerm = req.query.searchTerm as string;
+  const tenantDomain = req.query.tenantDomain as string;
 
   const result = await MoneyReceiptServices.getAllMoneyReceiptsFromDB(
+    tenantDomain,
     id,
     limit,
     page,
@@ -40,8 +46,13 @@ const getAllMoneyReceipts = catchAsync(async (req, res) => {
 
 const getSingleMoneyReceipt = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const tenantDomain = req.query.tenantDomain as string;
+  //  const tenantDomain = req.headers.host || '';
 
-  const result = await MoneyReceiptServices.getSingleMoneyReceiptDetails(id);
+  const result = await MoneyReceiptServices.getSingleMoneyReceiptDetails(
+    tenantDomain,
+    id,
+  );
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -53,8 +64,10 @@ const getSingleMoneyReceipt = catchAsync(async (req, res) => {
 
 const updateMoneyReceipt = catchAsync(async (req, res) => {
   const { id } = req.params;
-
+  const tenantDomain = req.query.tenantDomain as string;
+  console.log('money', tenantDomain)
   const moneyReceipt = await MoneyReceiptServices.updateMoneyReceiptDetails(
+    tenantDomain,
     id,
     req.body,
   );
@@ -70,7 +83,8 @@ const generateMoneyPdf: RequestHandler = catchAsync(async (req, res) => {
   const { moneyReceiptId } = req.params;
 
   const baseUrl = (
-    process.env.NEXT_PUBLIC_IMAGE_BASE_URL || 'https://api.trustautosolution.com'
+    process.env.NEXT_PUBLIC_IMAGE_BASE_URL ||
+    'https://api.trustautosolution.com'
   ).replace(/\/$/, '');
 
   try {
@@ -97,11 +111,14 @@ const generateMoneyPdf: RequestHandler = catchAsync(async (req, res) => {
   }
 });
 
-
 const deleteMoneyReceipt = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const tenantDomain = req.query.tenantDomain as string;
 
-  const moneyReceipt = await MoneyReceiptServices.deleteMoneyReceipt(id);
+  const moneyReceipt = await MoneyReceiptServices.deleteMoneyReceipt(
+    tenantDomain,
+    id,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -111,9 +128,12 @@ const deleteMoneyReceipt = catchAsync(async (req, res) => {
 });
 const permanantlyDeleteMoneyReceipt = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const tenantDomain = req.query.tenantDomain as string;
 
-  const moneyReceipt =
-    await MoneyReceiptServices.permanantlyDeleteMoneyReceipt(id);
+  const moneyReceipt = await MoneyReceiptServices.permanantlyDeleteMoneyReceipt(
+    tenantDomain,
+    id,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -123,9 +143,12 @@ const permanantlyDeleteMoneyReceipt = catchAsync(async (req, res) => {
 });
 const movetoRecyledbinMoneyReceipt = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const tenantDomain = req.query.tenantDomain as string;
 
-  const moneyReceipt =
-    await MoneyReceiptServices.movetoRecyledbinMoneyReceipt(id);
+  const moneyReceipt = await MoneyReceiptServices.movetoRecyledbinMoneyReceipt(
+    tenantDomain,
+    id,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -135,9 +158,13 @@ const movetoRecyledbinMoneyReceipt = catchAsync(async (req, res) => {
 });
 const restoreFromRecyledbinMoneyReceipt = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const tenantDomain = req.query.tenantDomain as string;
 
   const moneyReceipt =
-    await MoneyReceiptServices.restoreFromRecyledbinMoneyReceipt(id);
+    await MoneyReceiptServices.restoreFromRecyledbinMoneyReceipt(
+      tenantDomain,
+      id,
+    );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -172,9 +199,12 @@ const getDueAllMoneyReceipts = catchAsync(async (req, res) => {
   const page = parseInt(req.query.page as string);
   const isRecycled = req.query.isRecycled as string;
   const searchTerm = req.query.searchTerm as string;
+  const tenantDomain = req.query.tenantDomain as string;
 
   const result = await MoneyReceiptServices.getDueAllMoneyReceipts(
+    tenantDomain,
     id,
+
     limit,
     page,
     searchTerm,

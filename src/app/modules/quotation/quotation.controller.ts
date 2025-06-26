@@ -6,8 +6,11 @@ import { QuotationServices } from './quotation.service';
 import { RequestHandler } from 'express';
 
 const createQuotation = catchAsync(async (req, res) => {
-    const { tenantDomain } = req.body;
-  const result = await QuotationServices.createQuotationDetails(tenantDomain,req.body);
+  const { tenantDomain } = req.body;
+  const result = await QuotationServices.createQuotationDetails(
+    tenantDomain,
+    req.body,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -57,9 +60,12 @@ const getAllQuotationsForDashboard = catchAsync(async (req, res) => {
 
 const getSingleQuotation = catchAsync(async (req, res) => {
   const { id } = req.params;
-const tenantDomain = req.query.tenantDomain as string;
+  const tenantDomain = req.query.tenantDomain as string;
 
-  const result = await QuotationServices.getSingleQuotationDetails(tenantDomain,id);
+  const result = await QuotationServices.getSingleQuotationDetails(
+    tenantDomain,
+    id,
+  );
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -71,9 +77,12 @@ const tenantDomain = req.query.tenantDomain as string;
 
 const updateQuotation = catchAsync(async (req, res) => {
   const { id } = req.params;
-const tenantDomain = req.query.tenantDomain as string;
-
-  const quotation = await QuotationServices.updateQuotationIntoDB(tenantDomain,id, req.body);
+  const { tenantDomain } = req.body;
+  const quotation = await QuotationServices.updateQuotationIntoDB(
+    tenantDomain,
+    id,
+    req.body,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -84,7 +93,7 @@ const tenantDomain = req.query.tenantDomain as string;
 
 const removeQuotationFromUpdate = catchAsync(async (req, res) => {
   const { id } = req.query;
-const tenantDomain = req.query.tenantDomain as string;
+  const tenantDomain = req.query.tenantDomain as string;
 
   const { index, quotation_name } = req.body;
 
@@ -104,9 +113,9 @@ const tenantDomain = req.query.tenantDomain as string;
 
 const deleteQuotation = catchAsync(async (req, res) => {
   const { id } = req.params;
-const tenantDomain = req.query.tenantDomain as string;
+  const tenantDomain = req.query.tenantDomain as string;
 
-  const quotation = await QuotationServices.deleteQuotation(tenantDomain,id);
+  const quotation = await QuotationServices.deleteQuotation(tenantDomain, id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -115,35 +124,45 @@ const tenantDomain = req.query.tenantDomain as string;
   });
 });
 
-
 const generateQuotationPdf: RequestHandler = catchAsync(async (req, res) => {
-  const { quotationId } = req.params
+  const { quotationId } = req.params;
 
-  const baseUrl = (process.env.NEXT_PUBLIC_IMAGE_BASE_URL || "https://api.trustautosolution.com").replace(/\/$/, "")
+  const baseUrl = (
+    process.env.NEXT_PUBLIC_IMAGE_BASE_URL ||
+    'https://api.trustautosolution.com'
+  ).replace(/\/$/, '');
 
   try {
-    const pdfBuffer = await QuotationServices.generateQuotationPdf(quotationId, baseUrl)
+    const pdfBuffer = await QuotationServices.generateQuotationPdf(
+      quotationId,
+      baseUrl,
+    );
 
-    res.setHeader("Content-Type", "application/pdf")
-    res.setHeader("Content-Disposition", `attachment; filename=quotation-${quotationId}.pdf`)
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=quotation-${quotationId}.pdf`,
+    );
 
-    res.send(pdfBuffer)
+    res.send(pdfBuffer);
   } catch (error: any) {
-    console.error("PDF Generation Error:", error)
+    console.error('PDF Generation Error:', error);
     res.status(500).json({
-      status: "error",
-      message: error.message || "An error occurred while generating the quotation.",
-    })
+      status: 'error',
+      message:
+        error.message || 'An error occurred while generating the quotation.',
+    });
   }
-})
-
-
+});
 
 const permanantlyDeleteQuotation = catchAsync(async (req, res) => {
   const { id } = req.params;
-const tenantDomain = req.query.tenantDomain as string;
+  const tenantDomain = req.query.tenantDomain as string;
 
-  const quotation = await QuotationServices.permanentlyDeleteQuotation(tenantDomain,id);
+  const quotation = await QuotationServices.permanentlyDeleteQuotation(
+    tenantDomain,
+    id,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -151,11 +170,15 @@ const tenantDomain = req.query.tenantDomain as string;
     data: quotation,
   });
 });
+
 const moveToRecyclebinQuotation = catchAsync(async (req, res) => {
   const { id } = req.params;
-const tenantDomain = req.query.tenantDomain as string;
+  const tenantDomain = req.query.tenantDomain as string;
 
-  const quotation = await QuotationServices.moveToRecyclebinQuotation(tenantDomain, id);
+  const quotation = await QuotationServices.moveToRecyclebinQuotation(
+    tenantDomain,
+    id,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -165,9 +188,12 @@ const tenantDomain = req.query.tenantDomain as string;
 });
 const restoreFromRecyclebinQuotation = catchAsync(async (req, res) => {
   const { id } = req.params;
-const tenantDomain = req.query.tenantDomain as string;
+  const tenantDomain = req.query.tenantDomain as string;
 
-  const quotation = await QuotationServices.restoreFromRecyclebinQuotation(tenantDomain, id);
+  const quotation = await QuotationServices.restoreFromRecyclebinQuotation(
+    tenantDomain,
+    id,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,

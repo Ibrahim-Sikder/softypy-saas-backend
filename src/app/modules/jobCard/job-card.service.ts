@@ -389,6 +389,8 @@ const getSingleJobCardDetailsWithJobNo = async (
   tenantDomain: string,
   jobNo: string,
 ) => {
+  console.log(tenantDomain)
+  console.log(jobNo)
   const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
   const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
   const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');

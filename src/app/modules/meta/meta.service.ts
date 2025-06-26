@@ -1,19 +1,15 @@
 import QueryBuilder from '../../builder/QueryBuilder';
-import { Company } from '../company/company.model';
-import { Customer } from '../customer/customer.model';
-import { Invoice } from '../invoice/invoice.model';
-import { JobCard } from '../jobCard/job-card.model';
-import LeaveRequest from '../leave/leave.model';
-import { MoneyReceipt } from '../money-receipt/money-receipt.model';
-import { Quotation } from '../quotation/quotation.model';
-import { ShowRoom } from '../showRoom/showRoom.model';
+import { getTenantModel } from '../../utils/getTenantModels';
 import { buildSearchQuery } from './meta.search';
 
 const formatToBDComma = (number: number) => {
   return number.toLocaleString('en-IN', { minimumFractionDigits: 2 });
 };
 
-const getAllCustomer = async (query: Record<string, unknown>) => {
+const getAllCustomer = async (
+  tenantDomain: string,
+  query: Record<string, unknown>,
+) => {
   const limit = query.limit ? Number(query.limit) : 10;
   const page = query.page ? Number(query.page) : 1;
   const skip = (page - 1) * limit;
@@ -26,7 +22,11 @@ const getAllCustomer = async (query: Record<string, unknown>) => {
     }
   }
 
-  // Define searchable fields for each model
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
+  // Define searchable fields
   const customerSearchFields = [
     'customerId',
     'customer_name',
@@ -41,7 +41,6 @@ const getAllCustomer = async (query: Record<string, unknown>) => {
     'fullCustomerNum',
     'fullRegNums',
   ];
-
   const companySearchFields = [
     'companyId',
     'company_name',
@@ -70,7 +69,6 @@ const getAllCustomer = async (query: Record<string, unknown>) => {
     'fullCompanyNum',
     'fullRegNums',
   ];
-
   const vehicleSearchFields = [
     'vehicles.fullRegNum',
     'vehicles.car_registration_no',
@@ -85,19 +83,9 @@ const getAllCustomer = async (query: Record<string, unknown>) => {
 
   const searchQuery = buildSearchQuery(allSearchFields, searchTerm);
 
-  // Create queries
-  const customerQuery = new QueryBuilder(
-    Customer.find(searchQuery),
-    query,
-  ).filter();
-  const companyQuery = new QueryBuilder(
-    Company.find(searchQuery),
-    query,
-  ).filter();
-  const showroomQuery = new QueryBuilder(
-    ShowRoom.find(searchQuery),
-    query,
-  ).filter();
+  const customerQuery = new QueryBuilder(Customer.find(searchQuery), query).filter();
+  const companyQuery = new QueryBuilder(Company.find(searchQuery), query).filter();
+  const showroomQuery = new QueryBuilder(ShowRoom.find(searchQuery), query).filter();
 
   const [customerCount, companyCount, showroomCount] = await Promise.all([
     customerQuery.countTotal(),
@@ -111,24 +99,11 @@ const getAllCustomer = async (query: Record<string, unknown>) => {
   };
 
   const [customers, companies, showrooms] = await Promise.all([
-    customerQuery.modelQuery
-      .populate('quotations')
-      .populate('jobCards')
-      .populate(populateOptions)
-      .lean(),
-    companyQuery.modelQuery
-      .populate('quotations')
-      .populate('jobCards')
-      .populate(populateOptions)
-      .lean(),
-    showroomQuery.modelQuery
-      .populate('quotations')
-      .populate('jobCards')
-      .populate(populateOptions)
-      .lean(),
+    customerQuery.modelQuery.populate('quotations').populate('jobCards').populate(populateOptions).lean(),
+    companyQuery.modelQuery.populate('quotations').populate('jobCards').populate(populateOptions).lean(),
+    showroomQuery.modelQuery.populate('quotations').populate('jobCards').populate(populateOptions).lean(),
   ]);
 
-  // Unified data creation
   const unifiedData = [
     ...customers.map((customer) => ({
       _id: customer._id,
@@ -154,9 +129,7 @@ const getAllCustomer = async (query: Record<string, unknown>) => {
       searchableId: customer.customerId,
       searchableName: customer.customer_name,
       searchableContact: `${customer.customer_country_code}${customer.customer_contact}`,
-      searchableVehicle: customer.vehicles
-        .map((v: any) => v.fullRegNum)
-        .join(', '),
+      searchableVehicle: customer.vehicles.map((v: any) => v.fullRegNum).join(', '),
       fullRegNums: customer.vehicles.map((v: any) => v.fullRegNum).join(', '),
       type: 'customer',
     })),
@@ -169,7 +142,6 @@ const getAllCustomer = async (query: Record<string, unknown>) => {
       jobCards: company.jobCards,
       quotations: company.quotations,
       invoices: company.invoices,
-      vehicle_username: company.vehicle_username,
       moneyReceipts: company.money_receipts,
       address: company.company_address,
       contact: company.fullCompanyNum,
@@ -178,15 +150,14 @@ const getAllCustomer = async (query: Record<string, unknown>) => {
       driverName: company.driver_name,
       driverContact: company.driver_contact,
       driverCountryCode: company.driver_country_code,
+      vehicle_username: company.vehicle_username,
       referenceName: company.reference_name,
       isRecycled: company.isRecycled,
       recycledAt: company.recycledAt,
       searchableId: company.companyId,
       searchableName: company.company_name,
       searchableContact: `${company.company_country_code}${company.company_contact}`,
-      searchableVehicle: company.vehicles
-        .map((v: any) => v.fullRegNum)
-        .join(', '),
+      searchableVehicle: company.vehicles.map((v: any) => v.fullRegNum).join(', '),
       fullRegNums: company.vehicles.map((v: any) => v.fullRegNum).join(', '),
       type: 'company',
     })),
@@ -202,35 +173,29 @@ const getAllCustomer = async (query: Record<string, unknown>) => {
       moneyReceipts: showroom.money_receipts,
       address: showroom.showRoom_address,
       contact: showroom.fullCompanyNum,
-      vehicle_username: showroom.vehicle_username,
       countryCode: showroom.company_country_code,
       email: showroom.company_email,
       driverName: showroom.driver_name,
       driverContact: showroom.driver_contact,
       driverCountryCode: showroom.driver_country_code,
+      vehicle_username: showroom.vehicle_username,
       referenceName: showroom.reference_name,
       isRecycled: showroom.isRecycled,
       recycledAt: showroom.recycledAt,
       searchableId: showroom.showRoomId,
       searchableName: showroom.showRoom_name,
       searchableContact: `${showroom.company_country_code}${showroom.company_contact}`,
-      searchableVehicle: showroom.vehicles
-        .map((v: any) => v.fullRegNum)
-        .join(', '),
+      searchableVehicle: showroom.vehicles.map((v: any) => v.fullRegNum).join(', '),
       fullRegNums: showroom.vehicles.map((v: any) => v.fullRegNum).join(', '),
       type: 'showroom',
     })),
   ];
 
-  // Apply sorting
   const sortedData = unifiedData.sort((a, b) => {
-    if (query.sort === 'asc') {
-      return a.name.localeCompare(b.name);
-    }
+    if (query.sort === 'asc') return a.name.localeCompare(b.name);
     return b.name.localeCompare(a.name);
   });
 
-  // Apply pagination
   const paginatedData = sortedData.slice(skip, skip + limit);
 
   return {
@@ -244,7 +209,22 @@ const getAllCustomer = async (query: Record<string, unknown>) => {
   };
 };
 
-const getAllMetaFromDB = async (query: Record<string, unknown>) => {
+
+const getAllMetaFromDB = async (
+  tenantDomain: string,
+  query: Record<string, unknown>,
+) => {
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+  const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
+  const { Model: Quotation } = await getTenantModel(tenantDomain, 'Quotation');
+  const { Model: Invoice } = await getTenantModel(tenantDomain, 'Invoice');
+  const { Model: LeaveRequest } = await getTenantModel(
+    tenantDomain,
+    'LeaveRequest',
+  );
+
   const allCustomer = await Customer.find({ isRecycled: false });
   const allCompany = await Company.find({ isRecycled: false });
   const allShowRoom = await ShowRoom.find({ isRecycled: false });
@@ -254,11 +234,11 @@ const getAllMetaFromDB = async (query: Record<string, unknown>) => {
   const leave = await LeaveRequest.find();
 
   const totalAmount = totalInvoice.reduce(
-    (total, totalAmount) => total + totalAmount.net_total,
+    (total, inv) => total + (inv.net_total || 0),
     0,
   );
   const totalAdvance = totalInvoice.reduce(
-    (total, advance) => total + advance.advance,
+    (total, inv) => total + (inv.advance || 0),
     0,
   );
   const totalRemaining = totalAmount - totalAdvance;
@@ -306,6 +286,7 @@ const getAllMetaFromDB = async (query: Record<string, unknown>) => {
     totalRemaining: formattedTotalRemaining,
   };
 };
+
 
 export const metServices = {
   getAllCustomer,

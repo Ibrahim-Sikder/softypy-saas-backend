@@ -3,12 +3,12 @@ import { StatusCodes } from 'http-status-codes';
 import AppError from '../../errors/AppError';
 import sanitizePayload from '../../middlewares/updateDataValidation';
 import { TMoneyReceipt } from './money-receipt.interface';
-import { MoneyReceipt } from './money-receipt.model';
-import { Customer } from '../customer/customer.model';
-import { Company } from '../company/company.model';
-import { ShowRoom } from '../showRoom/showRoom.model';
+import { MoneyReceipt, moneyReceiptSchema } from './money-receipt.model';
+import { Customer, customerSchema } from '../customer/customer.model';
+import { Company, companySchema } from '../company/company.model';
+import { ShowRoom, showRoomSchema } from '../showRoom/showRoom.model';
 import mongoose, { Model } from 'mongoose';
-import { Vehicle } from '../vehicle/vehicle.model';
+import { Vehicle, vehicleSchema } from '../vehicle/vehicle.model';
 import { SearchableFields } from './money-receipt.const';
 import { generateMoneyReceiptId } from './money-receipt.utils';
 import { amountInWords } from '../../middlewares/taka-in-words';
@@ -16,14 +16,35 @@ import puppeteer from 'puppeteer';
 import { join } from 'path';
 import ejs from 'ejs';
 import { formatToIndianCurrency } from '../quotation/quotation.utils';
-import { Invoice } from '../invoice/invoice.model';
+import { getTenantModel } from '../../utils/getTenantModels';
+import { Tenant } from '../tenant/tenant.model';
+import { connectToTenantDatabase } from '../../../server';
+import { invoiceSchema } from '../invoice/invoice.model';
 
+const schemas = {
+  Customer: customerSchema,
+  Company: companySchema,
+  ShowRoom: showRoomSchema,
+  Vehicle: vehicleSchema,
+};
 
+const createMoneyReceiptDetails = async (
+  tenantDomain: string,
+  payload: TMoneyReceipt,
+) => {
+  // Get all needed models and tenant connection
+  const { Model: MoneyReceipt, connection } = await getTenantModel(
+    tenantDomain,
+    'MoneyReceipt',
+  );
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+  const { Model: Invoice } = await getTenantModel(tenantDomain, 'Invoice');
 
-
-
-const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
-  const session = await mongoose.startSession();
+  // Start session from the tenant-specific connection
+  const session = await connection.startSession();
   session.startTransaction();
 
   try {
@@ -42,22 +63,20 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
     const totalAmountInWords = amountInWords(
       sanitizeData.total_amount as number,
     );
-
     const advanceInWords =
       sanitizeData.advance !== undefined
         ? amountInWords(sanitizeData.advance)
         : 'Zero';
-
     const remainingInWords =
       sanitizeData.remaining !== undefined
         ? amountInWords(sanitizeData.remaining)
         : '';
-    //  payment_status based update on against_bill_no_method
+
     const paymentStatus =
       sanitizeData.against_bill_no_method === 'Final payment against bill no'
         ? 'final'
         : 'advance';
-    // create moneyreceipt data
+
     const moneyReceiptData = new MoneyReceipt({
       ...sanitizeData,
       moneyReceiptId,
@@ -67,7 +86,7 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
       payment_status: paymentStatus,
     });
 
-    // Check and associate customer, company, or showroom
+    // Associate user type
     if (user_type === 'customer') {
       const existingCustomer = await Customer.findOne({
         customerId: Id,
@@ -81,9 +100,9 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
         moneyReceiptData.customer = existingCustomer._id;
       }
     } else if (user_type === 'company') {
-      const existingCompany = await Company.findOne({
-        companyId: Id,
-      }).session(session);
+      const existingCompany = await Company.findOne({ companyId: Id }).session(
+        session,
+      );
       if (existingCompany) {
         await Company.findByIdAndUpdate(
           existingCompany._id,
@@ -106,51 +125,45 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
       }
     }
 
-    // Associate vehicle if chassis_no is provided
+    // Associate vehicle
     if (chassis_no) {
-      const vehicleData = await Vehicle.findOne({ chassis_no });
-
+      const vehicleData = await Vehicle.findOne({ chassis_no }).session(
+        session,
+      );
       if (vehicleData) {
         moneyReceiptData.vehicle = vehicleData._id;
         moneyReceiptData.full_reg_number = full_reg_number;
-        await moneyReceiptData.save({ session });
       }
     }
-    // calculate invoice and update
+
+    // Link to invoice
     const existingInvoice = await Invoice.findOne({
       $or: [{ invoice_no: invoiceNo }, { job_no }],
     }).session(session);
+
     if (existingInvoice) {
       const totalAmount = Number(existingInvoice.net_total) || 0;
-
       const prevAdvance = Number(existingInvoice.advance) || 0;
-      const prevDiscount = Number(existingInvoice.discount) || 0;
 
       const currentPayment =
         sanitizeData.against_bill_no_method === 'Advance against bill no'
-          ? Number(sanitizeData.advance) || 0
-          : moneyReceiptData?.payment_status === 'final'
-            ? Number(existingInvoice.due + existingInvoice.advance) || 0
+          ? Number(sanitizeData.advance)
+          : moneyReceiptData.payment_status === 'final'
+            ? Number(existingInvoice.due + existingInvoice.advance)
             : Number(sanitizeData.total_amount);
 
       const updatedAdvance =
         sanitizeData.against_bill_no_method === 'Advance against bill no'
-          ? prevAdvance + currentPayment || 0
-          : currentPayment || 0;
+          ? prevAdvance + currentPayment
+          : currentPayment;
 
-      const updatedDue = Math.max(
-        totalAmount - updatedAdvance,
-        0,
-      );
+      const updatedDue = Math.max(totalAmount - updatedAdvance, 0);
 
       await Invoice.findByIdAndUpdate(
         existingInvoice._id,
         {
           $push: { moneyReceipts: moneyReceiptData._id },
-          $set: {
-            advance: updatedAdvance,
-            due: updatedDue,
-          },
+          $set: { advance: updatedAdvance, due: updatedDue },
         },
         { new: true, session },
       );
@@ -159,7 +172,7 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
       moneyReceiptData.job_no = existingInvoice.job_no;
     }
 
-    // Save money receipt
+    // Save the final money receipt
     await moneyReceiptData.save({ session });
 
     await session.commitTransaction();
@@ -172,17 +185,26 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
   }
 };
 
- const getAllMoneyReceiptsFromDB = async (
+const getAllMoneyReceiptsFromDB = async (
+  tenantDomain: string,
   id: string | null,
   limit: number,
   page: number,
   searchTerm: string,
   isRecycled?: string,
 ) => {
+  const { Model: MoneyReceipt } = await getTenantModel(
+    tenantDomain,
+    'MoneyReceipt',
+  );
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
   let idMatchQuery: any = {};
   let searchQuery: { [key: string]: any } = {};
 
-  // Filter by ID if provided
   if (id) {
     idMatchQuery = {
       $or: [
@@ -194,9 +216,11 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
     };
   }
 
-  // Apply search term filtering if provided
   if (searchTerm) {
-    const escapedFilteringData = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedFilteringData = searchTerm.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      '\\$&',
+    );
 
     const moneyReceiptSearchQuery = SearchableFields.map((field) => ({
       [field]: { $regex: escapedFilteringData, $options: 'i' },
@@ -218,16 +242,14 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
     };
   }
 
-  // Handle isRecycled filter
   if (isRecycled !== undefined) {
     searchQuery.isRecycled = isRecycled === 'true';
   }
 
-  // Aggregation pipeline to get filtered money receipts
   const moneyReceipts = await MoneyReceipt.aggregate([
     {
       $lookup: {
-        from: 'vehicles',
+        from: Vehicle.collection.name,
         localField: 'vehicle',
         foreignField: '_id',
         as: 'vehicle',
@@ -236,7 +258,7 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
     { $unwind: { path: '$vehicle', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: 'companies',
+        from: Company.collection.name,
         localField: 'company',
         foreignField: '_id',
         as: 'company',
@@ -245,7 +267,7 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
     { $unwind: { path: '$company', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: 'customers',
+        from: Customer.collection.name,
         localField: 'customer',
         foreignField: '_id',
         as: 'customer',
@@ -254,7 +276,7 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
     { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: 'showrooms',
+        from: ShowRoom.collection.name,
         localField: 'showRoom',
         foreignField: '_id',
         as: 'showRoom',
@@ -269,14 +291,16 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
       : []),
   ]);
 
-  // Group by job_no to calculate total and remaining (from only the first receipt)
   const jobMap: {
-    [job_no: string]: { receipts: any[]; totalAmount: number; remaining: number };
+    [job_no: string]: {
+      receipts: any[];
+      totalAmount: number;
+      remaining: number;
+    };
   } = {};
 
   for (const receipt of moneyReceipts) {
     const jobNo = receipt.job_no;
-
     if (!jobNo) continue;
 
     if (!jobMap[jobNo]) {
@@ -290,20 +314,17 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
     jobMap[jobNo].receipts.push(receipt);
     jobMap[jobNo].totalAmount += receipt.total_amount || 0;
 
-    // Use only the first receipt's remaining value
     if (jobMap[jobNo].receipts.length === 1) {
       jobMap[jobNo].remaining = receipt.remaining || 0;
     }
   }
 
-
   for (const jobNo in jobMap) {
     const { receipts, remaining, totalAmount } = jobMap[jobNo];
 
     let color = '#2dce89';
-
     if (remaining > 0 && remaining < totalAmount) {
-      color = '#ffad46'; 
+      color = '#ffad46';
     } else if (remaining >= totalAmount) {
       color = '#f5365c';
     }
@@ -316,7 +337,7 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
   const totalDataAggregation = await MoneyReceipt.aggregate([
     {
       $lookup: {
-        from: 'vehicles',
+        from: Vehicle.collection.name,
         localField: 'vehicle',
         foreignField: '_id',
         as: 'vehicle',
@@ -325,7 +346,7 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
     { $unwind: { path: '$vehicle', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: 'companies',
+        from: Company.collection.name,
         localField: 'company',
         foreignField: '_id',
         as: 'company',
@@ -334,7 +355,7 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
     { $unwind: { path: '$company', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: 'customers',
+        from: Customer.collection.name,
         localField: 'customer',
         foreignField: '_id',
         as: 'customer',
@@ -343,7 +364,7 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
     { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: 'showrooms',
+        from: ShowRoom.collection.name,
         localField: 'showRoom',
         foreignField: '_id',
         as: 'showRoom',
@@ -368,10 +389,35 @@ const createMoneyReceiptDetails = async (payload: TMoneyReceipt) => {
   };
 };
 
+const getSingleMoneyReceiptDetails = async (
+  tenantDomain: string,
+  id: string,
+) => {
+  // First register all referenced schemas into the tenant connection
+  const tenant = await Tenant.findOne({
+    domain: { $regex: new RegExp(`^${tenantDomain}$`, 'i') },
+  });
 
-const getSingleMoneyReceiptDetails = async (id: string) => {
-  const singleMoneyReceipt =
-    await MoneyReceipt.findById(id).populate('vehicle').populate('invoice');
+  if (!tenant || !tenant.isActive) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'Tenant not found or inactive');
+  }
+
+  const connection = await connectToTenantDatabase(
+    tenant._id.toString(),
+    tenant.dbUri,
+  );
+
+  // Register dependent models (Vehicle and Invoice) if not already registered
+  const VehicleModel =
+    connection.models.Vehicle || connection.model('Vehicle', vehicleSchema);
+  const InvoiceModel =
+    connection.models.Invoice || connection.model('Invoice', invoiceSchema);
+  const MoneyReceipt =
+    connection.models.MoneyReceipt || connection.model('MoneyReceipt', moneyReceiptSchema);
+
+  const singleMoneyReceipt = await MoneyReceipt.findById(id)
+    .populate('vehicle') // will now work because model is registered
+    .populate('invoice');
 
   if (!singleMoneyReceipt) {
     throw new AppError(StatusCodes.NOT_FOUND, 'No money receipt found');
@@ -379,40 +425,49 @@ const getSingleMoneyReceiptDetails = async (id: string) => {
 
   const formattedInvoice = {
     ...singleMoneyReceipt.toObject(),
-    total_amount: singleMoneyReceipt.total_amount.toLocaleString('en-IN'),
-    advance: singleMoneyReceipt.advance.toLocaleString('en-IN'),
-    remaining: singleMoneyReceipt.remaining.toLocaleString('en-IN'),
+    total_amount: singleMoneyReceipt?.total_amount?.toLocaleString('en-IN'),
+    advance: singleMoneyReceipt?.advance?.toLocaleString('en-IN'),
+    remaining: singleMoneyReceipt?.remaining?.toLocaleString('en-IN'),
   };
 
   return formattedInvoice;
 };
 
-const updateMoneyReceiptDetails = async (
+
+ const updateMoneyReceiptDetails = async (
+  tenantDomain: string,
   id: string,
   payload: TMoneyReceipt,
 ) => {
-  const session = await mongoose.startSession();
+  // ✅ Get tenant connection
+  const { connection, Model: MoneyReceipt } = await getTenantModel(
+    tenantDomain,
+    'MoneyReceipt',
+  );
+
+  // ✅ Use session from the tenant-specific connection
+  const session = await connection.startSession();
   session.startTransaction();
 
   try {
-    const { user_type, Id, chassis_no, full_reg_number } = payload;
+    // Get all models from same tenant connection
+    const Customer =
+      connection.models.Customer || connection.model('Customer', schemas.Customer);
+    const Company =
+      connection.models.Company || connection.model('Company', schemas.Company);
+    const ShowRoom =
+      connection.models.ShowRoom || connection.model('ShowRoom', schemas.ShowRoom);
+    const Vehicle =
+      connection.models.Vehicle || connection.model('Vehicle', schemas.Vehicle);
 
+    const { user_type, Id, chassis_no, full_reg_number } = payload;
     const sanitizeData = sanitizePayload(payload);
 
-    const totalAmountInWords = amountInWords(
-      sanitizeData.total_amount as number,
-    );
+    const totalAmountInWords = amountInWords(sanitizeData.total_amount as number);
+    const advanceInWords = sanitizeData.advance !== undefined ? amountInWords(sanitizeData.advance) : 'Zero';
+    const remainingInWords = sanitizeData.remaining !== undefined ? amountInWords(sanitizeData.remaining) : '';
 
-    const advanceInWords =
-      sanitizeData.advance !== undefined
-        ? amountInWords(sanitizeData.advance)
-        : 'Zero';
-
-    const remainingInWords =
-      sanitizeData.remaining !== undefined
-        ? amountInWords(sanitizeData.remaining)
-        : '';
-
+    // ✅ Update money receipt with tenant session
     const moneyReceiptData = await MoneyReceipt.findByIdAndUpdate(
       id,
       {
@@ -434,77 +489,52 @@ const updateMoneyReceiptDetails = async (
       throw new AppError(StatusCodes.NOT_FOUND, 'Money receipt not found.');
     }
 
-    // Check if the money receipt is already associated with a customer
     if (user_type === 'customer') {
-      const existingCustomer = await Customer.findOne({
-        customerId: Id,
-      }).session(session);
-      if (existingCustomer) {
-        // Check if the receipt is already in the customer's money_receipts
-        if (!existingCustomer.money_receipts.includes(moneyReceiptData._id)) {
-          await Customer.findByIdAndUpdate(
-            existingCustomer._id,
-            {
-              $push: { money_receipts: moneyReceiptData._id },
-            },
-            {
-              new: true,
-              runValidators: true,
-              session,
-            },
-          );
-        }
+      const existingCustomer = await Customer.findOne({ customerId: Id }).session(session);
+
+      if (
+        existingCustomer &&
+        !existingCustomer.money_receipts.includes(moneyReceiptData._id)
+      ) {
+        await Customer.findByIdAndUpdate(
+          existingCustomer._id,
+          { $push: { money_receipts: moneyReceiptData._id } },
+          { new: true, runValidators: true, session },
+        );
         moneyReceiptData.customer = existingCustomer._id;
       }
     } else if (user_type === 'company') {
-      const existingCompany = await Company.findOne({
-        companyId: Id,
-      }).session(session);
-      if (existingCompany) {
-        // Check if the receipt is already in the company's money_receipts
-        if (!existingCompany.money_receipts.includes(moneyReceiptData._id)) {
-          await Company.findByIdAndUpdate(
-            existingCompany._id,
-            {
-              $push: { money_receipts: moneyReceiptData._id },
-            },
-            {
-              new: true,
-              runValidators: true,
-              session,
-            },
-          );
-        }
+      const existingCompany = await Company.findOne({ companyId: Id }).session(session);
+
+      if (
+        existingCompany &&
+        !existingCompany.money_receipts.includes(moneyReceiptData._id)
+      ) {
+        await Company.findByIdAndUpdate(
+          existingCompany._id,
+          { $push: { money_receipts: moneyReceiptData._id } },
+          { new: true, runValidators: true, session },
+        );
         moneyReceiptData.company = existingCompany._id;
       }
     } else if (user_type === 'showRoom') {
-      const existingShowRoom = await ShowRoom.findOne({
-        showRoomId: Id,
-      }).session(session);
-      if (existingShowRoom) {
-        // Check if the receipt is already in the showroom's money_receipts
-        if (!existingShowRoom.money_receipts.includes(moneyReceiptData._id)) {
-          await ShowRoom.findByIdAndUpdate(
-            existingShowRoom._id,
-            {
-              $push: { money_receipts: moneyReceiptData._id },
-            },
-            {
-              new: true,
-              runValidators: true,
-              session,
-            },
-          );
-        }
+      const existingShowRoom = await ShowRoom.findOne({ showRoomId: Id }).session(session);
+
+      if (
+        existingShowRoom &&
+        !existingShowRoom.money_receipts.includes(moneyReceiptData._id)
+      ) {
+        await ShowRoom.findByIdAndUpdate(
+          existingShowRoom._id,
+          { $push: { money_receipts: moneyReceiptData._id } },
+          { new: true, runValidators: true, session },
+        );
         moneyReceiptData.showRoom = existingShowRoom._id;
       }
     }
 
-    // Update vehicle information if chassis_no is provided
     if (chassis_no) {
-      const vehicleData = await Vehicle.findOne({ chassis_no }).session(
-        session,
-      );
+      const vehicleData = await Vehicle.findOne({ chassis_no }).session(session);
       if (vehicleData) {
         moneyReceiptData.vehicle = vehicleData._id;
         moneyReceiptData.full_reg_number = full_reg_number;
@@ -523,11 +553,21 @@ const updateMoneyReceiptDetails = async (
   }
 };
 
-const deleteMoneyReceipt = async (id: string) => {
+
+
+const deleteMoneyReceipt = async (tenantDomain: string, id: string) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
+    const { Model: MoneyReceipt } = await getTenantModel(
+      tenantDomain,
+      'MoneyReceipt',
+    );
+    const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+    const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+    const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
     const existingMoneyReceipt =
       await MoneyReceipt.findById(id).session(session);
 
@@ -538,7 +578,7 @@ const deleteMoneyReceipt = async (id: string) => {
     type UserType = 'customer' | 'company' | 'showRoom';
     type UserMap = {
       [key in UserType]: {
-        model: Model<any>;
+        model: typeof Customer | typeof Company | typeof ShowRoom;
         queryKey: string;
       };
     };
@@ -565,6 +605,7 @@ const deleteMoneyReceipt = async (id: string) => {
       const existingEntity = await model
         .findOne({ [queryKey]: existingMoneyReceipt.Id })
         .session(session);
+
       if (existingEntity) {
         await model.findByIdAndUpdate(
           existingEntity._id,
@@ -583,6 +624,7 @@ const deleteMoneyReceipt = async (id: string) => {
     const deleteMoneyReceipt = await MoneyReceipt.findByIdAndDelete(
       existingMoneyReceipt._id,
     ).session(session);
+
     if (!deleteMoneyReceipt) {
       throw new AppError(StatusCodes.NOT_FOUND, 'No money receipt available');
     }
@@ -597,7 +639,8 @@ const deleteMoneyReceipt = async (id: string) => {
 
   return null;
 };
- const generateMoneyPdf = async (
+
+const generateMoneyPdf = async (
   id: string,
   imageUrl: string,
 ): Promise<Buffer> => {
@@ -666,11 +709,22 @@ const deleteMoneyReceipt = async (id: string) => {
   }
 };
 
-const permanantlyDeleteMoneyReceipt = async (id: string) => {
+const permanantlyDeleteMoneyReceipt = async (
+  tenantDomain: string,
+  id: string,
+) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
+    const { Model: MoneyReceipt } = await getTenantModel(
+      tenantDomain,
+      'MoneyReceipt',
+    );
+    const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+    const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+    const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
     const existingMoneyReceipt =
       await MoneyReceipt.findById(id).session(session);
 
@@ -681,7 +735,7 @@ const permanantlyDeleteMoneyReceipt = async (id: string) => {
     type UserType = 'customer' | 'company' | 'showRoom';
     type UserMap = {
       [key in UserType]: {
-        model: Model<any>;
+        model: typeof Customer | typeof Company | typeof ShowRoom;
         queryKey: string;
       };
     };
@@ -708,6 +762,7 @@ const permanantlyDeleteMoneyReceipt = async (id: string) => {
       const existingEntity = await model
         .findOne({ [queryKey]: existingMoneyReceipt.Id })
         .session(session);
+
       if (existingEntity) {
         await model.findByIdAndUpdate(
           existingEntity._id,
@@ -726,6 +781,7 @@ const permanantlyDeleteMoneyReceipt = async (id: string) => {
     const deleteMoneyReceipt = await MoneyReceipt.findByIdAndDelete(
       existingMoneyReceipt._id,
     ).session(session);
+
     if (!deleteMoneyReceipt) {
       throw new AppError(StatusCodes.NOT_FOUND, 'No money receipt available');
     }
@@ -740,8 +796,17 @@ const permanantlyDeleteMoneyReceipt = async (id: string) => {
 
   return null;
 };
-const movetoRecyledbinMoneyReceipt = async (id: string) => {
+
+const movetoRecyledbinMoneyReceipt = async (
+  tenantDomain: string,
+  id: string,
+) => {
   try {
+    const { Model: MoneyReceipt } = await getTenantModel(
+      tenantDomain,
+      'MoneyReceipt',
+    );
+
     const existingMoneyReceipt = await MoneyReceipt.findById(id);
 
     if (!existingMoneyReceipt) {
@@ -769,19 +834,35 @@ const movetoRecyledbinMoneyReceipt = async (id: string) => {
     throw error;
   }
 };
-const restoreFromRecyledbinMoneyReceipt = async (id: string) => {
+
+const restoreFromRecyledbinMoneyReceipt = async (
+  tenantDomain: string,
+  id: string,
+) => {
   try {
+    const { Model: MoneyReceipt } = await getTenantModel(
+      tenantDomain,
+      'MoneyReceipt',
+    );
+
     const existingMoneyReceipt = await MoneyReceipt.findById(id);
 
     if (!existingMoneyReceipt) {
       throw new AppError(StatusCodes.NOT_FOUND, 'Money receipt not available.');
     }
 
-    const recycledMoneyReceipt = await MoneyReceipt.findByIdAndUpdate(
+    if (!existingMoneyReceipt.isRecycled) {
+      throw new AppError(
+        StatusCodes.BAD_REQUEST,
+        'Money receipt is not in the recycle bin.',
+      );
+    }
+
+    const restoredMoneyReceipt = await MoneyReceipt.findByIdAndUpdate(
       existingMoneyReceipt._id,
       {
         isRecycled: false,
-        recycledAt: new Date(),
+        recycledAt: null,
       },
       {
         new: true,
@@ -789,15 +870,16 @@ const restoreFromRecyledbinMoneyReceipt = async (id: string) => {
       },
     );
 
-    if (!recycledMoneyReceipt) {
+    if (!restoredMoneyReceipt) {
       throw new AppError(StatusCodes.NOT_FOUND, 'No money receipt available');
     }
 
-    return recycledMoneyReceipt;
+    return restoredMoneyReceipt;
   } catch (error) {
     throw error;
   }
 };
+
 const moveAllToRecycledBin = async () => {
   const result = await MoneyReceipt.updateMany(
     {}, // Match all documents
@@ -832,17 +914,23 @@ const restoreAllFromRecycledBin = async () => {
 
   return result;
 };
+
 const getDueAllMoneyReceipts = async (
+  tenantDomain: string,
   id: string | null,
   limit: number,
   page: number,
   searchTerm: string,
   isRecycled?: string,
 ) => {
+  const { Model: MoneyReceipt } = await getTenantModel(
+    tenantDomain,
+    'MoneyReceipt',
+  );
+
   let idMatchQuery: any = {};
   let searchQuery: { [key: string]: any } = {};
 
-  // Filter by ID if provided
   if (id) {
     idMatchQuery = {
       $or: [
@@ -854,7 +942,6 @@ const getDueAllMoneyReceipts = async (
     };
   }
 
-  // Apply search term filtering if provided
   if (searchTerm) {
     const escapedFilteringData = searchTerm.replace(
       /[.*+?^${}()|[\]\\]/g,
@@ -881,12 +968,11 @@ const getDueAllMoneyReceipts = async (
     };
   }
 
-  // Handle isRecycled filter
   if (isRecycled !== undefined) {
     searchQuery.isRecycled = isRecycled === 'true';
   }
 
-  // Construct the aggregation pipeline for fetching data
+  // Aggregation pipeline to get filtered money receipts
   const moneyReceipts = await MoneyReceipt.aggregate([
     {
       $lookup: {
@@ -896,12 +982,7 @@ const getDueAllMoneyReceipts = async (
         as: 'vehicle',
       },
     },
-    {
-      $unwind: {
-        path: '$vehicle',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
+    { $unwind: { path: '$vehicle', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
         from: 'companies',
@@ -910,12 +991,7 @@ const getDueAllMoneyReceipts = async (
         as: 'company',
       },
     },
-    {
-      $unwind: {
-        path: '$company',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
+    { $unwind: { path: '$company', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
         from: 'customers',
@@ -924,12 +1000,7 @@ const getDueAllMoneyReceipts = async (
         as: 'customer',
       },
     },
-    {
-      $unwind: {
-        path: '$customer',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
+    { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
         from: 'showrooms',
@@ -938,30 +1009,17 @@ const getDueAllMoneyReceipts = async (
         as: 'showRoom',
       },
     },
-    {
-      $unwind: {
-        path: '$showRoom',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $match: id ? idMatchQuery : {}, // Apply id filtering if id exists
-    },
-    {
-      $match: searchQuery, // Apply search term filtering
-    },
-    {
-      $match: { remaining: { $gt: 0 } }, // Filter by remaining > 0
-    },
-    {
-      $sort: { createdAt: -1 },
-    },
+    { $unwind: { path: '$showRoom', preserveNullAndEmptyArrays: true } },
+    { $match: id ? idMatchQuery : {} },
+    { $match: searchQuery },
+    { $match: { remaining: { $gt: 0 } } }, // Filter for due money receipts
+    { $sort: { createdAt: -1 } },
     ...(page && limit
       ? [{ $skip: (page - 1) * limit }, { $limit: limit }]
       : []),
   ]);
 
-  // Calculate total data count using an aggregation pipeline
+  // Count total documents matching filters
   const totalDataAggregation = await MoneyReceipt.aggregate([
     {
       $lookup: {
@@ -971,12 +1029,7 @@ const getDueAllMoneyReceipts = async (
         as: 'vehicle',
       },
     },
-    {
-      $unwind: {
-        path: '$vehicle',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
+    { $unwind: { path: '$vehicle', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
         from: 'companies',
@@ -985,12 +1038,7 @@ const getDueAllMoneyReceipts = async (
         as: 'company',
       },
     },
-    {
-      $unwind: {
-        path: '$company',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
+    { $unwind: { path: '$company', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
         from: 'customers',
@@ -999,12 +1047,7 @@ const getDueAllMoneyReceipts = async (
         as: 'customer',
       },
     },
-    {
-      $unwind: {
-        path: '$customer',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
+    { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
         from: 'showrooms',
@@ -1013,27 +1056,13 @@ const getDueAllMoneyReceipts = async (
         as: 'showRoom',
       },
     },
-    {
-      $unwind: {
-        path: '$showRoom',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $match: id ? idMatchQuery : {}, // Apply id filtering if id exists
-    },
-    {
-      $match: searchQuery, // Apply search term filtering
-    },
-    {
-      $match: { remaining: { $gt: 0 } }, // Filter by remaining > 0
-    },
-    {
-      $count: 'totalCount',
-    },
+    { $unwind: { path: '$showRoom', preserveNullAndEmptyArrays: true } },
+    { $match: id ? idMatchQuery : {} },
+    { $match: searchQuery },
+    { $match: { remaining: { $gt: 0 } } },
+    { $count: 'totalCount' },
   ]);
 
-  // Extract total data count
   const totalData =
     totalDataAggregation.length > 0 ? totalDataAggregation[0].totalCount : 0;
   const totalPages = Math.ceil(totalData / limit);

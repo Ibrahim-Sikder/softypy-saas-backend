@@ -49,6 +49,7 @@ const getAllJobCards = catchAsync(async (req, res) => {
 const getSingleJobCardDetails = catchAsync(async (req, res) => {
   const { id } = req.params;
 const tenantDomain = req.query.tenantDomain as string;
+
   const result = await JobCardServices.getSingleJobCardDetails(tenantDomain,id);
 
   sendResponse(res, {
@@ -60,6 +61,7 @@ const tenantDomain = req.query.tenantDomain as string;
 });
 const getSingleJobCardDetailsWithJobNo = catchAsync(async (req, res) => {
   const jobNo = req.query.jobNo as string;
+  console.log('for job',jobNo)
 const tenantDomain = req.query.tenantDomain as string;
   const result = await JobCardServices.getSingleJobCardDetailsWithJobNo(tenantDomain,jobNo);
 
