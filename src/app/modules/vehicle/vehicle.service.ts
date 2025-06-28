@@ -3,25 +3,25 @@ import mongoose from 'mongoose';
 import AppError from '../../errors/AppError';
 import { StatusCodes } from 'http-status-codes';
 import sanitizePayload from '../../middlewares/updateDataValidation';
-import { Vehicle } from '../vehicle/vehicle.model';
 import { TVehicle } from '../vehicle/vehicle.interface';
-import { Customer } from '../customer/customer.model';
-import { Company } from '../company/company.model';
-import { ShowRoom } from '../showRoom/showRoom.model';
-import QueryBuilder from '../../builder/QueryBuilder';
 import { SearchableFields } from './vehicle.const';
-const createVehicleDetails = async (payload: TVehicle) => {
-  const session = await mongoose.startSession();
+import { getTenantModel } from '../../utils/getTenantModels';
 
+const createVehicleDetails = async (tenantDomain: string, payload: TVehicle) => {
+  const session = await mongoose.startSession();
   try {
+    const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+    const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+    const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+    const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
     const result = await session.withTransaction(async () => {
       // Fetch existing records for customer, company, and showroom
-      const [existingCustomer, existingCompany, existingShowroom] =
-        await Promise.all([
-          Customer.findById(payload.Id).session(session),
-          Company.findById(payload.Id).session(session),
-          ShowRoom.findById(payload.Id).session(session),
-        ]);
+      const [existingCustomer, existingCompany, existingShowroom] = await Promise.all([
+        Customer.findById(payload.Id).session(session),
+        Company.findById(payload.Id).session(session),
+        ShowRoom.findById(payload.Id).session(session),
+      ]);
 
       // Ensure that at least one of the entities is found
       if (!existingCustomer && !existingCompany && !existingShowroom) {
@@ -87,11 +87,15 @@ const createVehicleDetails = async (payload: TVehicle) => {
 };
 
 const getAllVehiclesFromDB = async (
+  tenantDomain: string,
   id: string,
   limit: number,
   page: number,
   searchTerm: string,
 ) => {
+  
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+
   let idMatchQuery: any = {};
   let searchQuery: any = {};
 
@@ -166,10 +170,7 @@ const getAllVehiclesFromDB = async (
     },
     {
       $match: {
-        $and: [
-          idMatchQuery, // Filter by the provided ID
-          searchQuery, // Apply search term filtering
-        ],
+        $and: [idMatchQuery, searchQuery],
       },
     },
     {
@@ -183,7 +184,7 @@ const getAllVehiclesFromDB = async (
     },
   ]);
 
-  // Calculate the total number of documents
+  // Count total documents
   const totalData = await Vehicle.aggregate([
     {
       $lookup: {
@@ -229,10 +230,7 @@ const getAllVehiclesFromDB = async (
     },
     {
       $match: {
-        $and: [
-          idMatchQuery, // Filter by the provided ID
-          searchQuery, // Apply search term filtering
-        ],
+        $and: [idMatchQuery, searchQuery],
       },
     },
     {
@@ -254,7 +252,11 @@ const getAllVehiclesFromDB = async (
 
 
 
-const getSingleVehicleDetails = async (id: string) => {
+
+const getSingleVehicleDetails = async (tenantDomain: string, id: string) => {
+  console.log(tenantDomain, id)
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+
   const singleVehicle = await Vehicle.findById(id);
 
   if (!singleVehicle) {
@@ -264,11 +266,16 @@ const getSingleVehicleDetails = async (id: string) => {
   return singleVehicle;
 };
 
-const deleteVehicle = async (id: string) => {
+const deleteVehicle = async (tenantDomain: string, id: string) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
+    const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+    const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+    const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+    const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
     // Find and delete the vehicle
     const vehicle = await Vehicle.findByIdAndDelete(id, { session });
 
@@ -276,7 +283,7 @@ const deleteVehicle = async (id: string) => {
       throw new AppError(StatusCodes.NOT_FOUND, 'No vehicle available');
     }
 
-    // Check and remove vehicle reference from associated customer
+    // Remove reference from customer if exists
     if (vehicle.customer) {
       await Customer.findByIdAndUpdate(
         vehicle.customer,
@@ -285,7 +292,7 @@ const deleteVehicle = async (id: string) => {
       );
     }
 
-    // Check and remove vehicle reference from associated company
+    // Remove reference from company if exists
     if (vehicle.company) {
       await Company.findByIdAndUpdate(
         vehicle.company,
@@ -294,7 +301,7 @@ const deleteVehicle = async (id: string) => {
       );
     }
 
-    // Check and remove vehicle reference from associated showroom
+    // Remove reference from showroom if exists
     if (vehicle.showRoom) {
       await ShowRoom.findByIdAndUpdate(
         vehicle.showRoom,
@@ -303,13 +310,11 @@ const deleteVehicle = async (id: string) => {
       );
     }
 
-    // Commit the transaction
     await session.commitTransaction();
     session.endSession();
 
     return vehicle;
   } catch (error) {
-    // Abort the transaction in case of an error
     await session.abortTransaction();
     session.endSession();
     throw error;

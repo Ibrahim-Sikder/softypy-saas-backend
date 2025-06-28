@@ -304,11 +304,7 @@ const getAllMoneyReceiptsFromDB = async (
     if (!jobNo) continue;
 
     if (!jobMap[jobNo]) {
-      jobMap[jobNo] = {
-        receipts: [],
-        totalAmount: 0,
-        remaining: 0,
-      };
+      jobMap[jobNo] = { receipts: [], totalAmount: 0, remaining: 0 };
     }
 
     jobMap[jobNo].receipts.push(receipt);
@@ -380,13 +376,7 @@ const getAllMoneyReceiptsFromDB = async (
     totalDataAggregation.length > 0 ? totalDataAggregation[0].totalCount : 0;
   const totalPages = Math.ceil(totalData / limit);
 
-  return {
-    moneyReceipts,
-    meta: {
-      totalPages,
-      currentPage: page,
-    },
-  };
+  return { moneyReceipts, meta: { totalPages, currentPage: page } };
 };
 
 const getSingleMoneyReceiptDetails = async (
@@ -413,7 +403,8 @@ const getSingleMoneyReceiptDetails = async (
   const InvoiceModel =
     connection.models.Invoice || connection.model('Invoice', invoiceSchema);
   const MoneyReceipt =
-    connection.models.MoneyReceipt || connection.model('MoneyReceipt', moneyReceiptSchema);
+    connection.models.MoneyReceipt ||
+    connection.model('MoneyReceipt', moneyReceiptSchema);
 
   const singleMoneyReceipt = await MoneyReceipt.findById(id)
     .populate('vehicle') // will now work because model is registered
@@ -433,8 +424,7 @@ const getSingleMoneyReceiptDetails = async (
   return formattedInvoice;
 };
 
-
- const updateMoneyReceiptDetails = async (
+const updateMoneyReceiptDetails = async (
   tenantDomain: string,
   id: string,
   payload: TMoneyReceipt,
@@ -452,20 +442,30 @@ const getSingleMoneyReceiptDetails = async (
   try {
     // Get all models from same tenant connection
     const Customer =
-      connection.models.Customer || connection.model('Customer', schemas.Customer);
+      connection.models.Customer ||
+      connection.model('Customer', schemas.Customer);
     const Company =
       connection.models.Company || connection.model('Company', schemas.Company);
     const ShowRoom =
-      connection.models.ShowRoom || connection.model('ShowRoom', schemas.ShowRoom);
+      connection.models.ShowRoom ||
+      connection.model('ShowRoom', schemas.ShowRoom);
     const Vehicle =
       connection.models.Vehicle || connection.model('Vehicle', schemas.Vehicle);
 
     const { user_type, Id, chassis_no, full_reg_number } = payload;
     const sanitizeData = sanitizePayload(payload);
 
-    const totalAmountInWords = amountInWords(sanitizeData.total_amount as number);
-    const advanceInWords = sanitizeData.advance !== undefined ? amountInWords(sanitizeData.advance) : 'Zero';
-    const remainingInWords = sanitizeData.remaining !== undefined ? amountInWords(sanitizeData.remaining) : '';
+    const totalAmountInWords = amountInWords(
+      sanitizeData.total_amount as number,
+    );
+    const advanceInWords =
+      sanitizeData.advance !== undefined
+        ? amountInWords(sanitizeData.advance)
+        : 'Zero';
+    const remainingInWords =
+      sanitizeData.remaining !== undefined
+        ? amountInWords(sanitizeData.remaining)
+        : '';
 
     // ✅ Update money receipt with tenant session
     const moneyReceiptData = await MoneyReceipt.findByIdAndUpdate(
@@ -478,11 +478,7 @@ const getSingleMoneyReceiptDetails = async (
           remaining_in_words: remainingInWords,
         },
       },
-      {
-        new: true,
-        runValidators: true,
-        session,
-      },
+      { new: true, runValidators: true, session },
     );
 
     if (!moneyReceiptData) {
@@ -490,7 +486,9 @@ const getSingleMoneyReceiptDetails = async (
     }
 
     if (user_type === 'customer') {
-      const existingCustomer = await Customer.findOne({ customerId: Id }).session(session);
+      const existingCustomer = await Customer.findOne({
+        customerId: Id,
+      }).session(session);
 
       if (
         existingCustomer &&
@@ -504,7 +502,9 @@ const getSingleMoneyReceiptDetails = async (
         moneyReceiptData.customer = existingCustomer._id;
       }
     } else if (user_type === 'company') {
-      const existingCompany = await Company.findOne({ companyId: Id }).session(session);
+      const existingCompany = await Company.findOne({ companyId: Id }).session(
+        session,
+      );
 
       if (
         existingCompany &&
@@ -518,7 +518,9 @@ const getSingleMoneyReceiptDetails = async (
         moneyReceiptData.company = existingCompany._id;
       }
     } else if (user_type === 'showRoom') {
-      const existingShowRoom = await ShowRoom.findOne({ showRoomId: Id }).session(session);
+      const existingShowRoom = await ShowRoom.findOne({
+        showRoomId: Id,
+      }).session(session);
 
       if (
         existingShowRoom &&
@@ -534,7 +536,9 @@ const getSingleMoneyReceiptDetails = async (
     }
 
     if (chassis_no) {
-      const vehicleData = await Vehicle.findOne({ chassis_no }).session(session);
+      const vehicleData = await Vehicle.findOne({ chassis_no }).session(
+        session,
+      );
       if (vehicleData) {
         moneyReceiptData.vehicle = vehicleData._id;
         moneyReceiptData.full_reg_number = full_reg_number;
@@ -552,8 +556,6 @@ const getSingleMoneyReceiptDetails = async (
     throw error;
   }
 };
-
-
 
 const deleteMoneyReceipt = async (tenantDomain: string, id: string) => {
   const session = await mongoose.startSession();
@@ -584,18 +586,9 @@ const deleteMoneyReceipt = async (tenantDomain: string, id: string) => {
     };
 
     const userTypeMap: UserMap = {
-      customer: {
-        model: Customer,
-        queryKey: 'customerId',
-      },
-      company: {
-        model: Company,
-        queryKey: 'companyId',
-      },
-      showRoom: {
-        model: ShowRoom,
-        queryKey: 'showRoomId',
-      },
+      customer: { model: Customer, queryKey: 'customerId' },
+      company: { model: Company, queryKey: 'companyId' },
+      showRoom: { model: ShowRoom, queryKey: 'showRoomId' },
     };
 
     const userTypeHandler =
@@ -609,14 +602,8 @@ const deleteMoneyReceipt = async (tenantDomain: string, id: string) => {
       if (existingEntity) {
         await model.findByIdAndUpdate(
           existingEntity._id,
-          {
-            $pull: { money_receipts: id },
-          },
-          {
-            new: true,
-            runValidators: true,
-            session,
-          },
+          { $pull: { money_receipts: id } },
+          { new: true, runValidators: true, session },
         );
       }
     }
@@ -663,12 +650,7 @@ const generateMoneyPdf = async (
   const html = await new Promise<string>((resolve, reject) => {
     ejs.renderFile(
       filePath,
-      {
-        money,
-        imageUrl,
-        formatToIndianCurrency,
-        logoBase64,
-      },
+      { money, imageUrl, formatToIndianCurrency, logoBase64 },
       (err, str) => {
         if (err) return reject(err);
         resolve(str);
@@ -693,12 +675,7 @@ const generateMoneyPdf = async (
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px',
-      },
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
     });
 
     await browser.close();
@@ -708,25 +685,25 @@ const generateMoneyPdf = async (
     throw new Error('PDF generation failed');
   }
 };
-
 const permanantlyDeleteMoneyReceipt = async (
   tenantDomain: string,
   id: string,
 ) => {
-  const session = await mongoose.startSession();
+  // ✅ Get model and connection from tenant
+  const { Model: MoneyReceipt, connection: tenantConnection } = await getTenantModel(
+    tenantDomain,
+    'MoneyReceipt',
+  );
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
+  // ✅ Use tenant-specific session
+  const session = await tenantConnection.startSession();
   session.startTransaction();
 
   try {
-    const { Model: MoneyReceipt } = await getTenantModel(
-      tenantDomain,
-      'MoneyReceipt',
-    );
-    const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
-    const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
-    const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
-
-    const existingMoneyReceipt =
-      await MoneyReceipt.findById(id).session(session);
+    const existingMoneyReceipt = await MoneyReceipt.findById(id).session(session);
 
     if (!existingMoneyReceipt) {
       throw new AppError(StatusCodes.NOT_FOUND, 'Money receipt not available.');
@@ -735,30 +712,22 @@ const permanantlyDeleteMoneyReceipt = async (
     type UserType = 'customer' | 'company' | 'showRoom';
     type UserMap = {
       [key in UserType]: {
-        model: typeof Customer | typeof Company | typeof ShowRoom;
+        model: mongoose.Model<any>;
         queryKey: string;
       };
     };
 
     const userTypeMap: UserMap = {
-      customer: {
-        model: Customer,
-        queryKey: 'customerId',
-      },
-      company: {
-        model: Company,
-        queryKey: 'companyId',
-      },
-      showRoom: {
-        model: ShowRoom,
-        queryKey: 'showRoomId',
-      },
+      customer: { model: Customer, queryKey: 'customerId' },
+      company: { model: Company, queryKey: 'companyId' },
+      showRoom: { model: ShowRoom, queryKey: 'showRoomId' },
     };
 
-    const userTypeHandler =
-      userTypeMap[existingMoneyReceipt.user_type as UserType];
+    const userTypeHandler = userTypeMap[existingMoneyReceipt.user_type as UserType];
+
     if (userTypeHandler) {
       const { model, queryKey } = userTypeHandler;
+
       const existingEntity = await model
         .findOne({ [queryKey]: existingMoneyReceipt.Id })
         .session(session);
@@ -766,14 +735,8 @@ const permanantlyDeleteMoneyReceipt = async (
       if (existingEntity) {
         await model.findByIdAndUpdate(
           existingEntity._id,
-          {
-            $pull: { money_receipts: id },
-          },
-          {
-            new: true,
-            runValidators: true,
-            session,
-          },
+          { $pull: { money_receipts: id } },
+          { new: true, runValidators: true, session },
         );
       }
     }
@@ -788,14 +751,14 @@ const permanantlyDeleteMoneyReceipt = async (
 
     await session.commitTransaction();
     session.endSession();
+    return deleteMoneyReceipt; // ✅ Return the deleted object if needed
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
     throw error;
   }
-
-  return null;
 };
+
 
 const movetoRecyledbinMoneyReceipt = async (
   tenantDomain: string,
@@ -815,14 +778,8 @@ const movetoRecyledbinMoneyReceipt = async (
 
     const recycledMoneyReceipt = await MoneyReceipt.findByIdAndUpdate(
       existingMoneyReceipt._id,
-      {
-        isRecycled: true,
-        recycledAt: new Date(),
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
+      { isRecycled: true, recycledAt: new Date() },
+      { new: true, runValidators: true },
     );
 
     if (!recycledMoneyReceipt) {
@@ -860,14 +817,8 @@ const restoreFromRecyledbinMoneyReceipt = async (
 
     const restoredMoneyReceipt = await MoneyReceipt.findByIdAndUpdate(
       existingMoneyReceipt._id,
-      {
-        isRecycled: false,
-        recycledAt: null,
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
+      { isRecycled: false, recycledAt: null },
+      { new: true, runValidators: true },
     );
 
     if (!restoredMoneyReceipt) {
@@ -883,15 +834,8 @@ const restoreFromRecyledbinMoneyReceipt = async (
 const moveAllToRecycledBin = async () => {
   const result = await MoneyReceipt.updateMany(
     {}, // Match all documents
-    {
-      $set: {
-        isRecycled: true,
-        recycledAt: new Date(),
-      },
-    },
-    {
-      runValidators: true,
-    },
+    { $set: { isRecycled: true, recycledAt: new Date() } },
+    { runValidators: true },
   );
 
   return result;
@@ -899,17 +843,8 @@ const moveAllToRecycledBin = async () => {
 const restoreAllFromRecycledBin = async () => {
   const result = await MoneyReceipt.updateMany(
     { isRecycled: true },
-    {
-      $set: {
-        isRecycled: false,
-      },
-      $unset: {
-        recycledAt: '',
-      },
-    },
-    {
-      runValidators: true,
-    },
+    { $set: { isRecycled: false }, $unset: { recycledAt: '' } },
+    { runValidators: true },
   );
 
   return result;
@@ -1067,13 +1002,7 @@ const getDueAllMoneyReceipts = async (
     totalDataAggregation.length > 0 ? totalDataAggregation[0].totalCount : 0;
   const totalPages = Math.ceil(totalData / limit);
 
-  return {
-    moneyReceipts,
-    meta: {
-      totalPages,
-      currentPage: page,
-    },
-  };
+  return { moneyReceipts, meta: { totalPages, currentPage: page } };
 };
 
 export const MoneyReceiptServices = {

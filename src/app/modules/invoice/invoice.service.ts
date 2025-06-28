@@ -12,15 +12,15 @@ import {
   vehicleFields,
 } from './invoice.const';
 import { TInvoice } from './invoice.interface';
-import { Invoice } from './invoice.model';
+import { Invoice, invoiceSchema } from './invoice.model';
 import { TCustomer } from '../customer/customer.interface';
 import { TCompany } from '../company/company.interface';
 import { TShowRoom } from '../showRoom/showRoom.interface';
 import { TVehicle } from '../vehicle/vehicle.interface';
-import { Customer } from '../customer/customer.model';
-import { Company } from '../company/company.model';
-import { ShowRoom } from '../showRoom/showRoom.model';
-import { Vehicle } from '../vehicle/vehicle.model';
+import { Customer, customerSchema } from '../customer/customer.model';
+import { Company, companySchema } from '../company/company.model';
+import { ShowRoom, showRoomSchema } from '../showRoom/showRoom.model';
+import { Vehicle, vehicleSchema } from '../vehicle/vehicle.model';
 import { Model } from 'mongoose';
 import { generateInvoiceNo } from './invoice.utils';
 import puppeteer from 'puppeteer';
@@ -39,7 +39,10 @@ const createInvoiceDetails = async (
     invoice: TInvoice;
   },
 ) => {
-  const { Model: Invoice, connection } = await getTenantModel(tenantDomain, 'Invoice'); 
+  const { Model: Invoice, connection } = await getTenantModel(
+    tenantDomain,
+    'Invoice',
+  );
   const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
   const Customer = (await getTenantModel(tenantDomain, 'Customer')).Model;
   const Company = (await getTenantModel(tenantDomain, 'Company')).Model;
@@ -61,7 +64,9 @@ const createInvoiceDetails = async (
     const invoiceNumber = await generateInvoiceNo();
 
     const partsInWords = amountInWords(sanitizeInvoice.parts_total as number);
-    const serviceInWords = amountInWords(sanitizeInvoice.service_total as number);
+    const serviceInWords = amountInWords(
+      sanitizeInvoice.service_total as number,
+    );
     const netTotalInWords = amountInWords(sanitizeInvoice.net_total as number);
 
     const findInvoice = await Invoice.findOne({
@@ -107,10 +112,7 @@ const createInvoiceDetails = async (
       if (existingCustomer) {
         await Customer.findByIdAndUpdate(
           existingCustomer._id,
-          {
-            $set: sanitizeCustomer,
-            $push: { invoices: invoiceData._id },
-          },
+          { $set: sanitizeCustomer, $push: { invoices: invoiceData._id } },
           { new: true, runValidators: true, session },
         );
         invoiceData.customer = existingCustomer._id;
@@ -124,10 +126,7 @@ const createInvoiceDetails = async (
       if (existingCompany) {
         await Company.findByIdAndUpdate(
           existingCompany._id,
-          {
-            $set: sanitizeCompany,
-            $push: { invoices: invoiceData._id },
-          },
+          { $set: sanitizeCompany, $push: { invoices: invoiceData._id } },
           { new: true, runValidators: true, session },
         );
         invoiceData.company = existingCompany._id;
@@ -141,10 +140,7 @@ const createInvoiceDetails = async (
       if (existingShowRoom) {
         await ShowRoom.findByIdAndUpdate(
           existingShowRoom._id,
-          {
-            $set: sanitizeShowroom,
-            $push: { invoices: invoiceData._id },
-          },
+          { $set: sanitizeShowroom, $push: { invoices: invoiceData._id } },
           { new: true, runValidators: true, session },
         );
         invoiceData.showRoom = existingShowRoom._id;
@@ -156,11 +152,7 @@ const createInvoiceDetails = async (
       const vehicleData = await Vehicle.findOneAndUpdate(
         { chassis_no: vehicle.chassis_no },
         { $set: sanitizeVehicle },
-        {
-          new: true,
-          runValidators: true,
-          session,
-        },
+        { new: true, runValidators: true, session },
       );
 
       if (vehicleData) {
@@ -179,7 +171,6 @@ const createInvoiceDetails = async (
   }
 };
 
-
 const getAllInvoicesFromDB = async (
   tenantDomain: string,
   id: string | null,
@@ -188,7 +179,6 @@ const getAllInvoicesFromDB = async (
   searchTerm: string,
   isRecycled?: string,
 ) => {
-
   const Invoice = (await getTenantModel(tenantDomain, 'Invoice')).Model;
 
   let idMatchQuery: Record<string, unknown> = {};
@@ -206,7 +196,10 @@ const getAllInvoicesFromDB = async (
   }
 
   if (searchTerm) {
-    const escapedFilteringData = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedFilteringData = searchTerm.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      '\\$&',
+    );
 
     const quotationSearchQuery = invoiceSearchableFields.map((field) => ({
       [field]: { $regex: escapedFilteringData, $options: 'i' },
@@ -294,19 +287,8 @@ const getAllInvoicesFromDB = async (
         from: 'moneyreceipts',
         let: { job_no: '$job_no' },
         pipeline: [
-          {
-            $match: {
-              $expr: { $eq: ['$job_no', '$$job_no'] },
-            },
-          },
-          {
-            $project: {
-              _id: 0,
-              remaining: 1,
-              advance: 1,
-              total_amount: 1,
-            },
-          },
+          { $match: { $expr: { $eq: ['$job_no', '$$job_no'] } } },
+          { $project: { _id: 0, remaining: 1, advance: 1, total_amount: 1 } },
         ],
         as: 'moneyReceipts',
       },
@@ -344,14 +326,7 @@ const getAllInvoicesFromDB = async (
     totalDataAggregation.length > 0 ? totalDataAggregation[0].totalCount : 0;
   const totalPages = Math.ceil(totalData / limit);
 
-  return {
-    invoices,
-    meta: {
-      totalData,
-      totalPages,
-      currentPage: page,
-    },
-  };
+  return { invoices, meta: { totalData, totalPages, currentPage: page } };
 };
 
 const updateInvoiceIntoDB = async (
@@ -365,7 +340,10 @@ const updateInvoiceIntoDB = async (
     invoice: TInvoice;
   },
 ) => {
-  const { Model: Invoice, connection } = await getTenantModel(tenantDomain, 'Invoice');
+  const { Model: Invoice, connection } = await getTenantModel(
+    tenantDomain,
+    'Invoice',
+  );
   const Customer = (await getTenantModel(tenantDomain, 'Customer')).Model;
   const Company = (await getTenantModel(tenantDomain, 'Company')).Model;
   const ShowRoom = (await getTenantModel(tenantDomain, 'ShowRoom')).Model;
@@ -384,7 +362,9 @@ const updateInvoiceIntoDB = async (
     const sanitizeInvoice = sanitizePayload(invoice);
 
     const partsInWords = amountInWords(sanitizeInvoice.parts_total as number);
-    const serviceInWords = amountInWords(sanitizeInvoice.service_total as number);
+    const serviceInWords = amountInWords(
+      sanitizeInvoice.service_total as number,
+    );
     const netTotalInWords = amountInWords(sanitizeInvoice.net_total as number);
 
     const updateInvoice = await Invoice.findByIdAndUpdate(
@@ -397,11 +377,7 @@ const updateInvoiceIntoDB = async (
           net_total_in_words: netTotalInWords,
         },
       },
-      {
-        new: true,
-        runValidators: true,
-        session,
-      },
+      { new: true, runValidators: true, session },
     );
 
     if (!updateInvoice) {
@@ -409,7 +385,9 @@ const updateInvoiceIntoDB = async (
     }
 
     if (invoice.user_type === 'customer') {
-      const existingCustomer = await Customer.findOne({ customerId: invoice.Id }).session(session);
+      const existingCustomer = await Customer.findOne({
+        customerId: invoice.Id,
+      }).session(session);
       if (existingCustomer) {
         await Customer.findByIdAndUpdate(
           existingCustomer._id,
@@ -418,7 +396,9 @@ const updateInvoiceIntoDB = async (
         );
       }
     } else if (invoice.user_type === 'company') {
-      const existingCompany = await Company.findOne({ companyId: invoice.Id }).session(session);
+      const existingCompany = await Company.findOne({
+        companyId: invoice.Id,
+      }).session(session);
       if (existingCompany) {
         await Company.findByIdAndUpdate(
           existingCompany._id,
@@ -427,7 +407,9 @@ const updateInvoiceIntoDB = async (
         );
       }
     } else if (invoice.user_type === 'showRoom') {
-      const existingShowRoom = await ShowRoom.findOne({ showRoomId: invoice.Id }).session(session);
+      const existingShowRoom = await ShowRoom.findOne({
+        showRoomId: invoice.Id,
+      }).session(session);
       if (existingShowRoom) {
         await ShowRoom.findByIdAndUpdate(
           existingShowRoom._id,
@@ -455,7 +437,6 @@ const updateInvoiceIntoDB = async (
   }
 };
 
-
 const removeInvoiceFromUpdate = async (
   tenantDomain: string,
   id: string,
@@ -476,10 +457,7 @@ const removeInvoiceFromUpdate = async (
 
       { $pull: { input_data: { $eq: existingInvoice.input_data[index] } } },
 
-      {
-        new: true,
-        runValidators: true,
-      },
+      { new: true, runValidators: true },
     );
   }
   if (invoice_name === 'service') {
@@ -494,10 +472,7 @@ const removeInvoiceFromUpdate = async (
         },
       },
 
-      {
-        new: true,
-        runValidators: true,
-      },
+      { new: true, runValidators: true },
     );
   }
 
@@ -509,7 +484,10 @@ const removeInvoiceFromUpdate = async (
 };
 
 const getSingleInvoiceDetails = async (tenantDomain: string, id: string) => {
-  const { Model: Invoice, connection } = await getTenantModel(tenantDomain, 'Invoice');
+  const { Model: Invoice, connection } = await getTenantModel(
+    tenantDomain,
+    'Invoice',
+  );
   const Customer = (await getTenantModel(tenantDomain, 'Customer')).Model;
   const Company = (await getTenantModel(tenantDomain, 'Company')).Model;
   const ShowRoom = (await getTenantModel(tenantDomain, 'ShowRoom')).Model;
@@ -537,7 +515,7 @@ const getSingleInvoiceDetails = async (tenantDomain: string, id: string) => {
   return formattedInvoice;
 };
 
- const deleteInvoice = async (tenantDomain: string, id: string) => {
+const deleteInvoice = async (tenantDomain: string, id: string) => {
   const Invoice = (await getTenantModel(tenantDomain, 'Invoice')).Model;
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -549,7 +527,10 @@ const getSingleInvoiceDetails = async (tenantDomain: string, id: string) => {
     }
 
     type UserType = 'customer' | 'company' | 'showRoom';
-    const userTypeMap: Record<UserType, { model: Model<any>; queryKey: string }> = {
+    const userTypeMap: Record<
+      UserType,
+      { model: Model<any>; queryKey: string }
+    > = {
       customer: { model: Customer, queryKey: 'customerId' },
       company: { model: Company, queryKey: 'companyId' },
       showRoom: { model: ShowRoom, queryKey: 'showRoomId' },
@@ -558,7 +539,9 @@ const getSingleInvoiceDetails = async (tenantDomain: string, id: string) => {
     const userTypeHandler = userTypeMap[existingInvoice.user_type as UserType];
     if (userTypeHandler) {
       const { model, queryKey } = userTypeHandler;
-      const existingEntity = await model.findOne({ [queryKey]: existingInvoice.Id }).session(session);
+      const existingEntity = await model
+        .findOne({ [queryKey]: existingInvoice.Id })
+        .session(session);
       if (existingEntity) {
         await model.findByIdAndUpdate(
           existingEntity._id,
@@ -583,12 +566,19 @@ const getSingleInvoiceDetails = async (tenantDomain: string, id: string) => {
   }
 };
 
- const permanantlyDeleteInvoice = async (
-  tenantDomain: string,
-  id: string,
-) => {
-  const { Model: Invoice } = await getTenantModel(tenantDomain, 'Invoice');
-  const session = await mongoose.startSession();
+const permanantlyDeleteInvoice = async (tenantDomain: string, id: string) => {
+  console.log('permanently delete', tenantDomain);
+
+  // Get tenant-specific models and connection
+  const { Model: Invoice, connection: tenantConnection } = await getTenantModel(
+    tenantDomain,
+    'Invoice'
+  );
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
+  const session = await tenantConnection.startSession();
   session.startTransaction();
 
   try {
@@ -600,10 +590,7 @@ const getSingleInvoiceDetails = async (tenantDomain: string, id: string) => {
 
     type UserType = 'customer' | 'company' | 'showRoom';
     type UserMap = {
-      [key in UserType]: {
-        model: Model<any>;
-        queryKey: string;
-      };
+      [key in UserType]: { model: mongoose.Model<any>; queryKey: string };
     };
 
     const userTypeMap: UserMap = {
@@ -615,6 +602,7 @@ const getSingleInvoiceDetails = async (tenantDomain: string, id: string) => {
     const userTypeHandler = userTypeMap[existingInvoice.user_type as UserType];
     if (userTypeHandler) {
       const { model, queryKey } = userTypeHandler;
+
       const existingEntity = await model
         .findOne({ [queryKey]: existingInvoice.Id })
         .session(session);
@@ -622,14 +610,8 @@ const getSingleInvoiceDetails = async (tenantDomain: string, id: string) => {
       if (existingEntity) {
         await model.findByIdAndUpdate(
           existingEntity._id,
-          {
-            $pull: { invoices: id },
-          },
-          {
-            new: true,
-            runValidators: true,
-            session,
-          },
+          { $pull: { invoices: id } },
+          { new: true, runValidators: true, session }
         );
       }
     }
@@ -641,16 +623,21 @@ const getSingleInvoiceDetails = async (tenantDomain: string, id: string) => {
 
     await session.commitTransaction();
     session.endSession();
-    return null;
+
+    return deletedInvoice;
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
     throw error;
   }
 };
+
 const moveToRecycledbinInvoice = async (tenantDomain: string, id: string) => {
-  const { Model: Invoice, connection } = await getTenantModel(tenantDomain, 'Invoice');
-  const session = await connection.startSession();  // <-- use tenant connection here
+  const { Model: Invoice, connection } = await getTenantModel(
+    tenantDomain,
+    'Invoice',
+  );
+  const session = await connection.startSession(); // <-- use tenant connection here
   session.startTransaction();
 
   try {
@@ -662,15 +649,8 @@ const moveToRecycledbinInvoice = async (tenantDomain: string, id: string) => {
 
     const recycledInvoice = await Invoice.findByIdAndUpdate(
       id,
-      {
-        isRecycled: true,
-        recycledAt: new Date(),
-      },
-      {
-        new: true,
-        runValidators: true,
-        session,
-      },
+      { isRecycled: true, recycledAt: new Date() },
+      { new: true, runValidators: true, session },
     );
 
     if (!recycledInvoice) {
@@ -688,12 +668,15 @@ const moveToRecycledbinInvoice = async (tenantDomain: string, id: string) => {
   }
 };
 
- const restoreFromRecycledbinInvoice = async (
+const restoreFromRecycledbinInvoice = async (
   tenantDomain: string,
   id: string,
 ) => {
-  const { Model: Invoice, connection } = await getTenantModel(tenantDomain, 'Invoice');
-  const session = await connection.startSession(); 
+  const { Model: Invoice, connection } = await getTenantModel(
+    tenantDomain,
+    'Invoice',
+  );
+  const session = await connection.startSession();
   session.startTransaction();
 
   try {
@@ -712,15 +695,8 @@ const moveToRecycledbinInvoice = async (tenantDomain: string, id: string) => {
 
     const restoredInvoice = await Invoice.findByIdAndUpdate(
       id,
-      {
-        isRecycled: false,
-        recycledAt: null,
-      },
-      {
-        new: true,
-        runValidators: true,
-        session,
-      },
+      { isRecycled: false, recycledAt: null },
+      { new: true, runValidators: true, session },
     );
 
     if (!restoredInvoice) {
@@ -738,19 +714,11 @@ const moveToRecycledbinInvoice = async (tenantDomain: string, id: string) => {
   }
 };
 
-
 const moveAllToRecycledBin = async () => {
   const result = await Invoice.updateMany(
     {},
-    {
-      $set: {
-        isRecycled: true,
-        recycledAt: new Date(),
-      },
-    },
-    {
-      runValidators: true,
-    },
+    { $set: { isRecycled: true, recycledAt: new Date() } },
+    { runValidators: true },
   );
 
   return result;
@@ -758,30 +726,29 @@ const moveAllToRecycledBin = async () => {
 const restoreAllFromRecycledBin = async () => {
   const result = await Invoice.updateMany(
     { isRecycled: true },
-    {
-      $set: {
-        isRecycled: false,
-      },
-      $unset: {
-        recycledAt: '',
-      },
-    },
-    {
-      runValidators: true,
-    },
+    { $set: { isRecycled: false }, $unset: { recycledAt: '' } },
+    { runValidators: true },
   );
 
   return result;
 };
+
 const generateInvoicePDF = async (
+  tenantDomain: string,
   id: string,
   imageUrl: string,
 ): Promise<Buffer> => {
+  const { Model: Invoice } = await getTenantModel(tenantDomain, 'Invoice');
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+
   const invoice = await Invoice.findById(id)
-    .populate('customer')
-    .populate('company')
-    .populate('showRoom')
-    .populate('vehicle');
+    .populate({ path: 'customer', model: Customer })
+    .populate({ path: 'company', model: Company })
+    .populate({ path: 'showRoom', model: ShowRoom })
+    .populate({ path: 'vehicle', model: Vehicle });
 
   if (!invoice) {
     throw new Error('Invoice not found');
@@ -802,12 +769,7 @@ const generateInvoicePDF = async (
   const html = await new Promise<string>((resolve, reject) => {
     ejs.renderFile(
       filePath,
-      {
-        invoice,
-        imageUrl,
-        formatToIndianCurrency,
-        logoBase64,
-      },
+      { invoice, imageUrl, formatToIndianCurrency, logoBase64 },
       (err, str) => {
         if (err) return reject(err);
         resolve(str);
@@ -832,12 +794,7 @@ const generateInvoicePDF = async (
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px',
-      },
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
     });
 
     await browser.close();
@@ -847,6 +804,7 @@ const generateInvoicePDF = async (
     throw new Error('PDF generation failed');
   }
 };
+
 export const InvoiceServices = {
   createInvoiceDetails,
   getAllInvoicesFromDB,

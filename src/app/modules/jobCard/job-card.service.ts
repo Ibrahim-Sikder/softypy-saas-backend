@@ -79,7 +79,7 @@ const createJobCardDetails = async (
           sanitizeCustomerData,
           Customer,
           async () => {
-            const customerId = await generateCustomerId();
+            const customerId = await generateCustomerId(Customer);
             return new Customer({ ...sanitizeCustomerData, customerId });
           },
         );
@@ -91,7 +91,7 @@ const createJobCardDetails = async (
           sanitizeCompanyData,
           Company,
           async () => {
-            const companyId = await generateCompanyId();
+            const companyId = await generateCompanyId(Company);
             return new Company({ ...sanitizeCompanyData, companyId });
           },
         );
@@ -103,7 +103,7 @@ const createJobCardDetails = async (
           sanitizeShowRoomData,
           ShowRoom,
           async () => {
-            const showRoomId = await generateShowRoomId();
+          const showRoomId = await generateShowRoomId(ShowRoom);
             return new ShowRoom({ ...sanitizeShowRoomData, showRoomId });
           },
         );
@@ -162,7 +162,8 @@ const createJobCardDetails = async (
 
     const newJobCard = new JobCard({
       ...jobCard,
-      job_no: await generateJobCardNo(),
+     job_no: await generateJobCardNo(JobCard),
+
       vehicle: vehicleData?._id,
       customer:
         jobCard.user_type === 'customer' ? updateJobCard._id : undefined,

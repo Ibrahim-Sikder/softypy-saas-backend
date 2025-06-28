@@ -31,7 +31,7 @@ const createCompanyDetails = async (
 
   try {
     const { company, vehicle } = payload;
-    const companyId = await generateCompanyId();
+const companyId = await generateCompanyId(Company);
     const sanitizedCompany = sanitizePayload(company);
 
     const companyData = new Company({

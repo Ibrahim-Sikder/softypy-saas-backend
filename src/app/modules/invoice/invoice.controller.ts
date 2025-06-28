@@ -179,13 +179,14 @@ const restoreAllFromRecycledBinMoneyReceipts = catchAsync(async (req, res) => {
 
 const generateQuotationPdf: RequestHandler = catchAsync(async (req, res) => {
   const { invoiceId } = req.params;
-
+   const tenantDomain = req.query.tenantDomain as string;
   const baseUrl = (
     process.env.NEXT_PUBLIC_IMAGE_BASE_URL || 'https://api.trustautosolution.com'
   ).replace(/\/$/, '');
 
   try {
     const pdfBuffer = await InvoiceServices.generateInvoicePDF(
+      tenantDomain,
       invoiceId,
       baseUrl,
     );

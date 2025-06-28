@@ -37,7 +37,6 @@ const createQuotationDetails = async (
     vehicle: TVehicle;
   },
 ) => {
- 
   const { connection } = await getTenantModel(tenantDomain, 'Quotation');
   const session = await connection.startSession();
   session.startTransaction();
@@ -51,7 +50,9 @@ const createQuotationDetails = async (
     const ShowRoom = (await getTenantModel(tenantDomain, 'ShowRoom')).Model;
     const Vehicle = (await getTenantModel(tenantDomain, 'Vehicle')).Model;
     const Stocks = (await getTenantModel(tenantDomain, 'Stocks')).Model;
-    const StockTransaction = (await getTenantModel(tenantDomain, 'StockTransaction')).Model;
+    const StockTransaction = (
+      await getTenantModel(tenantDomain, 'StockTransaction')
+    ).Model;
     const Product = (await getTenantModel(tenantDomain, 'Product')).Model;
 
     const sanitizeCustomer = sanitizePayload(customer);
@@ -86,7 +87,7 @@ const createQuotationDetails = async (
     const { input_data = [], service_input_data = [] } = quotation;
 
     const productItems = input_data.filter(
-      (item) => item.product && item.warehouse && item.quantity
+      (item) => item.product && item.warehouse && item.quantity,
     );
 
     const stockUpdateMap = new Map<
@@ -146,7 +147,7 @@ const createQuotationDetails = async (
       if (existingStock.quantity < totalQuantity) {
         throw new AppError(
           400,
-          `Insufficient stock for "${product_name}". Available: ${existingStock.quantity}, Required: ${totalQuantity}`
+          `Insufficient stock for "${product_name}". Available: ${existingStock.quantity}, Required: ${totalQuantity}`,
         );
       }
 
@@ -175,7 +176,7 @@ const createQuotationDetails = async (
       if ((productData.product_quantity ?? 0) < totalQuantity) {
         throw new AppError(
           400,
-          `Insufficient quantity in product "${product_name}". Available: ${productData.product_quantity}, Required: ${totalQuantity}`
+          `Insufficient quantity in product "${product_name}". Available: ${productData.product_quantity}, Required: ${totalQuantity}`,
         );
       }
 
@@ -192,11 +193,8 @@ const createQuotationDetails = async (
       if (existingCustomer) {
         await Customer.findByIdAndUpdate(
           existingCustomer._id,
-          {
-            $set: sanitizeCustomer,
-            $push: { quotations: quotationData._id },
-          },
-          { new: true, runValidators: true, session }
+          { $set: sanitizeCustomer, $push: { quotations: quotationData._id } },
+          { new: true, runValidators: true, session },
         );
         quotationData.customer = existingCustomer._id;
         await quotationData.save({ session });
@@ -209,11 +207,8 @@ const createQuotationDetails = async (
       if (existingCompany) {
         await Company.findByIdAndUpdate(
           existingCompany._id,
-          {
-            $set: sanitizeCompany,
-            $push: { quotations: quotationData._id },
-          },
-          { new: true, runValidators: true, session }
+          { $set: sanitizeCompany, $push: { quotations: quotationData._id } },
+          { new: true, runValidators: true, session },
         );
         quotationData.company = existingCompany._id;
         await quotationData.save({ session });
@@ -226,11 +221,8 @@ const createQuotationDetails = async (
       if (existingShowRoom) {
         await ShowRoom.findByIdAndUpdate(
           existingShowRoom._id,
-          {
-            $set: sanitizeShowroom,
-            $push: { quotations: quotationData._id },
-          },
-          { new: true, runValidators: true, session }
+          { $set: sanitizeShowroom, $push: { quotations: quotationData._id } },
+          { new: true, runValidators: true, session },
         );
         quotationData.showRoom = existingShowRoom._id;
         await quotationData.save({ session });
@@ -241,7 +233,7 @@ const createQuotationDetails = async (
       const vehicleData = await Vehicle.findOneAndUpdate(
         { chassis_no: vehicle.chassis_no },
         { $set: { mileageHistory: vehicle.mileageHistory || [] } },
-        { new: true, runValidators: true, session }
+        { new: true, runValidators: true, session },
       );
 
       if (vehicleData) {
@@ -260,7 +252,6 @@ const createQuotationDetails = async (
     throw error;
   }
 };
-
 
 const getAllQuotationsFromDB = async (
   tenantDomain: string,
@@ -288,7 +279,10 @@ const getAllQuotationsFromDB = async (
   }
 
   if (searchTerm) {
-    const escapedFilteringData = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedFilteringData = searchTerm.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      '\\$&',
+    );
 
     const quotationSearchQuery = QuotationSearchableFields.map((field) => ({
       [field]: { $regex: escapedFilteringData, $options: 'i' },
@@ -332,10 +326,14 @@ const getAllQuotationsFromDB = async (
   }
 
   // Use tenant-aware collection names
-  const vehicleCollection = (await getTenantModel(tenantDomain, 'Vehicle')).Model.collection.name;
-  const companyCollection = (await getTenantModel(tenantDomain, 'Company')).Model.collection.name;
-  const customerCollection = (await getTenantModel(tenantDomain, 'Customer')).Model.collection.name;
-  const showRoomCollection = (await getTenantModel(tenantDomain, 'ShowRoom')).Model.collection.name;
+  const vehicleCollection = (await getTenantModel(tenantDomain, 'Vehicle'))
+    .Model.collection.name;
+  const companyCollection = (await getTenantModel(tenantDomain, 'Company'))
+    .Model.collection.name;
+  const customerCollection = (await getTenantModel(tenantDomain, 'Customer'))
+    .Model.collection.name;
+  const showRoomCollection = (await getTenantModel(tenantDomain, 'ShowRoom'))
+    .Model.collection.name;
 
   const buildAggregationPipeline = (): mongoose.PipelineStage[] => {
     const pipeline: mongoose.PipelineStage[] = [
@@ -393,28 +391,19 @@ const getAllQuotationsFromDB = async (
 
   const quotations = await Quotation.aggregate(buildAggregationPipeline());
 
-  const totalDataAggregation = await Quotation.aggregate(
-    [
-      ...buildAggregationPipeline().filter(
-        (stage) => !('$skip' in stage) && !('$limit' in stage)
-      ),
-      { $count: 'totalCount' },
-    ] as any[]
-  );
+  const totalDataAggregation = await Quotation.aggregate([
+    ...buildAggregationPipeline().filter(
+      (stage) => !('$skip' in stage) && !('$limit' in stage),
+    ),
+    { $count: 'totalCount' },
+  ] as any[]);
 
-  const totalData = totalDataAggregation.length > 0 ? totalDataAggregation[0].totalCount : 0;
+  const totalData =
+    totalDataAggregation.length > 0 ? totalDataAggregation[0].totalCount : 0;
   const totalPages = Math.ceil(totalData / limit);
 
-  return {
-    quotations,
-    meta: {
-      totalData,
-      totalPages,
-      currentPage: page,
-    },
-  };
+  return { quotations, meta: { totalData, totalPages, currentPage: page } };
 };
-
 
 const getAllQuotationsFromDBForDashboard = async () => {
   const completedQuotations = await Quotation.find({ isCompleted: true })
@@ -463,13 +452,18 @@ const updateQuotationIntoDB = async (
     vehicle: TVehicle;
   },
 ) => {
-  const { Model: Quotation, connection } = await getTenantModel(tenantDomain, 'Quotation'); 
+  const { Model: Quotation, connection } = await getTenantModel(
+    tenantDomain,
+    'Quotation',
+  );
   const Customer = (await getTenantModel(tenantDomain, 'Customer')).Model;
   const Company = (await getTenantModel(tenantDomain, 'Company')).Model;
   const ShowRoom = (await getTenantModel(tenantDomain, 'ShowRoom')).Model;
   const Vehicle = (await getTenantModel(tenantDomain, 'Vehicle')).Model;
   const Stocks = (await getTenantModel(tenantDomain, 'Stocks')).Model;
-  const StockTransaction = (await getTenantModel(tenantDomain, 'StockTransaction')).Model;
+  const StockTransaction = (
+    await getTenantModel(tenantDomain, 'StockTransaction')
+  ).Model;
   const Product = (await getTenantModel(tenantDomain, 'Product')).Model;
 
   const session = await connection.startSession();
@@ -485,11 +479,16 @@ const updateQuotationIntoDB = async (
     const sanitizeVehicle = sanitizePayload(vehicle);
 
     const partsInWords = amountInWords(sanitizeQuotation.parts_total as number);
-    const serviceInWords = amountInWords(sanitizeQuotation.service_total as number);
-    const netTotalInWords = amountInWords(sanitizeQuotation.net_total as number);
+    const serviceInWords = amountInWords(
+      sanitizeQuotation.service_total as number,
+    );
+    const netTotalInWords = amountInWords(
+      sanitizeQuotation.net_total as number,
+    );
 
     const oldQuotation = await Quotation.findById(id).session(session);
-    if (!oldQuotation) throw new AppError(StatusCodes.NOT_FOUND, 'No quotation found');
+    if (!oldQuotation)
+      throw new AppError(StatusCodes.NOT_FOUND, 'No quotation found');
 
     const oldStockTransactions = await StockTransaction.find({
       referenceId: id,
@@ -522,26 +521,37 @@ const updateQuotationIntoDB = async (
           net_total_in_words: netTotalInWords,
         },
       },
-      { new: true, runValidators: true, session }
+      { new: true, runValidators: true, session },
     );
 
-    if (!updateQuotation) throw new AppError(StatusCodes.NOT_FOUND, 'No quotation found');
+    if (!updateQuotation)
+      throw new AppError(StatusCodes.NOT_FOUND, 'No quotation found');
 
     const { input_data = [], service_input_data = [] } = sanitizeQuotation;
     const allItems = [...input_data, ...service_input_data];
 
     if (allItems.length > 0) {
-      const stockUpdateMap = new Map<string, {
-        product: string;
-        warehouse: string;
-        batchNumber?: string;
-        totalQuantity: number;
-        product_name: string;
-        sellingPrice: number;
-      }>();
+      const stockUpdateMap = new Map<
+        string,
+        {
+          product: string;
+          warehouse: string;
+          batchNumber?: string;
+          totalQuantity: number;
+          product_name: string;
+          sellingPrice: number;
+        }
+      >();
 
       for (const item of allItems) {
-        const { product, quantity = 0, warehouse, batchNumber, product_name, sellingPrice = 0 } = item;
+        const {
+          product,
+          quantity = 0,
+          warehouse,
+          batchNumber,
+          product_name,
+          sellingPrice = 0,
+        } = item;
         if (!product || !warehouse) continue;
 
         const key = `${product}-${warehouse}-${batchNumber || 'no-batch'}`;
@@ -572,12 +582,17 @@ const updateQuotationIntoDB = async (
 
         const existingStock = await Stocks.findOne(stockQuery).session(session);
         if (!existingStock) {
-          throw new AppError(StatusCodes.NOT_FOUND, `Stock "${product_name}" not found.`);
+          throw new AppError(
+            StatusCodes.NOT_FOUND,
+            `Stock "${product_name}" not found.`,
+          );
         }
 
         if (existingStock.quantity < totalQuantity) {
-          throw new AppError(StatusCodes.BAD_REQUEST,
-            `Insufficient stock for "${product_name}". Available: ${existingStock.quantity}, Required: ${totalQuantity}`);
+          throw new AppError(
+            StatusCodes.BAD_REQUEST,
+            `Insufficient stock for "${product_name}". Available: ${existingStock.quantity}, Required: ${totalQuantity}`,
+          );
         }
 
         existingStock.quantity -= totalQuantity;
@@ -600,25 +615,37 @@ const updateQuotationIntoDB = async (
     }
 
     if (quotation.user_type === 'customer') {
-      const existingCustomer = await Customer.findOne({ customerId: quotation.Id }).session(session);
+      const existingCustomer = await Customer.findOne({
+        customerId: quotation.Id,
+      }).session(session);
       if (existingCustomer) {
-        await Customer.findByIdAndUpdate(existingCustomer._id, { $set: sanitizeCustomer }, {
-          new: true, runValidators: true, session,
-        });
+        await Customer.findByIdAndUpdate(
+          existingCustomer._id,
+          { $set: sanitizeCustomer },
+          { new: true, runValidators: true, session },
+        );
       }
     } else if (quotation.user_type === 'company') {
-      const existingCompany = await Company.findOne({ companyId: quotation.Id }).session(session);
+      const existingCompany = await Company.findOne({
+        companyId: quotation.Id,
+      }).session(session);
       if (existingCompany) {
-        await Company.findByIdAndUpdate(existingCompany._id, { $set: sanitizeCompany }, {
-          new: true, runValidators: true, session,
-        });
+        await Company.findByIdAndUpdate(
+          existingCompany._id,
+          { $set: sanitizeCompany },
+          { new: true, runValidators: true, session },
+        );
       }
     } else if (quotation.user_type === 'showRoom') {
-      const existingShowRoom = await ShowRoom.findOne({ showRoomId: quotation.Id }).session(session);
+      const existingShowRoom = await ShowRoom.findOne({
+        showRoomId: quotation.Id,
+      }).session(session);
       if (existingShowRoom) {
-        await ShowRoom.findByIdAndUpdate(existingShowRoom._id, { $set: sanitizeShowroom }, {
-          new: true, runValidators: true, session,
-        });
+        await ShowRoom.findByIdAndUpdate(
+          existingShowRoom._id,
+          { $set: sanitizeShowroom },
+          { new: true, runValidators: true, session },
+        );
       }
     }
 
@@ -626,7 +653,7 @@ const updateQuotationIntoDB = async (
       await Vehicle.findOneAndUpdate(
         { chassis_no: vehicle.chassis_no },
         { $set: sanitizeVehicle },
-        { new: true, runValidators: true, session }
+        { new: true, runValidators: true, session },
       );
     }
 
@@ -639,7 +666,6 @@ const updateQuotationIntoDB = async (
     throw error;
   }
 };
-
 
 const removeQuotationFromUpdate = async (
   tenantDomain: string,
@@ -660,15 +686,8 @@ const removeQuotationFromUpdate = async (
   if (quotation_name === 'parts') {
     updateQuotation = await Quotation.findByIdAndUpdate(
       existingQuotation._id,
-      {
-        $pull: {
-          input_data: { $eq: existingQuotation.input_data[index] },
-        },
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
+      { $pull: { input_data: { $eq: existingQuotation.input_data[index] } } },
+      { new: true, runValidators: true },
     );
   } else if (quotation_name === 'service') {
     updateQuotation = await Quotation.findByIdAndUpdate(
@@ -680,10 +699,7 @@ const removeQuotationFromUpdate = async (
           },
         },
       },
-      {
-        new: true,
-        runValidators: true,
-      },
+      { new: true, runValidators: true },
     );
   }
 
@@ -693,7 +709,6 @@ const removeQuotationFromUpdate = async (
 
   return updateQuotation;
 };
-
 
 const generateQuotationPdf = async (
   id: string,
@@ -724,12 +739,7 @@ const generateQuotationPdf = async (
   const html = await new Promise<string>((resolve, reject) => {
     ejs.renderFile(
       filePath,
-      {
-        quotation,
-        imageUrl,
-        formatToIndianCurrency,
-        logoBase64,
-      },
+      { quotation, imageUrl, formatToIndianCurrency, logoBase64 },
       (err, str) => {
         if (err) return reject(err);
         resolve(str);
@@ -754,12 +764,7 @@ const generateQuotationPdf = async (
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px',
-      },
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
     });
 
     await browser.close();
@@ -772,7 +777,7 @@ const generateQuotationPdf = async (
 };
 
 const deleteQuotation = async (tenantDomain: string, id: string) => {
-    const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
+  const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -785,25 +790,13 @@ const deleteQuotation = async (tenantDomain: string, id: string) => {
 
     type UserType = 'customer' | 'company' | 'showRoom';
     type UserMap = {
-      [key in UserType]: {
-        model: Model<any>;
-        queryKey: string;
-      };
+      [key in UserType]: { model: Model<any>; queryKey: string };
     };
 
     const userTypeMap: UserMap = {
-      customer: {
-        model: Customer,
-        queryKey: 'customerId',
-      },
-      company: {
-        model: Company,
-        queryKey: 'companyId',
-      },
-      showRoom: {
-        model: ShowRoom,
-        queryKey: 'showRoomId',
-      },
+      customer: { model: Customer, queryKey: 'customerId' },
+      company: { model: Company, queryKey: 'companyId' },
+      showRoom: { model: ShowRoom, queryKey: 'showRoomId' },
     };
 
     const userTypeHandler =
@@ -816,14 +809,8 @@ const deleteQuotation = async (tenantDomain: string, id: string) => {
       if (existingEntity) {
         await model.findByIdAndUpdate(
           existingEntity._id,
-          {
-            $pull: { quotations: id },
-          },
-          {
-            new: true,
-            runValidators: true,
-            session,
-          },
+          { $pull: { quotations: id } },
+          { new: true, runValidators: true, session },
         );
       }
     }
@@ -847,8 +834,13 @@ const deleteQuotation = async (tenantDomain: string, id: string) => {
 };
 
 const permanentlyDeleteQuotation = async (tenantDomain: string, id: string) => {
-  const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
-  const session = await mongoose.startSession();
+  const { Model: Quotation, connection: tenantConnection } =
+    await getTenantModel(tenantDomain, 'Quotation');
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
+  const session = await tenantConnection.startSession();
   session.startTransaction();
 
   try {
@@ -860,25 +852,13 @@ const permanentlyDeleteQuotation = async (tenantDomain: string, id: string) => {
 
     type UserType = 'customer' | 'company' | 'showRoom';
     type UserMap = {
-      [key in UserType]: {
-        model: Model<any>;
-        queryKey: string;
-      };
+      [key in UserType]: { model: mongoose.Model<any>; queryKey: string };
     };
 
     const userTypeMap: UserMap = {
-      customer: {
-        model: Customer,
-        queryKey: 'customerId',
-      },
-      company: {
-        model: Company,
-        queryKey: 'companyId',
-      },
-      showRoom: {
-        model: ShowRoom,
-        queryKey: 'showRoomId',
-      },
+      customer: { model: Customer, queryKey: 'customerId' },
+      company: { model: Company, queryKey: 'companyId' },
+      showRoom: { model: ShowRoom, queryKey: 'showRoomId' },
     };
 
     const userTypeHandler =
@@ -886,6 +866,7 @@ const permanentlyDeleteQuotation = async (tenantDomain: string, id: string) => {
 
     if (userTypeHandler) {
       const { model, queryKey } = userTypeHandler;
+
       const existingEntity = await model
         .findOne({ [queryKey]: existingQuotation.Id })
         .session(session);
@@ -893,14 +874,8 @@ const permanentlyDeleteQuotation = async (tenantDomain: string, id: string) => {
       if (existingEntity) {
         await model.findByIdAndUpdate(
           existingEntity._id,
-          {
-            $pull: { quotations: id },
-          },
-          {
-            new: true,
-            runValidators: true,
-            session,
-          },
+          { $pull: { quotations: id } },
+          { new: true, runValidators: true, session },
         );
       }
     }
@@ -923,7 +898,6 @@ const permanentlyDeleteQuotation = async (tenantDomain: string, id: string) => {
   }
 };
 
-
 const moveToRecyclebinQuotation = async (tenantDomain: string, id: string) => {
   const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
 
@@ -934,14 +908,8 @@ const moveToRecyclebinQuotation = async (tenantDomain: string, id: string) => {
 
   const recycledQuotation = await Quotation.findByIdAndUpdate(
     existingQuotation._id,
-    {
-      isRecycled: true,
-      recycledAt: new Date(),
-    },
-    {
-      new: true,
-      runValidators: true,
-    },
+    { isRecycled: true, recycledAt: new Date() },
+    { new: true, runValidators: true },
   );
 
   if (!recycledQuotation) {
@@ -951,7 +919,10 @@ const moveToRecyclebinQuotation = async (tenantDomain: string, id: string) => {
   return recycledQuotation;
 };
 
-const restoreFromRecyclebinQuotation = async (tenantDomain: string, id: string) => {
+const restoreFromRecyclebinQuotation = async (
+  tenantDomain: string,
+  id: string,
+) => {
   const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
 
   const existingQuotation = await Quotation.findById(id);
@@ -961,14 +932,8 @@ const restoreFromRecyclebinQuotation = async (tenantDomain: string, id: string) 
 
   const restoredQuotation = await Quotation.findByIdAndUpdate(
     existingQuotation._id,
-    {
-      isRecycled: false,
-      recycledAt: null,
-    },
-    {
-      new: true,
-      runValidators: true,
-    },
+    { isRecycled: false, recycledAt: null },
+    { new: true, runValidators: true },
   );
 
   if (!restoredQuotation) {
@@ -984,15 +949,8 @@ const restoreFromRecyclebinQuotation = async (tenantDomain: string, id: string) 
 const moveAllToRecycledBin = async () => {
   const result = await Quotation.updateMany(
     {}, // Match all documents
-    {
-      $set: {
-        isRecycled: true,
-        recycledAt: new Date(),
-      },
-    },
-    {
-      runValidators: true,
-    },
+    { $set: { isRecycled: true, recycledAt: new Date() } },
+    { runValidators: true },
   );
 
   return result;
@@ -1000,17 +958,8 @@ const moveAllToRecycledBin = async () => {
 const restoreAllFromRecycledBin = async () => {
   const result = await Quotation.updateMany(
     { isRecycled: true },
-    {
-      $set: {
-        isRecycled: false,
-      },
-      $unset: {
-        recycledAt: '',
-      },
-    },
-    {
-      runValidators: true,
-    },
+    { $set: { isRecycled: false }, $unset: { recycledAt: '' } },
+    { runValidators: true },
   );
 
   return result;
