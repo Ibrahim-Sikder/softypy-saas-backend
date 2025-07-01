@@ -5,8 +5,15 @@ import path from 'path';
 import { Product } from './product.model';
 import { TProduct } from './product.interface';
 import { productSearch } from './product.constant';
+import { getTenantModel } from '../../utils/getTenantModels';
 
-const createProduct = async (payload: any, file?: Express.Multer.File) => {
+const createProduct = async (
+  tenantDomain: string,
+  payload: any,
+  file?: Express.Multer.File,
+) => {
+  const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
+
   try {
     if (file) {
       const imageName = file.filename;
@@ -14,24 +21,31 @@ const createProduct = async (payload: any, file?: Express.Multer.File) => {
       const folder = 'brand-images';
 
       const cloudinaryResult = await ImageUpload(imagePath, imageName, folder);
-
       payload.image = cloudinaryResult.secure_url;
     }
+
     if (payload.image && typeof payload.image !== 'string') {
       throw new Error('Invalid image URL format');
     }
 
-    const newCategory = await Product.create(payload);
-    return newCategory;
+    const newProduct = await Product.create(payload);
+    return newProduct;
   } catch (error: any) {
-    console.error('Error creating brand:', error.message);
+    console.error('Error creating product:', error.message);
     throw new Error(
-      error.message || 'An unexpected error occurred while creating the brand',
+      error.message ||
+        'An unexpected error occurred while creating the product',
     );
   }
 };
 
-const getAllProduct = async (query: Record<string, unknown>) => {
+const getAllProduct = async (
+  tenantDomain: string,
+  query: Record<string, any>,
+) => {
+  const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
+console.log(query)
+console.log('product', tenantDomain)
   const categoryQuery = new QueryBuilder(Product.find(), query)
     .search(productSearch)
     .filter()
@@ -43,53 +57,65 @@ const getAllProduct = async (query: Record<string, unknown>) => {
   const products = await categoryQuery.modelQuery.populate([
     {
       path: 'category',
+      model: (await getTenantModel(tenantDomain, 'Category')).Model,
     },
     {
       path: 'brand',
+      model: (await getTenantModel(tenantDomain, 'Brand')).Model,
     },
-    {
-      path: 'unit',
-    },
+    { path: 'unit', model: (await getTenantModel(tenantDomain, 'Unit')).Model },
     {
       path: 'product_type',
+      model: (await getTenantModel(tenantDomain, 'ProductType')).Model,
     },
     {
       path: 'suppliers',
+      model: (await getTenantModel(tenantDomain, 'Supplier')).Model,
     },
     {
       path: 'warehouse',
+      model: (await getTenantModel(tenantDomain, 'Warehouse')).Model,
     },
   ]);
 
-  return {
-    meta,
-    products,
-  };
+  console.log('products data', products);
+
+  return { meta, products };
 };
-const getSinigleProduct = async (id: string) => {
+
+const getSinigleProduct = async (tenantDomain: string, id: string) => {
+  const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
+
   const result = await Product.findById(id).populate([
     {
       path: 'category',
+      model: (await getTenantModel(tenantDomain, 'Category')).Model,
     },
     {
       path: 'brand',
+      model: (await getTenantModel(tenantDomain, 'Brand')).Model,
     },
-    {
-      path: 'unit',
-    },
+    { path: 'unit', model: (await getTenantModel(tenantDomain, 'Unit')).Model },
     {
       path: 'product_type',
+      model: (await getTenantModel(tenantDomain, 'ProductType')).Model,
     },
     {
       path: 'suppliers',
-    },
-    {
-      path: 'warehouse',
+      model: (await getTenantModel(tenantDomain, 'Supplier')).Model,
     },
   ]);
+
   return result;
 };
-const updateProduct = async (id: string, payload: Partial<TProduct>) => {
+
+const updateProduct = async (
+  tenantDomain: string,
+  id: string,
+  payload: Partial<TProduct>,
+) => {
+  const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
+
   const result = await Product.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
@@ -97,12 +123,11 @@ const updateProduct = async (id: string, payload: Partial<TProduct>) => {
   return result;
 };
 
-const deleteProduct = async (id: string) => {
+const deleteProduct = async (tenantDomain: string, id: string) => {
+  const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
   const result = await Product.deleteOne({ _id: id });
-
   return result;
 };
-
 export const productServices = {
   createProduct,
   getAllProduct,

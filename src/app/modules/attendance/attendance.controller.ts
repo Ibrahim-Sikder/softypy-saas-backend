@@ -2,19 +2,23 @@ import { StatusCodes } from 'http-status-codes';
 import catchAsync from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { AttendanceServices } from './attendance.service';
-
 const createAttendance = catchAsync(async (req, res) => {
-  const result = await AttendanceServices.createAttendanceIntoDB(req.body);
+  const { tenantDomain, payload } = req.body;  // extract payload as well
+
+  const result = await AttendanceServices.createAttendanceIntoDB(tenantDomain, payload);
+
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
-    message: 'Attendance created successful!',
+    message: "Attendance created successful!",
     data: result,
   });
 });
 
+
 const getTodayAttendance = catchAsync(async (req, res) => {
-  const result = await AttendanceServices.getTodayAttendanceFromDB();
+  const tenantDomain = req.query.tenantDomain as string;
+  const result = await AttendanceServices.getTodayAttendanceFromDB(tenantDomain);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -23,11 +27,13 @@ const getTodayAttendance = catchAsync(async (req, res) => {
   });
 });
 const getAllAttendanceByCurrentMonth = catchAsync(async (req, res) => {
+  const tenantDomain = req.query.tenantDomain as string;
   const limit = parseInt(req.query.limit as string);
   const page = parseInt(req.query.page as string);
 
   const searchTerm = req.query.searchTerm as string;
   const result = await AttendanceServices.getAllAttendanceByCurrentMonth(
+    tenantDomain,
     limit,
     page,
     searchTerm,
@@ -42,8 +48,9 @@ const getAllAttendanceByCurrentMonth = catchAsync(async (req, res) => {
 
 const getSingleDateAttendance = catchAsync(async (req, res) => {
   const { date } = req.params;
+  const tenantDomain = req.query.tenantDomain as string;
 
-  const result = await AttendanceServices.getSingleDateAttendance(date);
+  const result = await AttendanceServices.getSingleDateAttendance(tenantDomain, date);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -54,8 +61,8 @@ const getSingleDateAttendance = catchAsync(async (req, res) => {
 });
 const getSingleAttendance = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const result = await AttendanceServices.getSingleAttendance(id);
+const tenantDomain = req.query.tenantDomain as string;
+  const result = await AttendanceServices.getSingleAttendance(tenantDomain, id);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -66,7 +73,8 @@ const getSingleAttendance = catchAsync(async (req, res) => {
 });
 
 const deleteAttendance = catchAsync(async (req, res) => {
-  const result = await AttendanceServices.deleteAttendanceFromDB(req.body);
+  const tenantDomain = req.query.tenantDomain as string;
+  const result = await AttendanceServices.deleteAttendanceFromDB(tenantDomain ,req.body);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,

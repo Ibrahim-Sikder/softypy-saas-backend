@@ -1,14 +1,13 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, {  Schema } from 'mongoose';
 import { IWarehouse } from './warehouse.interface';
 
-const warehouseSchema = new Schema<IWarehouse>(
+export const warehouseSchema = new Schema<IWarehouse>(
   {
     name: { type: String, required: true },
     code: { type: String, required: true },
     product: {
       type: Schema.Types.ObjectId,
       ref: 'Product',
-      required: true,
     },
     type: { type: String, required: true },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },

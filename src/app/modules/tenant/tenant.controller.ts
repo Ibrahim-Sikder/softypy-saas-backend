@@ -4,29 +4,31 @@ import sendResponse from '../../utils/sendResponse';
 import { TenantServices } from './tenant.service';
 
 
-const createTenant = async (
+export const createTenant = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ) => {
   try {
-    const { plan } = req.body;
-    // Validate the plan value
+    const plan = req.body?.plan;
+
     if (!['Monthly', 'HalfYearly', 'Yearly'].includes(plan)) {
       throw new Error('Invalid subscription plan. Choose Monthly, HalfYearly, or Yearly.');
     }
 
     const result = await TenantServices.createTenant(req.body, plan);
+
     sendResponse(res, {
       statusCode: httpStatus.CREATED,
       success: true,
       message: 'Tenant created successfully',
       data: result,
     });
-  } catch (err: any) {
+  } catch (err) {
     next(err);
   }
 };
+
 const getAllTenant = async (
   req: Request,
   res: Response,

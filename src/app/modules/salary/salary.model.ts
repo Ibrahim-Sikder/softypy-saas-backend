@@ -24,7 +24,7 @@ const paymentHistorySchema: Schema<TPaymentHistory> = new Schema(
   { _id: false },
 )
 
-const salarySchema: Schema<TSalaryDocument, Model<TSalaryDocument, {}, {}, TSalaryMethods>, {}, TSalaryMethods> = new Schema<TSalaryDocument, Model<TSalaryDocument, {}, {}, TSalaryMethods>, {}, TSalaryMethods>(
+export const salarySchema: Schema<TSalaryDocument, Model<TSalaryDocument, {}, {}, TSalaryMethods>, {}, TSalaryMethods> = new Schema<TSalaryDocument, Model<TSalaryDocument, {}, {}, TSalaryMethods>, {}, TSalaryMethods>(
   {
     employee: {
       type: Schema.Types.ObjectId,

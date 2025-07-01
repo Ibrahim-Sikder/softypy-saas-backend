@@ -2,12 +2,17 @@
 import QueryBuilder from '../../builder/QueryBuilder';
 import { ImageUpload } from '../../utils/ImageUpload';
 import path from 'path';
-import { Expense } from './expense.model';
-
 import { SearchableFields } from './expense.const';
 import { IExpense } from './expense.interface';
+import { getTenantModel } from '../../utils/getTenantModels';
 
-const createExpense = async (payload: any, file?: Express.Multer.File) => {
+const createExpense = async (
+  tenantDomain: string,
+  payload: any,
+  file?: Express.Multer.File,
+) => {
+  const { Model: Expense } = await getTenantModel(tenantDomain, 'Expense');
+
   try {
     if (file) {
       const imageName = file.filename;
@@ -18,32 +23,43 @@ const createExpense = async (payload: any, file?: Express.Multer.File) => {
 
       payload.document = cloudinaryResult.secure_url;
     }
+
     if (payload.document && typeof payload.document !== 'string') {
       throw new Error('Invalid image URL format');
     }
 
-    const newCategory = await Expense.create(payload);
-    return newCategory;
+    const newExpense = await Expense.create(payload);
+    return newExpense;
   } catch (error: any) {
-    console.error('Error creating brand:', error.message);
+    console.error('Error creating expense:', error.message);
     throw new Error(
-      error.message || 'An unexpected error occurred while creating the brand',
+      error.message ||
+        'An unexpected error occurred while creating the expense',
     );
   }
 };
-const getAllExpense = async (query: Record<string, unknown>) => {
+
+const getAllExpense = async (
+  tenantDomain: string,
+  query: Record<string, unknown>,
+) => {
+  const { Model: Expense } = await getTenantModel(tenantDomain, 'Expense');
+  const { Model: ExpenseCategory } = await getTenantModel(tenantDomain, 'ExpenseCategory'); 
+
   const categoryQuery = new QueryBuilder(Expense.find(), query)
     .search(SearchableFields)
-    .filter()
-    .sort()
+    // .filter()
+    // .sort()
     .paginate()
     .fields();
 
   const meta = await categoryQuery.countTotal();
+
   const expenses = await categoryQuery.modelQuery.populate([
     {
       path: 'category',
       select: 'name',
+      model: ExpenseCategory, // ✅ This solves the issue
     },
   ]);
 
@@ -54,16 +70,26 @@ const getAllExpense = async (query: Record<string, unknown>) => {
 };
 
 
-const getSinigleExpense = async (id: string) => {
+const getSinigleExpense = async (tenantDomain: string, id: string) => {
+  const { Model: Expense } = await getTenantModel(tenantDomain, 'Expense');
+
   const result = await Expense.findById(id).populate([
     {
       path: 'category',
       select: 'name',
     },
   ]);
+
   return result;
 };
-const updateExpense = async (id: string, payload: Partial<IExpense>) => {
+
+const updateExpense = async (
+  tenantDomain: string,
+  id: string,
+  payload: Partial<IExpense>,
+) => {
+  const { Model: Expense } = await getTenantModel(tenantDomain, 'Expense');
+
   const result = await Expense.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
@@ -72,12 +98,14 @@ const updateExpense = async (id: string, payload: Partial<IExpense>) => {
   if (!result) {
     throw new Error('Expense not found');
   }
+
   return result;
 };
 
-const deleteExpense = async (id: string) => {
-  const result = await Expense.deleteOne({ _id: id });
+const deleteExpense = async (tenantDomain: string, id: string) => {
+  const { Model: Expense } = await getTenantModel(tenantDomain, 'Expense');
 
+  const result = await Expense.deleteOne({ _id: id });
   return result;
 };
 

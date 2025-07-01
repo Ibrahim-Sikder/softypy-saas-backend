@@ -4,81 +4,83 @@ import AppError from '../../errors/AppError';
 import sanitizePayload from '../../middlewares/updateDataValidation';
 import { TIncome } from './income.interface';
 import { Income } from './income.model';
+import { getTenantModel } from '../../utils/getTenantModels';
 
-const createIncomeIntoDB = async (payload: TIncome) => {
-  const sanitizeData = sanitizePayload(payload);
-  const expense = await Income.create(sanitizeData);
-  return expense;
-};
+const createIncomeIntoDB = async (tenantDomain: string, payload: TIncome) => {
+  const { Model: Income } = await getTenantModel(tenantDomain, 'Income')
+  const sanitizeData = sanitizePayload(payload)
+  const income = await Income.create(sanitizeData)
+  return income
+}
 
-const getAllIncomesFromDB = async (limit: number, page: number) => {
-  const searchQuery = {};
+const getAllIncomesFromDB = async (tenantDomain: string, limit: number, page: number) => {
+  const { Model: Income } = await getTenantModel(tenantDomain, 'Income')
+
+  const searchQuery = {} // Extend this with filters if needed
 
   const incomes = await Income.aggregate([
-    {
-      $match: searchQuery,
-    },
-    {
-      $sort: { createdAt: -1 },
-    },
-    {
-      $skip: (page - 1) * limit,
-    },
-    {
-      $limit: limit,
-    },
-  ]);
+    { $match: searchQuery },
+    { $sort: { createdAt: -1 } },
+    { $skip: (page - 1) * limit },
+    { $limit: limit },
+  ])
 
-  const totalData = await Income.countDocuments(searchQuery);
-  const totalPages = Math.ceil(totalData / limit);
+  const totalData = await Income.countDocuments(searchQuery)
+  const totalPages = Math.ceil(totalData / limit)
 
   return {
     incomes,
     meta: {
       totalPages,
+      currentPage: page,
+      totalRecords: totalData,
     },
-  };
-};
+  }
+}
 
-const getSingleIncomeDetails = async (id: string) => {
-  const singleIncome = await Income.findById(id);
+const getSingleIncomeDetails = async (tenantDomain: string, id: string) => {
+  const { Model: Income } = await getTenantModel(tenantDomain, 'Income')
+
+  const singleIncome = await Income.findById(id)
 
   if (!singleIncome) {
-    throw new AppError(StatusCodes.NOT_FOUND, 'No income found');
+    throw new AppError(StatusCodes.NOT_FOUND, 'No income found')
   }
 
-  return singleIncome;
-};
+  return singleIncome
+}
 
-const updateIncome = async (id: string, payload: TIncome) => {
-  const sanitizedData = sanitizePayload(payload);
+
+const updateIncome = async (tenantDomain: string, id: string, payload: TIncome) => {
+  const { Model: Income } = await getTenantModel(tenantDomain, 'Income')
+  const sanitizedData = sanitizePayload(payload)
+
   const updatedIncome = await Income.findByIdAndUpdate(
     id,
-    {
-      $set: sanitizedData,
-    },
-    {
-      new: true,
-      runValidators: true,
-    },
-  );
+    { $set: sanitizedData },
+    { new: true, runValidators: true }
+  )
 
   if (!updatedIncome) {
-    throw new AppError(StatusCodes.NOT_FOUND, 'Income not updated.');
+    throw new AppError(StatusCodes.NOT_FOUND, 'Income not updated.')
   }
 
-  return updatedIncome;
-};
+  return updatedIncome
+}
 
-const deleteIncome = async (id: string) => {
-  const income = await Income.findByIdAndDelete(id);
+
+const deleteIncome = async (tenantDomain: string, id: string) => {
+  const { Model: Income } = await getTenantModel(tenantDomain, 'Income')
+
+  const income = await Income.findByIdAndDelete(id)
 
   if (!income) {
-    throw new AppError(StatusCodes.NOT_IMPLEMENTED, 'Income not deleted.');
+    throw new AppError(StatusCodes.NOT_IMPLEMENTED, 'Income not deleted.')
   }
 
-  return null;
-};
+  return null
+}
+
 
 export const IncomeServices = {
   createIncomeIntoDB,

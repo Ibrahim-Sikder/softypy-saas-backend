@@ -1,7 +1,7 @@
 import mongoose, { model, Schema } from 'mongoose';
 import { IExpense, IExpenseCategory, IExpenseModel } from './expense.interface';
 
-const expenseSchema: Schema<IExpense> = new Schema<IExpense>(
+export const expenseSchema: Schema<IExpense> = new Schema<IExpense>(
   {
     date: { type: String, required: true },
     expense_type: { type: String },
@@ -39,7 +39,7 @@ const expenseSchema: Schema<IExpense> = new Schema<IExpense>(
 );
 const Expense = model<IExpense, IExpenseModel>('Expense', expenseSchema);
 
-const expenseCategorySchema = new Schema<IExpenseCategory>({
+export const expenseCategorySchema = new Schema<IExpenseCategory>({
   name: { type: String, required: true, unique: true },
   code: { type: String, required: true, unique: true },
   expenses: [{ type: Schema.Types.ObjectId, ref: 'Expense' }],

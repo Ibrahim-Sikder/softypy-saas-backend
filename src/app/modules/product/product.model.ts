@@ -126,7 +126,7 @@ export const ProductSchema = new Schema<TProduct>(
     },
     shelfLifeUnit: {
       type: String,
-      enum: ['days', 'weeks', 'months', 'years'],
+      enum: ['Days', 'Weeks', 'Months', 'Years'],
     },
     expiryAlertDays: {
       type: Number,

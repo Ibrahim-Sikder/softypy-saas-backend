@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import type { TIncome } from './income.interface';
 
-const incomeSchema: Schema<TIncome> = new Schema<TIncome>(
+export const incomeSchema: Schema<TIncome> = new Schema<TIncome>(
   {
     category: [
       {

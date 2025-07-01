@@ -1,7 +1,7 @@
 import { Schema, model, Types } from 'mongoose';
 import { TPurchaseReturn } from './purchasereturn.interface';
 
-const purchaseReturnSchema = new Schema<TPurchaseReturn>(
+export const purchaseReturnSchema = new Schema<TPurchaseReturn>(
   {
     returnDate: {
       type: String,

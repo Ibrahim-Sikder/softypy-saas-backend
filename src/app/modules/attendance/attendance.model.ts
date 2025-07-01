@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { TAttendance } from './attendance.interface';
 
-const attendanceSchema: Schema<TAttendance> = new Schema<TAttendance>(
+export const attendanceSchema: Schema<TAttendance> = new Schema<TAttendance>(
   {
     employee: {
       type: Schema.ObjectId,

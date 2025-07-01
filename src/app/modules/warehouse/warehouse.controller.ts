@@ -3,10 +3,19 @@ import httpStatus from 'http-status';
 import sendResponse from '../../utils/sendResponse';
 import { warehouseServices } from './warehouse.service';
 
-const createWarehouse = async (req: Request, res: Response, next: NextFunction) => {
+const createWarehouse = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const payload = req.body;
-    const result = await warehouseServices.createWarehouse(payload);
+    const { tenantDomain } = req.body;
+    console.log('warehouse tenant ', tenantDomain);
+    const result = await warehouseServices.createWarehouse(
+      tenantDomain,
+      payload,
+    );
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -19,9 +28,21 @@ const createWarehouse = async (req: Request, res: Response, next: NextFunction) 
   }
 };
 
-const getAllWarehouses = async (req: Request, res: Response, next: NextFunction) => {
+const getAllWarehouses = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    const result = await warehouseServices.getAllWarehouses(req.query);
+    const tenantDomain =
+      (req.headers['x-tenant-domain'] as string) ||
+      (req.query.tenantDomain as string) ||
+      req.headers.host ||
+      '';
+    const result = await warehouseServices.getAllWarehouses(
+      tenantDomain,
+      req.query,
+    );
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -33,10 +54,15 @@ const getAllWarehouses = async (req: Request, res: Response, next: NextFunction)
   }
 };
 
-const getSingleWarehouse = async (req: Request, res: Response, next: NextFunction) => {
+const getSingleWarehouse = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id } = req.params;
-    const result = await warehouseServices.getSingleWarehouse(id);
+    const tenantDomain = req.query.tenantDomain as string;
+    const result = await warehouseServices.getSingleWarehouse(tenantDomain, id);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -48,10 +74,20 @@ const getSingleWarehouse = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-const updateWarehouse = async (req: Request, res: Response, next: NextFunction) => {
+const updateWarehouse = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id } = req.params;
-    const result = await warehouseServices.updateWarehouse(id, req.body);
+    const { tenantDomain } = req.body;
+    console.log('update wre', tenantDomain)
+    const result = await warehouseServices.updateWarehouse(
+      tenantDomain,
+      id,
+      req.body,
+    );
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -63,10 +99,15 @@ const updateWarehouse = async (req: Request, res: Response, next: NextFunction) 
   }
 };
 
-const deleteWarehouse = async (req: Request, res: Response, next: NextFunction) => {
+const deleteWarehouse = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id } = req.params;
-    const result = await warehouseServices.deleteWarehouse(id);
+    const tenantDomain = req.query.tenantDomain as string;
+    const result = await warehouseServices.deleteWarehouse(tenantDomain, id);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,

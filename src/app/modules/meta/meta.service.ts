@@ -1,5 +1,6 @@
 import QueryBuilder from '../../builder/QueryBuilder';
 import { getTenantModel } from '../../utils/getTenantModels';
+import { CompanyType, CustomerType, ShowRoomType } from './meta.interface';
 import { buildSearchQuery } from './meta.search';
 
 const formatToBDComma = (number: number) => {
@@ -25,8 +26,10 @@ const getAllCustomer = async (
   const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
   const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
   const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+  const { Model: Quotation } = await getTenantModel(tenantDomain, 'Quotation');
+  const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
 
-  // Define searchable fields
   const customerSearchFields = [
     'customerId',
     'customer_name',
@@ -83,9 +86,12 @@ const getAllCustomer = async (
 
   const searchQuery = buildSearchQuery(allSearchFields, searchTerm);
 
-  const customerQuery = new QueryBuilder(Customer.find(searchQuery), query).filter();
-  const companyQuery = new QueryBuilder(Company.find(searchQuery), query).filter();
-  const showroomQuery = new QueryBuilder(ShowRoom.find(searchQuery), query).filter();
+  // const customerQuery = new QueryBuilder(Customer.find(searchQuery), query).filter();
+  // const companyQuery = new QueryBuilder(Company.find(searchQuery), query).filter();
+  // const showroomQuery = new QueryBuilder(ShowRoom.find(searchQuery), query).filter();
+  const customerQuery = new QueryBuilder(Customer.find(searchQuery), query);
+  const companyQuery = new QueryBuilder(Company.find(searchQuery), query);
+  const showroomQuery = new QueryBuilder(ShowRoom.find(searchQuery), query);
 
   const [customerCount, companyCount, showroomCount] = await Promise.all([
     customerQuery.countTotal(),
@@ -93,15 +99,26 @@ const getAllCustomer = async (
     showroomQuery.countTotal(),
   ]);
 
-  const populateOptions = {
-    path: 'vehicles',
-    select: 'fullRegNum car_registration_no',
-  };
+  const populateOptions = [
+    {
+      path: 'vehicles',
+      model: Vehicle,
+      select: 'fullRegNum car_registration_no',
+    },
+    {
+      path: 'quotations',
+      model: Quotation,
+    },
+    {
+      path: 'jobCards',
+      model: JobCard,
+    },
+  ];
 
   const [customers, companies, showrooms] = await Promise.all([
-    customerQuery.modelQuery.populate('quotations').populate('jobCards').populate(populateOptions).lean(),
-    companyQuery.modelQuery.populate('quotations').populate('jobCards').populate(populateOptions).lean(),
-    showroomQuery.modelQuery.populate('quotations').populate('jobCards').populate(populateOptions).lean(),
+    customerQuery.modelQuery.populate(populateOptions).lean<CustomerType[]>(),
+    companyQuery.modelQuery.populate(populateOptions).lean<CompanyType[]>(),
+    showroomQuery.modelQuery.populate(populateOptions).lean<ShowRoomType[]>(),
   ]);
 
   const unifiedData = [
@@ -129,7 +146,9 @@ const getAllCustomer = async (
       searchableId: customer.customerId,
       searchableName: customer.customer_name,
       searchableContact: `${customer.customer_country_code}${customer.customer_contact}`,
-      searchableVehicle: customer.vehicles.map((v: any) => v.fullRegNum).join(', '),
+      searchableVehicle: customer.vehicles
+        .map((v: any) => v.fullRegNum)
+        .join(', '),
       fullRegNums: customer.vehicles.map((v: any) => v.fullRegNum).join(', '),
       type: 'customer',
     })),
@@ -157,7 +176,9 @@ const getAllCustomer = async (
       searchableId: company.companyId,
       searchableName: company.company_name,
       searchableContact: `${company.company_country_code}${company.company_contact}`,
-      searchableVehicle: company.vehicles.map((v: any) => v.fullRegNum).join(', '),
+      searchableVehicle: company.vehicles
+        .map((v: any) => v.fullRegNum)
+        .join(', '),
       fullRegNums: company.vehicles.map((v: any) => v.fullRegNum).join(', '),
       type: 'company',
     })),
@@ -185,7 +206,9 @@ const getAllCustomer = async (
       searchableId: showroom.showRoomId,
       searchableName: showroom.showRoom_name,
       searchableContact: `${showroom.company_country_code}${showroom.company_contact}`,
-      searchableVehicle: showroom.vehicles.map((v: any) => v.fullRegNum).join(', '),
+      searchableVehicle: showroom.vehicles
+        .map((v: any) => v.fullRegNum)
+        .join(', '),
       fullRegNums: showroom.vehicles.map((v: any) => v.fullRegNum).join(', '),
       type: 'showroom',
     })),
@@ -209,7 +232,6 @@ const getAllCustomer = async (
   };
 };
 
-
 const getAllMetaFromDB = async (
   tenantDomain: string,
   query: Record<string, unknown>,
@@ -224,6 +246,8 @@ const getAllMetaFromDB = async (
     tenantDomain,
     'LeaveRequest',
   );
+
+  console.log('from meta ',tenantDomain)
 
   const allCustomer = await Customer.find({ isRecycled: false });
   const allCompany = await Company.find({ isRecycled: false });
@@ -286,7 +310,6 @@ const getAllMetaFromDB = async (
     totalRemaining: formattedTotalRemaining,
   };
 };
-
 
 export const metServices = {
   getAllCustomer,

@@ -97,9 +97,7 @@ const getAllVehiclesFromDB = async (
   const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
 
   let idMatchQuery: any = {};
-  let searchQuery: any = {};
-
-  // If id is provided, filter by the id
+  let searchQuery: any = {}
   idMatchQuery = {
     $or: [
       { 'customer._id': new mongoose.Types.ObjectId(id) },

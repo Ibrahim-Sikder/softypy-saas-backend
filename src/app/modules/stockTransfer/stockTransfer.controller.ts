@@ -7,9 +7,10 @@ import { stockTransferServices } from './stockTransfer.services';
 
 
 
-const getAllStockTransfers = async (_req: Request, res: Response, next: NextFunction) => {
+const getAllStockTransfers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await stockTransferServices.getAllStockTransfers();
+     const tenantDomain = req.query.tenantDomain as string;
+    const result = await stockTransferServices.getAllStockTransfers(tenantDomain);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -24,7 +25,8 @@ const getAllStockTransfers = async (_req: Request, res: Response, next: NextFunc
 const deleteStockTransfer = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const result = await stockTransferServices.deleteStockTransfer(id);
+    const tenantDomain = req.query.tenantDomain as string;
+    const result = await stockTransferServices.deleteStockTransfer(tenantDomain, id);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,

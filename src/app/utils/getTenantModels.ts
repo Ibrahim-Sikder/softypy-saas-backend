@@ -18,6 +18,23 @@ import { stockSchema } from '../modules/stocks/stocks.model';
 import { StockTransactionSchema } from '../modules/stockTransaction/stockTransaction.model';
 import { ProductSchema } from '../modules/product/product.model';
 import { LeaveRequestSchema } from '../modules/leave/leave.model';
+import { supplierSchema } from '../modules/supplier/supplier.model';
+import { productTypeSchema } from '../modules/productType/productType.model';
+import { categorySchema } from '../modules/category/category.model';
+import { warehouseSchema } from '../modules/warehouse/warehouse.model';
+import { purchaseOrderSchema } from '../modules/purchaseorder/purchaseorder.model';
+import { purchaseSchema } from '../modules/purchase/purchase.model';
+import { purchaseReturnSchema } from '../modules/purchasereturn/purchasereturn.model';
+import { stockTransferSchema } from '../modules/stockTransfer/stockTransfer.model';
+import { employeeSchema } from '../modules/employee/employee.model';
+import { attendanceSchema } from '../modules/attendance/attendance.model';
+import { salarySchema } from '../modules/salary/salary.model';
+import { employeeOvertimeSchema } from '../modules/overtime/overtime.model';
+import { incomeSchema } from '../modules/income/income.model';
+import {
+  expenseCategorySchema,
+  expenseSchema,
+} from '../modules/expense/expense.model';
 
 type SchemaMap = {
   [key: string]: mongoose.Schema;
@@ -25,7 +42,11 @@ type SchemaMap = {
 
 const schemas: SchemaMap = {
   User: userSchema,
+  Attendance: attendanceSchema,
+  Salary: salarySchema,
+  Employee: employeeSchema,
   Unit: unitSchema,
+  PurchaseReturn: purchaseReturnSchema,
   Brand: brandSchema,
   Customer: customerSchema,
   ShowRoom: showRoomSchema,
@@ -39,6 +60,18 @@ const schemas: SchemaMap = {
   StockTransaction: StockTransactionSchema,
   MoneyReceipt: moneyReceiptSchema,
   LeaveRequest: LeaveRequestSchema,
+  Supplier: supplierSchema,
+  ProductType: productTypeSchema,
+  Category: categorySchema,
+  Warehouse: warehouseSchema,
+  PurchaseOrder: purchaseOrderSchema,
+  Purchase: purchaseSchema,
+  Stock: stockSchema,
+  StockTransfer: stockTransferSchema,
+  EmployeeOvertime: employeeOvertimeSchema,
+  Income: incomeSchema,
+  ExpenseCategory: expenseCategorySchema,
+  Expense: expenseSchema,
 };
 
 export const getTenantModel = async (

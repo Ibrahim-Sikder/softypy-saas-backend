@@ -6,14 +6,18 @@ import httpStatus from 'http-status';
 import { createSubscription } from '../subscription/subscription.service';
 import { connectToTenantDatabase } from '../../../server';
 import mongoose from 'mongoose';
+import { userSchema } from '../user/user.model';
 
 export const createTenant = async (
   payload: ITenant,
   plan: 'Monthly' | 'HalfYearly' | 'Yearly'
 ) => {
-
   try {
-    const { name, domain } = payload;
+    const { name, domain, user: userPayload } = payload;
+
+    if (!domain || typeof domain !== 'string') {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Domain is required and must be a string');
+    }
 
     const existingTenant = await Tenant.findOne({ domain });
     if (existingTenant) {
@@ -23,11 +27,36 @@ export const createTenant = async (
     const dbName = domain.replace(/\./g, '_');
     const dbUri = `mongodb+srv://softypy_saas:saas_softypy33@cluster0.ywst3am.mongodb.net/${dbName}?retryWrites=true&w=majority&appName=Cluster0`;
 
-    const subscription = createSubscription(plan);
+    const connection = await connectToTenantDatabase(domain, dbUri);
+
+    // Dynamically create user model with your actual schema
+    const UserModel = connection.model('User', userSchema);
+
+    const fullName = `${userPayload.firstName} ${userPayload.lastName}`.trim();
+
+    // Create user based on your schema
+    const newUser = await UserModel.create({
+      name: fullName,
+      email: userPayload.email,
+      password: userPayload.password, // optionally hash here
+      tenantDomain: domain,
+      createdBy: 'self', // or 'admin' or other logic
+      role: 'admin', // or default role
+    });
+
+    const subscriptionBase = createSubscription(plan, payload.subscription?.isPaid || false);
+
+    const subscription = {
+      ...subscriptionBase,
+      amount: payload.subscription?.amount,
+      paymentMethod: payload.subscription?.paymentMethod || 'Manual',
+      user: newUser._id,
+    };
 
     const tenant = new Tenant({
       name,
       domain,
+      businessType: payload.businessType,
       dbUri,
       subscription,
       isActive: true,
@@ -35,14 +64,17 @@ export const createTenant = async (
 
     await tenant.save();
 
-    const connection = await connectToTenantDatabase(tenant._id.toString(), dbUri);
     const DummyModel = connection.model('Dummy', new mongoose.Schema({ name: String }));
     await DummyModel.create({ name: 'trigger' });
+
     return tenant;
   } catch (error: any) {
     throw new AppError(500, error.message || 'Error creating tenant');
   }
 };
+
+
+
 
 const getAllTenant = async (query: Record<string, unknown>) => {
   const tenantQuery = new QueryBuilder(Tenant.find(), query)

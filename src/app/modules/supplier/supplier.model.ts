@@ -2,7 +2,7 @@
 import mongoose, { Schema } from 'mongoose';
 import type { TSupplier } from './supplier.interface';
 
-const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
+export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
   {
     supplierId: {
       type: String,

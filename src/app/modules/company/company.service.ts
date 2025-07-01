@@ -1,9 +1,8 @@
-import mongoose from 'mongoose';
+
 import { generateCompanyId } from './company.utils';
 import AppError from '../../errors/AppError';
 import { StatusCodes } from 'http-status-codes';
 import sanitizePayload from '../../middlewares/updateDataValidation';
-import { Vehicle } from '../vehicle/vehicle.model';
 import { TVehicle } from '../vehicle/vehicle.interface';
 import { CompanySearchableFields, vehicleFields } from './company.const';
 import { TCompany } from './company.interface';

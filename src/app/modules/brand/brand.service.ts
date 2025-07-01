@@ -19,35 +19,72 @@ const createBrand = async (tenantDomain: string, payload:any) => {
 };
 
 
-const getAllBrand = async (query: Record<string, unknown>) => {
-  const categoryQuery = new QueryBuilder(Brand.find(), query)
+export const getAllBrand = async (
+  tenantDomain: string,
+  query: Record<string, unknown>,
+) => {
+  const { Model: Brand } = await getTenantModel(
+    tenantDomain,
+    'Brand',
+  );
+
+  const brandQuery = new QueryBuilder(Brand.find(), query)
     .search(brandSearch)
     .filter()
     .sort()
     .paginate()
     .fields();
 
-  const meta = await categoryQuery.countTotal();
-  const brands = await categoryQuery.modelQuery;
+  const meta = await brandQuery.countTotal();
+  const brands = await brandQuery.modelQuery;
 
   return {
     meta,
     brands,
   };
 };
-const getSinigleBrand = async (id: string) => {
+
+export const getSinigleBrand = async (
+  tenantDomain: string,
+  id: string,
+) => {
+  console.log('single brand tenant', tenantDomain)
+  const { Model: Brand } = await getTenantModel(
+    tenantDomain,
+    'Brand',
+  );
+
   const result = await Brand.findById(id);
   return result;
 };
-const updateBrand = async (id: string, payload: Partial<TBrand>) => {
+
+export const updateBrand = async (
+  tenantDomain: string,
+  id: string,
+  payload: Partial<TBrand>,
+) => {
+  const { Model: Brand } = await getTenantModel(
+    tenantDomain,
+    'Brand',
+  );
+
   const result = await Brand.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
   });
+
   return result;
 };
 
-const deleteBrand = async (id: string) => {
+export const deleteBrand = async (
+  tenantDomain: string,
+  id: string,
+) => {
+  const { Model: Brand } = await getTenantModel(
+    tenantDomain,
+    'Brand',
+  );
+
   const result = await Brand.deleteOne({ _id: id });
 
   return result;
