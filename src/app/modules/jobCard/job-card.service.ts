@@ -713,6 +713,8 @@ export const generateJobCardPdf = async (
     .populate('showRoom')
     .populate('vehicle');
 
+    console.log(jobcard)
+
   if (!jobcard) {
     throw new Error('jobcard not found');
   }
