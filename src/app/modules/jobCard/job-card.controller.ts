@@ -151,6 +151,7 @@ const tenantDomain = req.query.tenantDomain as string;
 
 const generateJobCardPdf: RequestHandler = catchAsync(async (req, res) => {
   const { jobcardId } = req.params;
+const tenantDomain = req.query.tenantDomain as string;
 
   const baseUrl = (
     process.env.NEXT_PUBLIC_IMAGE_BASE_URL ||
@@ -159,6 +160,7 @@ const generateJobCardPdf: RequestHandler = catchAsync(async (req, res) => {
 
   try {
     const pdfBuffer = await JobCardServices.generateJobCardPdf(
+      tenantDomain,
       jobcardId,
       baseUrl,
     );

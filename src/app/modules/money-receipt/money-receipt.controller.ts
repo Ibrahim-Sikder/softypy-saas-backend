@@ -65,7 +65,7 @@ const getSingleMoneyReceipt = catchAsync(async (req, res) => {
 const updateMoneyReceipt = catchAsync(async (req, res) => {
   const { id } = req.params;
   const tenantDomain = req.query.tenantDomain as string;
-  console.log('money', tenantDomain)
+
   const moneyReceipt = await MoneyReceiptServices.updateMoneyReceiptDetails(
     tenantDomain,
     id,
@@ -81,7 +81,7 @@ const updateMoneyReceipt = catchAsync(async (req, res) => {
 
 const generateMoneyPdf: RequestHandler = catchAsync(async (req, res) => {
   const { moneyReceiptId } = req.params;
-
+ const tenantDomain = req.query.tenantDomain as string;
   const baseUrl = (
     process.env.NEXT_PUBLIC_IMAGE_BASE_URL ||
     'https://api.trustautosolution.com'
@@ -89,6 +89,7 @@ const generateMoneyPdf: RequestHandler = catchAsync(async (req, res) => {
 
   try {
     const pdfBuffer = await MoneyReceiptServices.generateMoneyPdf(
+      tenantDomain,
       moneyReceiptId,
       baseUrl,
     );

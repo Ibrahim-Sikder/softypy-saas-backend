@@ -4,11 +4,11 @@ import AppError from '../../errors/AppError';
 import sanitizePayload from '../../middlewares/updateDataValidation';
 import { TMoneyReceipt } from './money-receipt.interface';
 import { MoneyReceipt, moneyReceiptSchema } from './money-receipt.model';
-import { Customer, customerSchema } from '../customer/customer.model';
-import { Company, companySchema } from '../company/company.model';
-import { ShowRoom, showRoomSchema } from '../showRoom/showRoom.model';
-import mongoose, { Model } from 'mongoose';
-import { Vehicle, vehicleSchema } from '../vehicle/vehicle.model';
+import {  customerSchema } from '../customer/customer.model';
+import {  companySchema } from '../company/company.model';
+import {  showRoomSchema } from '../showRoom/showRoom.model';
+import mongoose from 'mongoose';
+import {  vehicleSchema } from '../vehicle/vehicle.model';
 import { SearchableFields } from './money-receipt.const';
 import { generateMoneyReceiptId } from './money-receipt.utils';
 import { amountInWords } from '../../middlewares/taka-in-words';
@@ -627,14 +627,19 @@ const deleteMoneyReceipt = async (tenantDomain: string, id: string) => {
   return null;
 };
 
-const generateMoneyPdf = async (
+
+export const generateMoneyPdf = async (
+  tenantDomain: string,
   id: string,
   imageUrl: string,
 ): Promise<Buffer> => {
+  const { Model: MoneyReceipt } = await getTenantModel(tenantDomain, 'MoneyReceipt');
+
   const money = await MoneyReceipt.findById(id).populate('vehicle');
   if (!money) {
     throw new Error('Money receipt not found');
   }
+
   let logoBase64 = '';
   try {
     const logoUrl = `${imageUrl}/images/logo.png`;
@@ -685,6 +690,7 @@ const generateMoneyPdf = async (
     throw new Error('PDF generation failed');
   }
 };
+
 const permanantlyDeleteMoneyReceipt = async (
   tenantDomain: string,
   id: string,
@@ -759,7 +765,6 @@ const permanantlyDeleteMoneyReceipt = async (
   }
 };
 
-
 const movetoRecyledbinMoneyReceipt = async (
   tenantDomain: string,
   id: string,
@@ -830,7 +835,6 @@ const restoreFromRecyledbinMoneyReceipt = async (
     throw error;
   }
 };
-
 const moveAllToRecycledBin = async () => {
   const result = await MoneyReceipt.updateMany(
     {}, // Match all documents

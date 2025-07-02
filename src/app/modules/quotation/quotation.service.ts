@@ -710,71 +710,76 @@ const removeQuotationFromUpdate = async (
   return updateQuotation;
 };
 
+
 const generateQuotationPdf = async (
+  tenantDomain: string,
   id: string,
   imageUrl: string,
 ): Promise<Buffer> => {
+  const { Model: Quotation } = await getTenantModel(tenantDomain, 'Quotation')
+
   const quotation = await Quotation.findById(id)
     .populate('customer')
     .populate('company')
     .populate('showRoom')
-    .populate('vehicle');
+    .populate('vehicle')
 
   if (!quotation) {
-    throw new Error('quotation not found');
+    throw new Error('quotation not found')
   }
 
-  let logoBase64 = '';
+  let logoBase64 = ''
   try {
-    const logoUrl = `${imageUrl}/images/logo.png`;
-    const logoResponse = await fetch(logoUrl);
-    const logoBuffer = await logoResponse.arrayBuffer();
-    logoBase64 = Buffer.from(logoBuffer).toString('base64');
+    const logoUrl = `${imageUrl}/images/logo.png`
+    const logoResponse = await fetch(logoUrl)
+    const logoBuffer = await logoResponse.arrayBuffer()
+    logoBase64 = Buffer.from(logoBuffer).toString('base64')
   } catch (error) {
-    console.warn('Failed to load logo:', error);
+    console.warn('Failed to load logo:', error)
   }
 
-  const filePath = join(__dirname, '../../templates/quotation.ejs');
+  const filePath = join(__dirname, '../../templates/quotation.ejs')
 
   const html = await new Promise<string>((resolve, reject) => {
     ejs.renderFile(
       filePath,
       { quotation, imageUrl, formatToIndianCurrency, logoBase64 },
       (err, str) => {
-        if (err) return reject(err);
-        resolve(str);
+        if (err) return reject(err)
+        resolve(str)
       },
-    );
-  });
+    )
+  })
 
   try {
     const browser = await puppeteer.launch({
       executablePath: '/usr/bin/chromium-browser',
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
       headless: true,
-    });
+    })
 
-    const page = await browser.newPage();
+    const page = await browser.newPage()
 
     await page.setContent(html, {
       waitUntil: ['networkidle0', 'load', 'domcontentloaded'],
       timeout: 60000,
-    });
+    })
 
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
       margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
-    });
+    })
 
-    await browser.close();
+    await browser.close()
 
-    return Buffer.from(pdfBuffer);
+    return Buffer.from(pdfBuffer)
   } catch (error) {
-    console.error('Error generating PDF:', error);
-    throw new Error('PDF generation failed');
+    console.error('Error generating PDF:', error)
+    throw new Error('PDF generation failed')
   }
-};
+}
+
 
 const deleteQuotation = async (tenantDomain: string, id: string) => {
   const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
