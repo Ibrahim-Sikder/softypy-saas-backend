@@ -35,6 +35,7 @@ import {
   expenseCategorySchema,
   expenseSchema,
 } from '../modules/expense/expense.model';
+import { companyProfileSchema } from '../modules/companyProfile/companyProfile.model';
 
 type SchemaMap = {
   [key: string]: mongoose.Schema;
@@ -72,6 +73,7 @@ const schemas: SchemaMap = {
   Income: incomeSchema,
   ExpenseCategory: expenseCategorySchema,
   Expense: expenseSchema,
+  CompanyProfile: companyProfileSchema,
 };
 
 export const getTenantModel = async (

@@ -1,0 +1,85 @@
+import httpStatus from 'http-status';
+import AppError from '../../errors/AppError';
+import { getTenantModel } from '../../utils/getTenantModels';
+import { TCompanyProfile } from './companyProfile.interface';
+
+const getCompanyProfile = async (
+  tenantDomain: string,
+): Promise<TCompanyProfile | null> => {
+  try {
+    const { Model: CompanyProfile } = await getTenantModel(
+      tenantDomain,
+      'CompanyProfile',
+    );
+
+    const profile = await CompanyProfile.findOne();
+
+    // Do NOT throw an error here. Return null if not found.
+    return profile;
+  } catch (error: any) {
+    // Only catch actual server errors, not "not found"
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, error.message || 'Internal Server Error');
+  }
+};
+
+const updateCompanyProfile = async (
+  tenantDomain: string,
+  id: string,
+  payload: Partial<TCompanyProfile>
+): Promise<TCompanyProfile | null> => {
+  const { Model: CompanyProfile } = await getTenantModel(
+    tenantDomain,
+    'CompanyProfile'
+  );
+
+  if (!id) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Company profile ID is required for update');
+  }
+
+  const result = await CompanyProfile.findByIdAndUpdate(id, payload, {
+    new: true,
+    runValidators: true,
+  });
+
+  if (!result) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Company profile not found');
+  }
+
+  return result;
+};
+
+
+// Keep this if it's used elsewhere, but ensure it's for CompanyProfile, not ExpenseCategory
+export const getSingleCompanyProfile = async (
+  tenantDomain: string,
+  id: string,
+): Promise<TCompanyProfile | null> => {
+  try {
+    const { Model: CompanyProfile } = await getTenantModel( // Changed to CompanyProfile
+      tenantDomain,
+      'CompanyProfile', // Changed to CompanyProfile
+    );
+
+    const profile = await CompanyProfile.findOne({ _id: id }); // Find one by _id
+
+    if (!profile) {
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'Company profile not found', // Corrected message
+      );
+    }
+
+    return profile;
+  } catch (error: any) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      error.message || 'Internal Server Error',
+    );
+  }
+};
+
+
+export const companyProfileService = {
+  getCompanyProfile,
+  updateCompanyProfile,
+};
