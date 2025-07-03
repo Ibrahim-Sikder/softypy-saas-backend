@@ -4,8 +4,6 @@ import catchAsync from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 
 const createUser = catchAsync(async (req, res) => {
-  const domain =
-    (req.headers.origin as string) || (req.headers.host as string) || '';
   const result = await UserServices.createUser(req.body);
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -16,9 +14,8 @@ const createUser = catchAsync(async (req, res) => {
 });
 
 const getAllUser = catchAsync(async (req, res) => {
-  const domain =
-    (req.headers.origin as string) || (req.headers.host as string) || '';
-  const result = await UserServices.getAllUser(domain);
+   const tenantDomain = req.query.tenantDomain as string;
+  const result = await UserServices.getAllUser(tenantDomain);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

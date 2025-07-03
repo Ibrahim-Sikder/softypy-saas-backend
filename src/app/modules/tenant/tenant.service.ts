@@ -38,10 +38,10 @@ export const createTenant = async (
     const newUser = await UserModel.create({
       name: fullName,
       email: userPayload.email,
-      password: userPayload.password, // optionally hash here
+      password: userPayload.password,
       tenantDomain: domain,
-      createdBy: 'self', // or 'admin' or other logic
-      role: 'admin', // or default role
+      createdBy: 'self',
+      role: 'admin', 
     });
 
     const subscriptionBase = createSubscription(plan, payload.subscription?.isPaid || false);
@@ -73,12 +73,9 @@ export const createTenant = async (
   }
 };
 
-
-
-
 const getAllTenant = async (query: Record<string, unknown>) => {
   const tenantQuery = new QueryBuilder(Tenant.find(), query)
-    .search(['naeme'])
+    .search(['name'])
     .filter()
     .sort()
     .paginate()
@@ -98,19 +95,30 @@ const getSingleTenant = async (id: string) => {
   return tenant;
 };
 
-const updateTenant = async (id: string, payload: Partial<ITenant>) => {
-  const tenant = await Tenant.findByIdAndUpdate(id, payload, {
+export const updateTenant = async (
+  id: string,
+  payload: Partial<ITenant>
+) => {
+  const existingTenant = await Tenant.findById(id);
+  if (!existingTenant) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Tenant not found');
+  }
+
+  // Ensure subscription.user is not lost if updating subscription partially
+  if (payload.subscription) {
+    payload.subscription.user = payload.subscription.user || existingTenant.subscription.user;
+  }
+
+  // Remove `user` field from payload since it's not part of schema
+  const { user, ...filteredPayload } = payload as any;
+
+  const updatedTenant = await Tenant.findByIdAndUpdate(id, filteredPayload, {
     new: true,
     runValidators: true,
   });
 
-  if (!tenant) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Tenant not found');
-  }
-
-  return tenant;
+  return updatedTenant;
 };
-
 const deleteTenant = async (id: string) => {
   const result = await Tenant.deleteOne({ _id: id });
   if (result.deletedCount === 0) {
@@ -119,10 +127,76 @@ const deleteTenant = async (id: string) => {
   return { message: 'Tenant deleted successfully' };
 };
 
+
+const renewTenantSubscription = async (
+  tenantId: string,
+  plan?: 'Monthly' | 'HalfYearly' | 'Yearly'
+) => {
+  const tenant = await Tenant.findById(tenantId);
+
+  console.log(tenantId, plan)
+
+  if (!tenant) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Tenant not found');
+  }
+
+
+  const selectedPlan = plan || tenant.subscription?.plan;
+  if (!['Monthly', 'HalfYearly', 'Yearly'].includes(selectedPlan)) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Invalid subscription plan');
+  }
+
+  const startDate = new Date();
+  const endDate = new Date(startDate);
+
+  // Set subscription end date based on plan
+  switch (selectedPlan) {
+    case 'Monthly':
+      endDate.setMonth(startDate.getMonth() + 1);
+      break;
+    case 'HalfYearly':
+      endDate.setMonth(startDate.getMonth() + 6);
+      break;
+    case 'Yearly':
+      endDate.setFullYear(startDate.getFullYear() + 1);
+      break;
+    default:
+      throw new AppError(httpStatus.BAD_REQUEST, 'Unsupported subscription plan');
+  }
+
+  // Define plan amounts
+  const PLAN_PRICES: Record<string, number> = {
+    Monthly: 2000,
+    HalfYearly: 12000,
+    Yearly: 24000,
+  };
+
+  // Update subscription in tenant
+  tenant.subscription = {
+    ...tenant.subscription,
+    plan: selectedPlan,
+    startDate,
+    endDate,
+    status: 'Active',
+    isPaid: true,
+    isActive: true,
+    paymentMethod: 'Manual',
+    amount: PLAN_PRICES[selectedPlan],
+  };
+
+
+
+  await tenant.save();
+  return tenant.subscription;
+};
+
+
+
 export const TenantServices = {
   createTenant,
   getAllTenant,
   getSingleTenant,
   updateTenant,
   deleteTenant,
+  renewTenantSubscription
 };

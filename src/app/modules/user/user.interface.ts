@@ -1,5 +1,4 @@
-import { Model, Document, Types, ObjectId } from 'mongoose';
-
+import { Model, ObjectId } from 'mongoose';
 import { USER_ROLE } from './user.constant';
 
 export interface TUser {
@@ -7,18 +6,35 @@ export interface TUser {
   name: string;
   email: string;
   password: string;
-  tenantDomain:string;
+  tenantDomain: string;
+  tenantId?: ObjectId;
+  tenantInfo?: {
+    name: string;
+    domain: string;
+    businessType?: string;
+    dbUri: string;
+    isActive: boolean;
+    subscription?: {
+      plan: string;
+      startDate: Date;
+      endDate: Date;
+      status: string;
+      isPaid: boolean;
+      isActive: boolean;
+      paymentMethod: string;
+      amount: number;
+    };
+  };
   createdBy: string;
   status: 'active' | 'inactive';
   role: string;
   lastLogin?: Date;
   passwordChangeAt: Date;
-  isDeleted: boolean;
+  isDeleted?: boolean;
 }
 
-
 export interface UserModel extends Model<TUser> {
-  isUserExistsByCustomId(name: string): Promise<TUser>;
+  isUserExistsByCustomId(name: string): Promise<TUser | null>;
   isPasswordMatched(
     plaingTextPassword: string,
     hashedPassword: string,
@@ -28,5 +44,4 @@ export interface UserModel extends Model<TUser> {
     jwtIssuedTimestamp: number,
   ): boolean;
 }
-
 export type TUserRole = keyof typeof USER_ROLE;

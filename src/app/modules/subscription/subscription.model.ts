@@ -6,7 +6,7 @@ export const subscriptionSchema = new Schema<ISubscription>(
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+
     },
     plan: {
       type: String,

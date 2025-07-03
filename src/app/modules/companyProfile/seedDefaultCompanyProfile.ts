@@ -1,15 +1,13 @@
 import { getTenantModel } from '../../utils/getTenantModels';
 
 export const seedDefaultCompanyProfile = async (tenantId: string) => {
-  console.log(`[Seeder] Starting seed for tenant: ${tenantId}`);
+
 
   try {
     const { Model: CompanyProfile } = await getTenantModel(tenantId, 'CompanyProfile');
-    console.log(`[Seeder] Got CompanyProfile model for tenant: ${tenantId}`);
-
+   
     const existing = await CompanyProfile.findOne();
-    console.log(`[Seeder] Existing company profile:`, existing);
-
+ 
     if (existing) {
       console.log(`[Seeder] Company profile already exists for tenant: ${tenantId}`);
       return;
@@ -26,7 +24,7 @@ export const seedDefaultCompanyProfile = async (tenantId: string) => {
       logo: '',
     });
 
-    console.log(`[Seeder] ✅ Created company profile for tenant: ${tenantId}`, created);
+
   } catch (error) {
     console.error(`[Seeder] ❌ Failed to seed for tenant: ${tenantId}`, error);
   }

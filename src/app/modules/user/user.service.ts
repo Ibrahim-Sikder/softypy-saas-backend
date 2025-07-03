@@ -8,9 +8,11 @@ import { createToken } from '../Auth/auth.utils';
 import config from '../../config';
 import AppError from '../../errors/AppError';
 import { getTenantModel } from '../../utils/getTenantModels';
+import { Tenant } from '../tenant/tenant.model';
 
 export const createUser = async (payload: TUser) => {
   const { Model: User, tenant } = await getTenantModel(payload.tenantDomain, 'User');
+
   const userByEmail = await User.findOne({ email: payload.email });
   if (userByEmail) {
     throw new AppError(httpStatus.BAD_REQUEST, 'Email is already registered!');
@@ -21,16 +23,29 @@ export const createUser = async (payload: TUser) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Username is already taken!');
   }
 
+  const tenantInfo = await Tenant.findOne({ domain: payload.tenantDomain });
+  if (!tenantInfo) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Tenant not found!');
+  }
+
   const newUser = await User.create({
     ...payload,
-    tenantId: tenant._id, 
+    tenantId: tenantInfo._id,
+    tenantInfo: {
+      name: tenantInfo.name,
+      domain: tenantInfo.domain,
+      businessType: tenantInfo.businessType,
+      dbUri: tenantInfo.dbUri,
+      isActive: tenantInfo.isActive,
+      subscription: tenantInfo.subscription,
+    },
   });
 
   const jwtPayload = {
     userId: newUser._id.toString(),
     name: newUser.name,
     role: newUser.role,
-    tenantId: tenant._id.toString(),
+    tenantId: tenantInfo._id.toString(),
   };
 
   const accessToken = createToken(
@@ -53,11 +68,13 @@ export const createUser = async (payload: TUser) => {
       name: newUser.name,
       email: newUser.email,
       role: newUser.role,
-      tenantId: tenant._id,
+      tenantId: tenantInfo._id,
       token: accessToken,
+      tenantInfo: newUser.tenantInfo,
     },
   };
 };
+
 
 
 

@@ -8,32 +8,32 @@ import bcrypt from 'bcrypt';
 import { JwtPayload } from 'jsonwebtoken';
 import AppError from '../../errors/AppError';
 import { User, userSchema } from '../user/user.model';
-import { NextFunction } from 'express';
 import { connectToTenantDatabase } from '../../../server';
 import { Tenant } from '../tenant/tenant.model';
 
 
 export const loginUser = async (payload: TLoginUser) => {
-
-  // Step 1: Find the tenant by domain
   const tenant = await Tenant.findOne({ domain: payload.tenantDomain });
+
   if (!tenant || !tenant.isActive) {
     throw new AppError(httpStatus.NOT_FOUND, 'Tenant not found or inactive');
   }
 
-  // Step 2: Connect to tenant DB
+  if (!tenant.subscription || !tenant.subscription.isPaid || !tenant.subscription.isActive) {
+    throw new AppError(httpStatus.FORBIDDEN, 'Subscription is inactive or not paid');
+  }
+
   const tenantConnection = await connectToTenantDatabase(
     tenant._id.toString(),
-    tenant.dbUri,
+    tenant.dbUri
   );
 
-  // Step 3: Get tenant-specific User model
   const User = tenantConnection.model('User', userSchema);
 
-  // Step 4: Find user by name
   const user = await User.findOne({ name: payload.name }).select('+password');
+
   if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Invalid user name or password');
+    throw new AppError(httpStatus.NOT_FOUND, 'Invalid username or password');
   }
 
   if (user?.isDeleted) {
@@ -41,11 +41,11 @@ export const loginUser = async (payload: TLoginUser) => {
   }
 
   const isPasswordMatch = await bcrypt.compare(payload.password, user.password);
+
   if (!isPasswordMatch) {
-    throw new AppError(httpStatus.FORBIDDEN, 'Invalid user name or password');
+    throw new AppError(httpStatus.FORBIDDEN, 'Invalid username or password');
   }
 
-  // Step 5: Generate JWT tokens
   const jwtPayload = {
     userId: user._id.toString(),
     role: user.role,
@@ -56,13 +56,13 @@ export const loginUser = async (payload: TLoginUser) => {
   const accessToken = createToken(
     jwtPayload,
     config.jwt_access_secret as string,
-    config.jwt_access_expires_in as string,
+    config.jwt_access_expires_in as string
   );
 
   const refreshToken = createToken(
     jwtPayload,
     config.jwt_refresh_secret as string,
-    config.jwt_refresh_expires_in as string,
+    config.jwt_refresh_expires_in as string
   );
 
   return {
@@ -77,6 +77,7 @@ export const loginUser = async (payload: TLoginUser) => {
     },
   };
 };
+
 
 
 const changePassword = async (

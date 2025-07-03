@@ -3,8 +3,8 @@ import { ISubscription } from "../modules/subscription/subscription.interface"
 
 export const SUBSCRIPTION_PRICES = {
   Monthly: 79,
-  HalfYearly: 149 * 6, // 6 months
-  Yearly: 299 * 12, // 12 months
+  HalfYearly: 149 * 6,
+  Yearly: 299 * 12, 
 }
 
 import { Types } from "mongoose"
@@ -26,6 +26,7 @@ export const createSubscription = (
     endDate.setFullYear(startDate.getFullYear() + 1)
   }
 
+  
   const now = new Date()
   const isActive = isPaid && endDate > now
   const status = isPaid ? "Active" : "Pending"
