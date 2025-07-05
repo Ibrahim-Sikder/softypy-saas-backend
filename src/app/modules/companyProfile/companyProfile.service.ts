@@ -3,6 +3,30 @@ import AppError from '../../errors/AppError';
 import { getTenantModel } from '../../utils/getTenantModels';
 import { TCompanyProfile } from './companyProfile.interface';
 
+
+const createCompanyProfile = async (
+  tenantDomain: string,
+  payload: TCompanyProfile
+): Promise<TCompanyProfile> => {
+  const { Model: CompanyProfile } = await getTenantModel(
+    tenantDomain,
+    'CompanyProfile'
+  );
+
+  const existingProfile = await CompanyProfile.findOne();
+  if (existingProfile) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Company profile already exists. Please update it instead.'
+    );
+  }
+
+  const result = await CompanyProfile.create(payload);
+  return result;
+};
+
+
+
 const getCompanyProfile = async (
   tenantDomain: string,
 ): Promise<TCompanyProfile | null> => {
@@ -82,4 +106,5 @@ export const getSingleCompanyProfile = async (
 export const companyProfileService = {
   getCompanyProfile,
   updateCompanyProfile,
+  createCompanyProfile
 };

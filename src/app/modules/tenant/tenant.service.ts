@@ -35,14 +35,14 @@ export const createTenant = async (
     const fullName = `${userPayload.firstName} ${userPayload.lastName}`.trim();
 
     // Create user based on your schema
-    const newUser = await UserModel.create({
-      name: fullName,
-      email: userPayload.email,
-      password: userPayload.password,
-      tenantDomain: domain,
-      createdBy: 'self',
-      role: 'admin', 
-    });
+    // const newUser = await UserModel.create({
+    //   name: fullName,
+    //   email: userPayload.email,
+    //   password: userPayload.password,
+    //   tenantDomain: domain,
+    //   createdBy: 'self',
+    //   role: 'admin', 
+    // });
 
     const subscriptionBase = createSubscription(plan, payload.subscription?.isPaid || false);
 
@@ -50,7 +50,7 @@ export const createTenant = async (
       ...subscriptionBase,
       amount: payload.subscription?.amount,
       paymentMethod: payload.subscription?.paymentMethod || 'Manual',
-      user: newUser._id,
+      // user: newUser._id,
     };
 
     const tenant = new Tenant({

@@ -4,6 +4,23 @@ import sendResponse from "../../utils/sendResponse";
 import catchAsync from "../../utils/catchAsync";
 import { companyProfileService } from "./companyProfile.service";
 
+const createCompanyProfile: RequestHandler = catchAsync(async (req, res) => {
+  const tenantDomain = req.query.tenantDomain as string;
+
+  const result = await companyProfileService.createCompanyProfile(
+    tenantDomain,
+    req.body
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.CREATED,
+    message: "Company profile created successfully",
+    data: result,
+  });
+});
+
+
 const getCompanyProfile: RequestHandler = catchAsync(async (req, res) => {
   const tenantDomain = req.query.tenantDomain as string;
   const result = await companyProfileService.getCompanyProfile(tenantDomain);
@@ -35,4 +52,5 @@ const updateCompanyProfile: RequestHandler = catchAsync(async (req, res) => {
 export const companyProfileController = {
   getCompanyProfile,
   updateCompanyProfile,
+  createCompanyProfile
 };

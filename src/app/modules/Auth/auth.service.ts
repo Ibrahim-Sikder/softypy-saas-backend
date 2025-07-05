@@ -13,6 +13,46 @@ import { Tenant } from '../tenant/tenant.model';
 
 
 export const loginUser = async (payload: TLoginUser) => {
+
+
+  // Step 1: যদি tenantDomain = "superadmin" হয় তাহলে আলাদা হ্যান্ডেল করো
+  if (payload.tenantDomain === 'superadmin') {
+    const user = await User.findOne({ name: payload.name, role: 'superadmin' }).select('+password');
+
+    if (!user) {
+      throw new AppError(httpStatus.NOT_FOUND, "Super admin not found!");
+    }
+
+    const isPasswordMatch = await bcrypt.compare(payload.password, user.password);
+
+    if (!isPasswordMatch) {
+      throw new AppError(httpStatus.FORBIDDEN, "Password doesn't match!");
+    }
+
+    const jwtPayload = {
+      userId: user._id.toString(),
+      role: user.role,
+      name: user.name,
+    };
+
+    if (!config.jwt_access_secret || !config.jwt_refresh_secret) {
+      throw new Error('JWT secrets are not defined in config');
+    }
+    const accessToken = createToken(jwtPayload, config.jwt_access_secret as string, config.jwt_access_expires_in as string);
+    const refreshToken = createToken(jwtPayload, config.jwt_refresh_secret as string, config.jwt_refresh_expires_in as string);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        userId: user._id,
+        name: user.name,
+        role: user.role,
+      },
+    };
+  }
+
+  // Step 2: অন্যদের জন্য আগের মতো Tenant খোঁজো
   const tenant = await Tenant.findOne({ domain: payload.tenantDomain });
 
   if (!tenant || !tenant.isActive) {
@@ -28,12 +68,11 @@ export const loginUser = async (payload: TLoginUser) => {
     tenant.dbUri
   );
 
-  const User = tenantConnection.model('User', userSchema);
-
-  const user = await User.findOne({ name: payload.name }).select('+password');
+  const TenantUser = tenantConnection.model('User', userSchema);
+  const user = await TenantUser.findOne({ name: payload.name }).select('+password');
 
   if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User name doesn't match! ");
+    throw new AppError(httpStatus.NOT_FOUND, "User name doesn't match!");
   }
 
   if (user?.isDeleted) {
@@ -41,9 +80,8 @@ export const loginUser = async (payload: TLoginUser) => {
   }
 
   const isPasswordMatch = await bcrypt.compare(payload.password, user.password);
-
   if (!isPasswordMatch) {
-    throw new AppError(httpStatus.FORBIDDEN, "Password doesn't match! ");
+    throw new AppError(httpStatus.FORBIDDEN, "Password doesn't match!");
   }
 
   const jwtPayload = {
@@ -53,17 +91,8 @@ export const loginUser = async (payload: TLoginUser) => {
     tenantId: tenant._id.toString(),
   };
 
-  const accessToken = createToken(
-    jwtPayload,
-    config.jwt_access_secret as string,
-    config.jwt_access_expires_in as string
-  );
-
-  const refreshToken = createToken(
-    jwtPayload,
-    config.jwt_refresh_secret as string,
-    config.jwt_refresh_expires_in as string
-  );
+  const accessToken = createToken(jwtPayload, config.jwt_access_secret as string, config.jwt_access_expires_in as string);
+  const refreshToken = createToken(jwtPayload, config.jwt_refresh_secret as string, config.jwt_refresh_expires_in as string);
 
   return {
     accessToken,
@@ -72,7 +101,7 @@ export const loginUser = async (payload: TLoginUser) => {
       userId: user._id,
       name: user.name,
       role: user.role,
-      tenantId: tenant._id
+      tenantId: tenant._id,
     },
   };
 };

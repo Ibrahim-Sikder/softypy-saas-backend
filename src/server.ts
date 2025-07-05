@@ -4,6 +4,7 @@ import app from './app';
 import { seedDefaultCompanyProfile } from './app/modules/companyProfile/seedDefaultCompanyProfile';
 import { User } from './app/modules/user/user.model';
 import { Tenant } from './app/modules/tenant/tenant.model';
+import { seedSuperAdmin } from './app/modules/user/user.utils';
 
 const tenantConnections: Record<string, mongoose.Connection> = {};
 
@@ -31,13 +32,8 @@ export const connectToTenantDatabase = async (
 const startServer = async () => {
   try {
     await connectToCentralDatabase();
-    const anyUser = await Tenant.findOne();
+    await seedSuperAdmin();
 
-    if (anyUser?.domain) {
-      await seedDefaultCompanyProfile(anyUser.domain);
-    } else {
-      console.warn('⚠️ No tenant user found to seed');
-    }
     app.listen(config.port, () => {
       console.log(`🚀 Server is running on port ${config.port}`);
     });
