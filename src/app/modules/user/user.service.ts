@@ -87,7 +87,6 @@ const getAllUser = async (tenantDomain: string) => {
 
 const deleteUser = async (id: string) => {
   const result = await User.deleteOne({ _id: id });
-
   return result;
 };
 

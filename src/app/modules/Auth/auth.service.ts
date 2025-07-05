@@ -33,7 +33,7 @@ export const loginUser = async (payload: TLoginUser) => {
   const user = await User.findOne({ name: payload.name }).select('+password');
 
   if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Invalid username or password');
+    throw new AppError(httpStatus.NOT_FOUND, "User name doesn't match! ");
   }
 
   if (user?.isDeleted) {
@@ -43,7 +43,7 @@ export const loginUser = async (payload: TLoginUser) => {
   const isPasswordMatch = await bcrypt.compare(payload.password, user.password);
 
   if (!isPasswordMatch) {
-    throw new AppError(httpStatus.FORBIDDEN, 'Invalid username or password');
+    throw new AppError(httpStatus.FORBIDDEN, "Password doesn't match! ");
   }
 
   const jwtPayload = {
@@ -72,8 +72,7 @@ export const loginUser = async (payload: TLoginUser) => {
       userId: user._id,
       name: user.name,
       role: user.role,
-      tenantId: tenant._id,
-      token: accessToken,
+      tenantId: tenant._id
     },
   };
 };
