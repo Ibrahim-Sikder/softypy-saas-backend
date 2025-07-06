@@ -7,6 +7,7 @@ import { createSubscription } from '../subscription/subscription.service';
 import { connectToTenantDatabase } from '../../../server';
 import mongoose from 'mongoose';
 import { userSchema } from '../user/user.model';
+import { subscriptionSchema } from '../subscription/subscription.model';
 
 export const createTenant = async (
   payload: ITenant,
@@ -19,40 +20,32 @@ export const createTenant = async (
       throw new AppError(httpStatus.BAD_REQUEST, 'Domain is required and must be a string');
     }
 
+    // Check if domain already exists
     const existingTenant = await Tenant.findOne({ domain });
     if (existingTenant) {
       throw new AppError(httpStatus.BAD_REQUEST, 'Domain already registered');
     }
 
+    // Generate tenant DB URI
     const dbName = domain.replace(/\./g, '_');
     const dbUri = `mongodb+srv://softypy_saas:saas_softypy33@cluster0.ywst3am.mongodb.net/${dbName}?retryWrites=true&w=majority&appName=Cluster0`;
 
+    // Connect to tenant DB
     const connection = await connectToTenantDatabase(domain, dbUri);
 
-    // Dynamically create user model with your actual schema
+    // Register UserModel and SubscriptionModel to tenant DB
     const UserModel = connection.model('User', userSchema);
+    const SubscriptionModel = connection.model('Subscription', subscriptionSchema);
 
-    const fullName = `${userPayload.firstName} ${userPayload.lastName}`.trim();
+    // Prepare subscription
+    const subscription = createSubscription(
+      plan,
+      payload.subscription?.isPaid || false,
+      payload.subscription?.paymentMethod || 'Manual',
+      payload.subscription?.amount || 0
+    );
 
-    // Create user based on your schema
-    // const newUser = await UserModel.create({
-    //   name: fullName,
-    //   email: userPayload.email,
-    //   password: userPayload.password,
-    //   tenantDomain: domain,
-    //   createdBy: 'self',
-    //   role: 'admin', 
-    // });
-
-    const subscriptionBase = createSubscription(plan, payload.subscription?.isPaid || false);
-
-    const subscription = {
-      ...subscriptionBase,
-      amount: payload.subscription?.amount,
-      paymentMethod: payload.subscription?.paymentMethod || 'Manual',
-      // user: newUser._id,
-    };
-
+    // Create Tenant (in main DB)
     const tenant = new Tenant({
       name,
       domain,
@@ -61,17 +54,44 @@ export const createTenant = async (
       subscription,
       isActive: true,
     });
-
     await tenant.save();
 
+    // Create Admin User (in tenant DB)
+    const fullName = `${userPayload.firstName} ${userPayload.lastName}`.trim();
+    const newUser = await UserModel.create({
+      name: fullName,
+      email: userPayload.email,
+      password: userPayload.password,
+      tenantDomain: domain,
+      tenantId: tenant._id,
+      tenantInfo: {
+        name: tenant.name,
+        domain: tenant.domain,
+        businessType: tenant.businessType,
+        dbUri: tenant.dbUri,
+        isActive: tenant.isActive,
+        subscription,
+      },
+      createdBy: 'self',
+      role: 'admin',
+    });
+
+    // Create Subscription (in tenant DB)
+    await SubscriptionModel.create({
+      ...subscription,
+      user: newUser._id,
+    });
+
+    // Optional: Create a dummy collection to trigger DB creation
     const DummyModel = connection.model('Dummy', new mongoose.Schema({ name: String }));
     await DummyModel.create({ name: 'trigger' });
 
     return tenant;
   } catch (error: any) {
-    throw new AppError(500, error.message || 'Error creating tenant');
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, error.message || 'Error creating tenant');
   }
 };
+
 
 const getAllTenant = async (query: Record<string, unknown>) => {
   const tenantQuery = new QueryBuilder(Tenant.find(), query)

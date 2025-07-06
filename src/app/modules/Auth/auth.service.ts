@@ -14,8 +14,8 @@ import { Tenant } from '../tenant/tenant.model';
 
 export const loginUser = async (payload: TLoginUser) => {
 
-
-  // Step 1: যদি tenantDomain = "superadmin" হয় তাহলে আলাদা হ্যান্ডেল করো
+console.log('user login info ', payload)
+  // for superadmin 
   if (payload.tenantDomain === 'superadmin') {
     const user = await User.findOne({ name: payload.name, role: 'superadmin' }).select('+password');
 
@@ -52,7 +52,7 @@ export const loginUser = async (payload: TLoginUser) => {
     };
   }
 
-  // Step 2: অন্যদের জন্য আগের মতো Tenant খোঁজো
+  // for this auth check all tenant user 
   const tenant = await Tenant.findOne({ domain: payload.tenantDomain });
 
   if (!tenant || !tenant.isActive) {

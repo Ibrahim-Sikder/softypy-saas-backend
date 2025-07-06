@@ -24,15 +24,15 @@ export const subscriptionSchema = new Schema<ISubscription>(
     status: {
       type: String,
       enum: ["Active", "Expired", "Pending"],
-      default: "Pending",
+      default: "Active",
     },
     isPaid: {
       type: Boolean,
-      default: false,
+      default: true,
     },
     isActive: {
       type: Boolean,
-      default: false,
+      default: true,
     },
     paymentMethod: {
       type: String,
