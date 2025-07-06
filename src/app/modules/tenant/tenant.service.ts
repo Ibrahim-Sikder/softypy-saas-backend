@@ -8,16 +8,20 @@ import { connectToTenantDatabase } from '../../../server';
 import mongoose from 'mongoose';
 import { userSchema } from '../user/user.model';
 import { subscriptionSchema } from '../subscription/subscription.model';
+import { getTenantModel } from '../../utils/getTenantModels';
 
 export const createTenant = async (
   payload: ITenant,
-  plan: 'Monthly' | 'HalfYearly' | 'Yearly'
+  plan: 'Monthly' | 'HalfYearly' | 'Yearly',
 ) => {
   try {
     const { name, domain, user: userPayload } = payload;
 
     if (!domain || typeof domain !== 'string') {
-      throw new AppError(httpStatus.BAD_REQUEST, 'Domain is required and must be a string');
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Domain is required and must be a string',
+      );
     }
 
     // Check if domain already exists
@@ -35,14 +39,17 @@ export const createTenant = async (
 
     // Register UserModel and SubscriptionModel to tenant DB
     const UserModel = connection.model('User', userSchema);
-    const SubscriptionModel = connection.model('Subscription', subscriptionSchema);
+    const SubscriptionModel = connection.model(
+      'Subscription',
+      subscriptionSchema,
+    );
 
     // Prepare subscription
     const subscription = createSubscription(
       plan,
       payload.subscription?.isPaid || false,
       payload.subscription?.paymentMethod || 'Manual',
-      payload.subscription?.amount || 0
+      payload.subscription?.amount || 0,
     );
 
     // Create Tenant (in main DB)
@@ -83,15 +90,20 @@ export const createTenant = async (
     });
 
     // Optional: Create a dummy collection to trigger DB creation
-    const DummyModel = connection.model('Dummy', new mongoose.Schema({ name: String }));
+    const DummyModel = connection.model(
+      'Dummy',
+      new mongoose.Schema({ name: String }),
+    );
     await DummyModel.create({ name: 'trigger' });
 
     return tenant;
   } catch (error: any) {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, error.message || 'Error creating tenant');
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      error.message || 'Error creating tenant',
+    );
   }
 };
-
 
 const getAllTenant = async (query: Record<string, unknown>) => {
   const tenantQuery = new QueryBuilder(Tenant.find(), query)
@@ -115,30 +127,54 @@ const getSingleTenant = async (id: string) => {
   return tenant;
 };
 
-export const updateTenant = async (
-  id: string,
-  payload: Partial<ITenant>
-) => {
+export const updateTenant = async (id: string, payload: Partial<ITenant>) => {
+  // Check if tenant exists
   const existingTenant = await Tenant.findById(id);
   if (!existingTenant) {
     throw new AppError(httpStatus.NOT_FOUND, 'Tenant not found');
   }
 
-  // Ensure subscription.user is not lost if updating subscription partially
+  // Preserve user count if not provided
   if (payload.subscription) {
-    payload.subscription.user = payload.subscription.user || existingTenant.subscription.user;
+    payload.subscription.user =
+      payload.subscription.user || existingTenant.subscription.user;
   }
 
-  // Remove `user` field from payload since it's not part of schema
   const { user, ...filteredPayload } = payload as any;
 
+  //  Update tenant in central DB
   const updatedTenant = await Tenant.findByIdAndUpdate(id, filteredPayload, {
     new: true,
     runValidators: true,
   });
 
+  // Update ONE user inside the tenant DB who matches the domain
+  const tenantDomain = updatedTenant?.domain;
+
+  if (tenantDomain) {
+    try {
+      const { Model: UserModel } = await getTenantModel(tenantDomain, 'User');
+
+      // Only update the user where both tenantDomain and tenantInfo.domain match
+      await UserModel.updateOne(
+        {
+          tenantDomain: tenantDomain,
+          'tenantInfo.domain': tenantDomain,
+        },
+        {
+          $set: {
+            'tenantInfo.subscription': updatedTenant.subscription,
+          },
+        },
+      );
+    } catch (err) {
+      console.error('❌ Failed to update tenant user info:', err);
+    }
+  }
+
   return updatedTenant;
 };
+
 const deleteTenant = async (id: string) => {
   const result = await Tenant.deleteOne({ _id: id });
   if (result.deletedCount === 0) {
@@ -147,19 +183,17 @@ const deleteTenant = async (id: string) => {
   return { message: 'Tenant deleted successfully' };
 };
 
-
 const renewTenantSubscription = async (
   tenantId: string,
-  plan?: 'Monthly' | 'HalfYearly' | 'Yearly'
+  plan?: 'Monthly' | 'HalfYearly' | 'Yearly',
 ) => {
   const tenant = await Tenant.findById(tenantId);
 
-  console.log(tenantId, plan)
+  console.log(tenantId, plan);
 
   if (!tenant) {
     throw new AppError(httpStatus.NOT_FOUND, 'Tenant not found');
   }
-
 
   const selectedPlan = plan || tenant.subscription?.plan;
   if (!['Monthly', 'HalfYearly', 'Yearly'].includes(selectedPlan)) {
@@ -181,7 +215,10 @@ const renewTenantSubscription = async (
       endDate.setFullYear(startDate.getFullYear() + 1);
       break;
     default:
-      throw new AppError(httpStatus.BAD_REQUEST, 'Unsupported subscription plan');
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        'Unsupported subscription plan',
+      );
   }
 
   // Define plan amounts
@@ -204,13 +241,9 @@ const renewTenantSubscription = async (
     amount: PLAN_PRICES[selectedPlan],
   };
 
-
-
   await tenant.save();
   return tenant.subscription;
 };
-
-
 
 export const TenantServices = {
   createTenant,
@@ -218,5 +251,5 @@ export const TenantServices = {
   getSingleTenant,
   updateTenant,
   deleteTenant,
-  renewTenantSubscription
+  renewTenantSubscription,
 };

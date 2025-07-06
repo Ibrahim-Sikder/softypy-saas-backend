@@ -2,6 +2,7 @@ import QueryBuilder from '../../builder/QueryBuilder';
 import { getTenantModel } from '../../utils/getTenantModels';
 import { CompanyType, CustomerType, ShowRoomType } from './meta.interface';
 import { buildSearchQuery } from './meta.search';
+import dayjs from 'dayjs';
 
 const formatToBDComma = (number: number) => {
   return number.toLocaleString('en-IN', { minimumFractionDigits: 2 });
@@ -232,6 +233,7 @@ const getAllCustomer = async (
   };
 };
 
+
 const getAllMetaFromDB = async (
   tenantDomain: string,
   query: Record<string, unknown>,
@@ -242,12 +244,8 @@ const getAllMetaFromDB = async (
   const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
   const { Model: Quotation } = await getTenantModel(tenantDomain, 'Quotation');
   const { Model: Invoice } = await getTenantModel(tenantDomain, 'Invoice');
-  const { Model: LeaveRequest } = await getTenantModel(
-    tenantDomain,
-    'LeaveRequest',
-  );
-
-  console.log('from meta ',tenantDomain)
+  const { Model: LeaveRequest } = await getTenantModel(tenantDomain, 'LeaveRequest');
+  const { Model: User } = await getTenantModel(tenantDomain, 'User');
 
   const allCustomer = await Customer.find({ isRecycled: false });
   const allCompany = await Company.find({ isRecycled: false });
@@ -256,6 +254,22 @@ const getAllMetaFromDB = async (
   const totalQuotation = await Quotation.find({ isRecycled: false });
   const totalInvoice = await Invoice.find({ isRecycled: false });
   const leave = await LeaveRequest.find();
+
+  const tenantInfo = await User.find();
+  const subscription = tenantInfo[0]?.tenantInfo?.subscription;
+
+  let subscriptionDetails = null;
+
+  if (subscription) {
+    const endDate = dayjs(subscription.endDate);
+    const today = dayjs();
+    const daysRemaining = endDate.diff(today, 'day');
+
+    subscriptionDetails = {
+      ...subscription,
+      daysRemaining: daysRemaining >= 0 ? daysRemaining : 0,
+    };
+  }
 
   const totalAmount = totalInvoice.reduce(
     (total, inv) => total + (inv.net_total || 0),
@@ -308,8 +322,12 @@ const getAllMetaFromDB = async (
     totalAmount: formattedTotalAmount,
     totalAdvance: formattedTotalAdvance,
     totalRemaining: formattedTotalRemaining,
+
+    // ✅ Include subscription data here
+    subscriptionInfo: subscriptionDetails,
   };
 };
+
 
 export const metServices = {
   getAllCustomer,

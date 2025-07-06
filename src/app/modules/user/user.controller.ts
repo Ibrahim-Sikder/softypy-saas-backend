@@ -14,7 +14,7 @@ const createUser = catchAsync(async (req, res) => {
 });
 
 const getAllUser = catchAsync(async (req, res) => {
-   const tenantDomain = req.query.tenantDomain as string;
+  const tenantDomain = req.query.tenantDomain as string;
   const result = await UserServices.getAllUser(tenantDomain);
 
   sendResponse(res, {
@@ -24,9 +24,11 @@ const getAllUser = catchAsync(async (req, res) => {
     data: result,
   });
 });
+
 const deleteUser = catchAsync(async (req, res) => {
   const { id } = req.params;
-  const result = await UserServices.deleteUser(id);
+  const tenantDomain = req.query.tenantDomain as string;
+  const result = await UserServices.deleteUser(tenantDomain, id);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

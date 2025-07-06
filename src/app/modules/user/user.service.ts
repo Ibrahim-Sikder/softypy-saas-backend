@@ -3,15 +3,18 @@
 
 import httpStatus from 'http-status';
 import { TUser } from './user.interface';
-import { User } from './user.model';
 import { createToken } from '../Auth/auth.utils';
 import config from '../../config';
 import AppError from '../../errors/AppError';
 import { getTenantModel } from '../../utils/getTenantModels';
 import { Tenant } from '../tenant/tenant.model';
+import { User } from './user.model';
 
 export const createUser = async (payload: TUser) => {
-  const { Model: User, tenant } = await getTenantModel(payload.tenantDomain, 'User');
+  const { Model: User, tenant } = await getTenantModel(
+    payload.tenantDomain,
+    'User',
+  );
 
   const userByEmail = await User.findOne({ email: payload.email });
   if (userByEmail) {
@@ -51,13 +54,13 @@ export const createUser = async (payload: TUser) => {
   const accessToken = createToken(
     jwtPayload,
     config.jwt_access_secret as string,
-    config.jwt_access_expires_in as string
+    config.jwt_access_expires_in as string,
   );
 
   const refreshToken = createToken(
     jwtPayload,
     config.jwt_refresh_secret as string,
-    config.jwt_refresh_expires_in as string
+    config.jwt_refresh_expires_in as string,
   );
 
   return {
@@ -75,24 +78,27 @@ export const createUser = async (payload: TUser) => {
   };
 };
 
-
-
-
 const getAllUser = async (tenantDomain: string) => {
-  const { Model: User } = await getTenantModel(tenantDomain, 'User');
-  const result = await User.find();
-
-  return result;
+  if (tenantDomain) {
+    const { Model: User } = await getTenantModel(tenantDomain, 'User');
+    const result = await User.find();
+    console.log('with tenant domain ', result)
+    return result;
+  } else {
+    const result = await User.find();
+    console.log('without tenant', result)
+    return result;
+  }
 };
 
-const deleteUser = async (id: string) => {
+const deleteUser = async (tenantDomain: string, id: string) => {
+  const { Model: User } = await getTenantModel(tenantDomain, 'User');
   const result = await User.deleteOne({ _id: id });
   return result;
 };
 
-
 export const UserServices = {
   createUser,
   getAllUser,
-  deleteUser
+  deleteUser,
 };
