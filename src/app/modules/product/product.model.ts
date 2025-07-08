@@ -14,6 +14,7 @@ export const ProductSchema = new Schema<TProduct>(
     },
     image: {
       type: String,
+        required: true,
     },
     category: {
       type: mongoose.Schema.Types.ObjectId,
@@ -113,7 +114,7 @@ export const ProductSchema = new Schema<TProduct>(
     expiryDateType: {
       type: String,
       enum: ['fixed', 'variable', 'none'],
-      required: true,
+
     },
     expiryDate: {
       type: String,
@@ -126,7 +127,7 @@ export const ProductSchema = new Schema<TProduct>(
     },
     shelfLifeUnit: {
       type: String,
-      enum: ['Days', 'Weeks', 'Months', 'Years'],
+      enum: ['days', 'weeks', 'months', 'years'],
     },
     expiryAlertDays: {
       type: Number,

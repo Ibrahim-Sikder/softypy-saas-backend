@@ -34,16 +34,10 @@ const getAllLeaveRequests = async (
 ) => {
   const { Model: LeaveRequest } = await getTenantModel(tenantDomain, 'LeaveRequest');
 
-  const leaveRequestQuery = new QueryBuilder(
-    LeaveRequest.find().populate({
-      path: 'employee',
-      select: 'full_name',
-    }),
-    query,
-  )
+  const leaveRequestQuery = new QueryBuilder(LeaveRequest.find(), query)
     .search(['status', 'leaveType'])
-    .filter()
-    .sort()
+    // .filter()
+    // .sort()
     .paginate()
     .fields();
 
@@ -55,6 +49,8 @@ const getAllLeaveRequests = async (
     leaveRequests,
   };
 };
+
+
 
 
 const getSingleLeaveRequest = async (

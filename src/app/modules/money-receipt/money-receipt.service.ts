@@ -869,7 +869,7 @@ const getDueAllMoneyReceipts = async (
 
   let idMatchQuery: any = {};
   let searchQuery: { [key: string]: any } = {};
-
+console.log('due all money ', tenantDomain)
   if (id) {
     idMatchQuery = {
       $or: [

@@ -3,13 +3,12 @@ import { z } from 'zod';
 export const createExpenseValidationSchema = z.object({
   body: z.object({
     date: z.string({ required_error: 'Date is required' }),
-
-    warehouse: z.string({ required_error: 'Warehouse is required' }),
+    warehouse: z.string().optional(),
     category: z.array(z.string()).optional(),
-    voucher_no: z.string({ required_error: 'Voucher number is required' }),
-    tax: z.string({ required_error: 'Tax is required' }),
+    voucher_no: z.string().optional(),
+    tax: z.string().optional(),
     expense_note: z.string().optional(),
-    amount: z.union([z.number(), z.string()]),
+    amount: z.union([z.number(), z.string({required_error:'Amount is required!'})]),
     payment_individual_markup: z.string().optional(),
     payment_method: z.string({ required_error: 'Payment method is required' }),
     payment_account: z.string().optional(),
@@ -31,16 +30,12 @@ export const createExpenseCategorySchema = z.object({
   body: z.object({
     name: z
       .string({
-        invalid_type_error: 'Name must be a string',
         required_error: "Please provide the category's name",
-      })
-      .min(1, 'Name is required'),
+      }),
     code: z
       .string({
-        invalid_type_error: 'Code must be a string',
         required_error: "Please provide the category's code",
-      })
-      .min(1, 'Code is required'),
+      }),
     expenses: z
       .array(
         z.string().refine((value) => /^[a-fA-F0-9]{24}$/.test(value), {

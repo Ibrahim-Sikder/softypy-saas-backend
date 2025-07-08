@@ -34,6 +34,8 @@ const getAllLeaveRequests = async (
   next: NextFunction,
 ) => {
   const tenantDomain = req.query.tenantDomain as string;
+
+  console.log('leave request', tenantDomain)
   try {
     const result = await leaveRequestServices.getAllLeaveRequests(
       tenantDomain,

@@ -16,7 +16,7 @@ const getAllCustomer = async (
   const page = query.page ? Number(query.page) : 1;
   const skip = (page - 1) * limit;
   let searchTerm = query.searchTerm as string;
-
+console.log('all customer tenant', tenantDomain)
   if (searchTerm) {
     searchTerm = searchTerm.trim();
     if (searchTerm.startsWith('+')) {

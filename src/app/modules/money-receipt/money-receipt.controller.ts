@@ -205,7 +205,6 @@ const getDueAllMoneyReceipts = catchAsync(async (req, res) => {
   const result = await MoneyReceiptServices.getDueAllMoneyReceipts(
     tenantDomain,
     id,
-
     limit,
     page,
     searchTerm,

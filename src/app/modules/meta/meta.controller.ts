@@ -10,7 +10,6 @@ const getAllCustomer = async (
 ) => {
   try {
      const tenantDomain = req.query.tenantDomain as string;
-      //  const tenantDomain = req.headers.host || '';
     const result = await metServices.getAllCustomer(tenantDomain,req.query);
 
     sendResponse(res, {

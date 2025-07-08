@@ -5,14 +5,14 @@ export const expenseSchema: Schema<IExpense> = new Schema<IExpense>(
   {
     date: { type: String, required: true },
     expense_type: { type: String },
-    warehouse: { type: String, required: true },
+    warehouse: { type: String, },
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ExpenseCategory',
       required: true,
     },
-    voucher_no: { type: String, required: true },
-    tax: { type: String, required: true },
+    voucher_no: { type: String},
+    tax: { type: String, },
     expense_note: { type: String },
     amount: { type: Schema.Types.Mixed, required: true },
     payment_individual_markup: { type: String },

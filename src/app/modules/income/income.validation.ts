@@ -4,7 +4,7 @@ const incomeValidationSchema = z.object({
   body: z.object({
     category: z.array(z.string({ required_error: 'Category is required.' })),
     income_name: z.string({ required_error: 'Income name is required.' }),
-    invoice_number: z.string({ required_error: 'Invoice number is required.' }),
+    invoice_number: z.string(),
 
     date: z.string({
       required_error: 'Date is required.',
@@ -13,14 +13,13 @@ const incomeValidationSchema = z.object({
       .number({
         required_error: 'Amount is required.',
         invalid_type_error: 'Amount must be a number',
-      })
-      .min(0, { message: 'Amount must be more than 0' }),
+      }),
     description: z.string().optional(),
     image: z.string().optional(),
-    receipt_number: z.string({ required_error: 'Receipt number is required.' }),
+    receipt_number: z.string().optional(),
     income_source: z.string().optional(),
 
-    service_type: z.string(),
+    service_type: z.string().optional(),
     customer: z.string({ required_error: 'Customer name is required.' }),
     job_card: z.string({ required_error: 'Jobcard is required.' }),
     invoice: z.string().optional(),
@@ -38,22 +37,15 @@ const incomeValidationSchema = z.object({
 });
 const updateIncomeValidationSchema = z.object({
   body: z.object({
-    category: z.array(z.string({ required_error: 'Category is required.' })),
-    income_name: z.string({ required_error: 'Income name is required.' }),
-    invoice_number: z.string({ required_error: 'Invoice number is required.' }),
-    date: z.string({
-      required_error: 'Date is required.',
-    }),
-    amount: z
-      .number({
-        required_error: 'Amount is required.',
-        invalid_type_error: 'Amount must be a number',
-      })
-      .min(0, { message: 'Amount must be more than 0' }),
+    category: z.array(z.string()).optional(),
+    income_name: z.string().optional(),
+    invoice_number: z.string().optional(),
+    date: z.string().optional(),
+    amount: z.number().optional(),
     description: z.string().optional(),
     image: z.string().optional(),
-    receipt_number: z.string({ required_error: 'Receipt number is required.' }),
-    income_source: z.string(),
+    receipt_number: z.string().optional(),
+    income_source: z.string().optional(),
     service_type: z.string().optional(),
     customer: z.string().optional(),
     job_card: z.string().optional(),
@@ -61,7 +53,7 @@ const updateIncomeValidationSchema = z.object({
     vehicle: z.string().optional(),
     department: z.string().optional(),
     payment_method: z.string().optional(),
-    payment_status: z.string(),
+    payment_status: z.string().optional(),
     reference_number: z.string().optional(),
     tax_applied: z.boolean().optional().default(false),
     tax_rate: z.number().optional().default(0),

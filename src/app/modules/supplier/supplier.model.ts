@@ -17,34 +17,27 @@ export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
     },
     country_code: {
       type: String,
-      required: [true, 'Country code is required'],
     },
     full_Phone_number: {
       type: String,
     },
     email: {
       type: String,
-      required: [true, 'Email is required'],
     },
     vendor: {
       type: String,
-      required: [true, 'Vendor name is required'],
     },
     shop_name: {
       type: String,
-      required: [true, 'Shop name is required'],
     },
     business_type: {
       type: String,
-      required: [true, 'Business type is required'],
     },
     tax_id: {
       type: String,
-      required: [true, 'Tax ID is required'],
     },
     registration_number: {
       type: String,
-      required: [true, 'Registration number is required'],
     },
     website: {
       type: String,
@@ -54,53 +47,42 @@ export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
     },
     country: {
       type: String,
-      required: [true, 'Country name is required'],
     },
     city: {
       type: String,
-      required: [true, 'City is required'],
     },
     state: {
       type: String,
-      required: [true, 'State is required'],
     },
     postal_code: {
       type: String,
-      required: [true, 'Postal code is required'],
     },
     street_address: {
       type: String,
-      required: [true, 'Street address is required'],
     },
     delivery_instructions: {
       type: String,
     },
     year_established: {
       type: Number,
-      required: [true, 'Year established is required'],
     },
     number_of_employees: {
       type: Number,
-      required: [true, 'Number of employees is required'],
     },
     annual_revenue: {
       type: Number,
-      required: [true, 'Annual revenue is required'],
     },
     business_description: {
       type: String,
     },
     bank_name: {
       type: String,
-      required: [true, 'Bank name is required'],
     },
     account_number: {
       type: String,
-      required: [true, 'Account number is required'],
     },
     swift_code: {
       type: String,
-      required: [true, 'SWIFT code is required'],
     },
     tax_exempt: {
       type: Boolean,
@@ -115,22 +97,18 @@ export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
     },
     payment_terms: {
       type: String,
-      required: [true, 'Payment terms are required'],
     },
     credit_limit: {
       type: Number,
     },
     delivery_terms: {
       type: String,
-      required: [true, 'Delivery terms are required'],
     },
     minimum_order_value: {
       type: Number,
-      required: [true, 'Minimum order value is required'],
     },
     lead_time: {
       type: Number,
-      required: [true, 'Lead time is required'],
     },
     shipping_method: {
       type: String,
@@ -138,15 +116,14 @@ export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
     supply_chain_notes: {
       type: String,
     },
-    supplier_rating: {
-      type: Number,
-      required: [true, 'Supplier rating is required'],
-      min: [0, 'Rating must be at least 0'],
-      max: [5, 'Rating cannot exceed 5'],
-    },
+    // supplier_rating: {
+    //   type: Number,
+    //   // required: [true, 'Supplier rating is required'],
+    //   // min: [0, 'Rating must be at least 0'],
+    //   // max: [5, 'Rating cannot exceed 5'],
+    // },
     supplier_status: {
       type: String,
-      required: [true, 'Supplier status is required'],
       enum: ['active', 'pending', 'inactive'],
     },
     quality_certification: {
@@ -170,7 +147,7 @@ export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
   },
 );
 
-// Pre-save middleware to concatenate country_code and phone_number
+
 supplierSchema.pre('save', function (next) {
   if (this.country_code && this.phone_number) {
     this.full_Phone_number = `${this.country_code}${this.phone_number}`;
