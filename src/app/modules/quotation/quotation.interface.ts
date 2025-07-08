@@ -51,5 +51,6 @@ export interface TQuotation {
   status: 'running' | 'completed';
   isCompleted: boolean;
   isRecycled: boolean;
+    mileage:number;
   recycledAt: Date;
 }

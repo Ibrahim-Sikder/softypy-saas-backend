@@ -42,4 +42,5 @@ export interface TInvoice {
   isRecycled: boolean;
   recycledAt: Date;
   moneyReceipts: Types.ObjectId;
+    mileage:number;
 }

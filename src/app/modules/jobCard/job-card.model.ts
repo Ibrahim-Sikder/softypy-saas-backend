@@ -68,6 +68,9 @@ export const addToJobCardSchema: Schema<TJobCard> = new Schema<TJobCard>(
     vehicle_owner: {
       type: String,
     },
+    mileage: {
+      type: Number,
+    },
     isRecycled: { type: Boolean, default: false },
     recycledAt: { type: Date, default: null },
   },

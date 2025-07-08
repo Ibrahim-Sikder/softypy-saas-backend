@@ -19,6 +19,7 @@ export interface TJobCard {
   technician_signature: string;
   technician_date: string;
   vehicle_owner: string;
+    mileage:number;
   isRecycled: boolean;
   recycledAt: Date;
 }

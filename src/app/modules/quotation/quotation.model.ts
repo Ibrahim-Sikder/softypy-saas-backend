@@ -24,6 +24,9 @@ export const quotationSchema: Schema<TQuotation> = new Schema<TQuotation>(
       type: Schema.ObjectId,
       ref: 'Customer',
     },
+        mileage: {
+      type: Number,
+    },
     company: {
       type: Schema.ObjectId,
       ref: 'Company',
