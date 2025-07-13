@@ -16,7 +16,6 @@ const getAllCustomer = async (
   const page = query.page ? Number(query.page) : 1;
   const skip = (page - 1) * limit;
   let searchTerm = query.searchTerm as string;
-console.log('all customer tenant', tenantDomain)
   if (searchTerm) {
     searchTerm = searchTerm.trim();
     if (searchTerm.startsWith('+')) {
@@ -233,7 +232,6 @@ console.log('all customer tenant', tenantDomain)
   };
 };
 
-
 const getAllMetaFromDB = async (
   tenantDomain: string,
   query: Record<string, unknown>,
@@ -244,7 +242,10 @@ const getAllMetaFromDB = async (
   const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
   const { Model: Quotation } = await getTenantModel(tenantDomain, 'Quotation');
   const { Model: Invoice } = await getTenantModel(tenantDomain, 'Invoice');
-  const { Model: LeaveRequest } = await getTenantModel(tenantDomain, 'LeaveRequest');
+  const { Model: LeaveRequest } = await getTenantModel(
+    tenantDomain,
+    'LeaveRequest',
+  );
   const { Model: User } = await getTenantModel(tenantDomain, 'User');
 
   const allCustomer = await Customer.find({ isRecycled: false });
@@ -261,12 +262,16 @@ const getAllMetaFromDB = async (
   let subscriptionDetails = null;
 
   if (subscription) {
-    const endDate = dayjs(subscription.endDate);
+    const startDate = dayjs(subscription.startDate);
+    const endDate = dayjs(subscription.endDate).endOf('day');
     const today = dayjs();
+
+    const totalDays = endDate.diff(startDate, 'day');
     const daysRemaining = endDate.diff(today, 'day');
 
     subscriptionDetails = {
       ...subscription,
+      totalDays: totalDays >= 0 ? totalDays : 0,
       daysRemaining: daysRemaining >= 0 ? daysRemaining : 0,
     };
   }
@@ -300,18 +305,18 @@ const getAllMetaFromDB = async (
     },
   ]);
 
-  const statusSummary = statusCounts.reduce((acc: any, { _id, count }) => {
-    acc[_id] = count;
-    return acc;
-  }, {});
-
-  const runningCount = statusSummary['running'] || 0;
-  const completedCount = statusSummary['completed'] || 0;
+  const statusSummary = statusCounts.reduce(
+    (acc: Record<string, number>, { _id, count }) => {
+      acc[_id] = count;
+      return acc;
+    },
+    {},
+  );
 
   return {
     statusSummary: {
-      running: runningCount,
-      completed: completedCount,
+      running: statusSummary['running'] || 0,
+      completed: statusSummary['completed'] || 0,
     },
     totalCustomers: allCustomer.length,
     totalCompanies: allCompany.length,
@@ -322,12 +327,11 @@ const getAllMetaFromDB = async (
     totalAmount: formattedTotalAmount,
     totalAdvance: formattedTotalAdvance,
     totalRemaining: formattedTotalRemaining,
-
-    // ✅ Include subscription data here
     subscriptionInfo: subscriptionDetails,
   };
 };
 
+export default getAllMetaFromDB;
 
 export const metServices = {
   getAllCustomer,

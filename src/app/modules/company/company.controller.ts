@@ -62,6 +62,7 @@ const getSingleCompanyDetails = catchAsync(async (req, res) => {
 const updateCompany = catchAsync(async (req, res) => {
   const { id } = req.params;
   const { tenantDomain } = req.body;
+  console.log('company tenant domain ', tenantDomain);
   const service = await CompanyServices.updateCompany(
     tenantDomain,
     id,
@@ -86,11 +87,13 @@ const deleteCompany = catchAsync(async (req, res) => {
   });
 });
 
-
 const permanantlyDeleteCompany = catchAsync(async (req, res) => {
   const { id } = req.params;
   const tenantDomain = req.query.tenantDomain as string;
-  const service = await CompanyServices.permanantlyDeleteCompany(tenantDomain,id);
+  const service = await CompanyServices.permanantlyDeleteCompany(
+    tenantDomain,
+    id,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -101,7 +104,10 @@ const permanantlyDeleteCompany = catchAsync(async (req, res) => {
 const moveToRecyledbinCompany = catchAsync(async (req, res) => {
   const { id } = req.params;
   const tenantDomain = req.query.tenantDomain as string;
-  const service = await CompanyServices.moveToRecyledbinCompany(tenantDomain,id);
+  const service = await CompanyServices.moveToRecyledbinCompany(
+    tenantDomain,
+    id,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -110,11 +116,13 @@ const moveToRecyledbinCompany = catchAsync(async (req, res) => {
   });
 });
 
-
 const restoreFromRecyledbinCompany = catchAsync(async (req, res) => {
   const { id } = req.params;
   const tenantDomain = req.query.tenantDomain as string;
-  const service = await CompanyServices.restoreFromRecyledbinCompany(tenantDomain, id);
+  const service = await CompanyServices.restoreFromRecyledbinCompany(
+    tenantDomain,
+    id,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -134,7 +142,7 @@ const moveAllToRecycledBinMoneyReceipts = catchAsync(async (req, res) => {
   });
 });
 const restoreAllFromRecycledBinMoneyReceipts = catchAsync(async (req, res) => {
-    const tenantDomain = req.query.tenantDomain as string;
+  const tenantDomain = req.query.tenantDomain as string;
   const result = await CompanyServices.restoreAllFromRecycledBin();
 
   sendResponse(res, {
