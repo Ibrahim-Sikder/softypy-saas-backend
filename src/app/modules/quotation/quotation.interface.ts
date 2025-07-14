@@ -11,7 +11,7 @@ export interface TQuotation {
   company: Types.ObjectId;
   showRoom: Types.ObjectId;
   vehicle: Types.ObjectId;
-
+tax:number;
   input_data: Array<{
     product: Types.ObjectId;
     warehouse: string;

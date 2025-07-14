@@ -38,6 +38,7 @@ export interface TInvoice {
   net_total: number;
   net_total_in_words: string;
   advance: number;
+  tax: number;
   due: number;
   isRecycled: boolean;
   recycledAt: Date;

@@ -401,6 +401,9 @@
                         <% if (quotation && quotation.vat && quotation.vat !== 0) { %>
                         <b style="font-size: 12px;">VAT</b>
                         <% } %>
+                        <% if (quotation && quotation.tax && quotation.tax !== 0) { %>
+                        <b style="font-size: 12px;">Tax</b>
+                        <% } %>
                         <b style="font-size: 12px;">Grand Total</b>
                         <% if (quotation && quotation.advance && quotation.advance !== 0) { %>
                         <b style="font-size: 12px;">Advance</b>
@@ -423,6 +426,9 @@
 
                         <% if (quotation && quotation.vat && quotation.vat !== 0) { %>
                         <small>: <%= quotation.vat %>%</small>
+                        <% } %>
+                        <% if (quotation && quotation.tax && quotation.tax !== 0) { %>
+                        <small>: <%= quotation.tax %>%</small>
                         <% } %>
 
                         <small>:

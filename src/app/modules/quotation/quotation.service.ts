@@ -41,6 +41,8 @@ const createQuotationDetails = async (
   const session = await connection.startSession();
   session.startTransaction();
 
+  console.log(payload)
+
   try {
     const { customer, company, showroom, quotation, vehicle } = payload;
 
