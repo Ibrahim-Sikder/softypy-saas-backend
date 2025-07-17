@@ -4,21 +4,30 @@ import QueryBuilder from '../../builder/QueryBuilder';
 import { getTenantModel } from '../../utils/getTenantModels';
 import { warehouseSearchFields } from './warehouse.constant';
 import { IWarehouse } from './warehouse.interface';
+import { generateWarehouseId } from "./warehouse.utils"; 
+
 const createWarehouse = async (tenantDomain: string, payload: IWarehouse) => {
-  console.log('warehouse ', tenantDomain);
-  const { Model: Warehouse } = await getTenantModel(tenantDomain, 'Warehouse');
+  console.log("warehouse ", tenantDomain);
+  const { Model: Warehouse } = await getTenantModel(tenantDomain, "Warehouse");
 
   try {
-    const newWarehouse = await Warehouse.create(payload);
+    const warehouseId = await generateWarehouseId(Warehouse);
+    const { warehouseId: _, ...payloadWithoutWarehouseId } = payload;
+    const newWarehouse = await Warehouse.create({
+      warehouseId,
+      ...payloadWithoutWarehouseId,
+    });
+
     return newWarehouse;
   } catch (error: any) {
-    console.error('Error creating warehouse:', error.message);
+    console.error("Error creating warehouse:", error.message);
     throw new Error(
       error.message ||
-        'An unexpected error occurred while creating the warehouse',
+        "An unexpected error occurred while creating the warehouse"
     );
   }
 };
+
 
 const getAllWarehouses = async (
   tenantDomain: string,

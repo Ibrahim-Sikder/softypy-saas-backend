@@ -39,6 +39,7 @@ import { teanentRoute } from '../modules/tenant/tenant.route';
 import { authRoutes } from '../modules/Auth/auth.route';
 import { userRoutes } from '../modules/user/user.route';
 import { CompanyProfileRoutes } from '../modules/companyProfile/companyProfile.route';
+import { noteRoutes } from '../modules/note/note.route';
 
 const router = Router();
 
@@ -199,6 +200,10 @@ const moduleRoutes = [
   {
     path: '/company-profile',
     route: CompanyProfileRoutes,
+  },
+  {
+    path: '/notes',
+    route: noteRoutes,
   },
   {
     path: '/meta',

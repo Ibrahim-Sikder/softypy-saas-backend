@@ -1,27 +1,30 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import QueryBuilder from '../../builder/QueryBuilder';
-import { SearchableFields } from './supplier.const';
 import { TSupplier } from './supplier.interface';
 import { StatusCodes } from 'http-status-codes';
 import AppError from '../../errors/AppError';
-import { generateSupplierId } from './supplier.utils';
+
 import { getTenantModel } from '../../utils/getTenantModels';
+import { generateSupplierId } from './supplier.utils';
 
-export const createSupplier = async (
-  tenantDomain: string,
-  payload: any,
-) => {
+const createSupplier = async (tenantDomain: string, payload: any) => {
   try {
-    const supplierId = await generateSupplierId();
-    payload.supplierId = supplierId;
-    console.log('suppliers',tenantDomain)
+    payload.supplierId = await generateSupplierId();
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] === '') {
+        if (key === 'supplier_status') {
+          payload[key] = 'active';
+        } else {
+          delete payload[key];
+        }
+      }
+    });
 
-    const { Model: Supplier } = await getTenantModel(
-      tenantDomain,
-      'Supplier'
-    );
+    console.log('Final Payload Before Save:', payload);
 
+    const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
     const newSupplier = await Supplier.create(payload);
+
     return newSupplier;
   } catch (error: any) {
     console.error('Error creating supplier:', error.message);
@@ -33,19 +36,15 @@ export const createSupplier = async (
   }
 };
 
-
 const getAllSupplier = async (
   tenantDomain: string,
-  query: Record<string, unknown>
+  query: Record<string, unknown>,
 ) => {
   try {
-    const { Model: Supplier } = await getTenantModel(
-      tenantDomain,
-      'Supplier'
-    );
+    const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
 
     const categoryQuery = new QueryBuilder(Supplier.find(), query)
-      .search(SearchableFields)
+      .search(['name'])
       .filter()
       .sort()
       .paginate()
@@ -54,24 +53,22 @@ const getAllSupplier = async (
     const meta = await categoryQuery.countTotal();
     const suppliers = await categoryQuery.modelQuery;
 
-    return { meta, suppliers };
+    return {
+      success: true,
+      message: 'Suppliers retrieved successfully',
+      meta,
+      suppliers,
+    };
   } catch (error: any) {
     throw new AppError(
       StatusCodes.INTERNAL_SERVER_ERROR,
-      'Error fetching suppliers'
+      'Error fetching suppliers',
     );
   }
 };
 
-
-const getSingleSupplier = async (
-  tenantDomain: string,
-  id: string
-) => {
-  const { Model: Supplier } = await getTenantModel(
-    tenantDomain,
-    'Supplier'
-  );
+const getSingleSupplier = async (tenantDomain: string, id: string) => {
+  const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
 
   const supplier = await Supplier.findById(id);
   if (!supplier) {
@@ -81,10 +78,12 @@ const getSingleSupplier = async (
   return supplier;
 };
 
-
 // In your supplier.service.ts file
 
- const getSupplierWithBillPayments = async (tenantDomain: string, id: string) => {
+const getSupplierWithBillPayments = async (
+  tenantDomain: string,
+  id: string,
+) => {
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
   const { Model: BillPay } = await getTenantModel(tenantDomain, 'BillPay');
 
@@ -94,12 +93,19 @@ const getSingleSupplier = async (
   }
 
   // Get bill payments for this supplier
-  const billPayments = await BillPay.find({ supplier: id }).sort({ createdAt: -1 });
+  const billPayments = await BillPay.find({ supplier: id }).sort({
+    createdAt: -1,
+  });
 
   // Calculate payment statistics
-  const totalAmount = billPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const totalAmount = billPayments.reduce(
+    (sum, payment) => sum + payment.amount,
+    0,
+  );
   const paidAmount = billPayments
-    .filter((p) => p.paymentStatus === 'paid' || p.paymentStatus === 'completed')
+    .filter(
+      (p) => p.paymentStatus === 'paid' || p.paymentStatus === 'completed',
+    )
     .reduce((sum, payment) => sum + payment.amount, 0);
   const pendingAmount = billPayments
     .filter((p) => p.paymentStatus === 'pending')
@@ -112,13 +118,14 @@ const getSingleSupplier = async (
       totalAmount,
       paidAmount,
       pendingAmount,
-      pendingCount: billPayments.filter((p) => p.paymentStatus === 'pending').length,
+      pendingCount: billPayments.filter((p) => p.paymentStatus === 'pending')
+        .length,
     },
     billPayments,
   };
 };
 
- const updateSupplier = async (
+const updateSupplier = async (
   tenantDomain: string,
   id: string,
   payload: Partial<TSupplier>,
@@ -150,7 +157,6 @@ const permanenatlyDeleteSupplier = async (tenantDomain: string, id: string) => {
   return { message: 'Supplier permanently deleted' };
 };
 
-
 const moveToRecycledbinSupplier = async (tenantDomain: string, id: string) => {
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
 
@@ -166,7 +172,10 @@ const moveToRecycledbinSupplier = async (tenantDomain: string, id: string) => {
   return supplier;
 };
 
-export const restoreFromRecycledSupplier = async (tenantDomain: string, id: string) => {
+export const restoreFromRecycledSupplier = async (
+  tenantDomain: string,
+  id: string,
+) => {
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
 
   const supplier = await Supplier.findById(id);
@@ -187,5 +196,5 @@ export const supplierServices = {
   moveToRecycledbinSupplier,
   restoreFromRecycledSupplier,
   permanenatlyDeleteSupplier,
-  getSupplierWithBillPayments
+  getSupplierWithBillPayments,
 };

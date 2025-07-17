@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { TBillPay } from './bill-pay.interface';
 
-const BillPaySchema: Schema = new Schema<TBillPay>(
+export const BillPaySchema: Schema = new Schema<TBillPay>(
   {
     supplier: { type: Schema.Types.ObjectId, ref: 'Supplier', required: true },
     supplierId: { type: String, required: true },

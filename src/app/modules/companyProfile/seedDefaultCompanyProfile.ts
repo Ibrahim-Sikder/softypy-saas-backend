@@ -15,6 +15,7 @@ export const seedDefaultCompanyProfile = async (tenantId: string) => {
 
     const created = await CompanyProfile.create({
       companyName: 'Default Garage Co.',
+      companyNameBN: 'গ্যারেজ মাস্টার',
       email: 'default@garage.com',
       phone: '+8801234567890',
       whatsapp: '+8801234567890',

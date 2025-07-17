@@ -3,6 +3,7 @@ import { TCompanyProfile } from "./companyProfile.interface";
 
 export const companyProfileSchema = new Schema<TCompanyProfile>({
   companyName: { type: String, required: true },
+  companyNameBN: { type: String, required: true },
   email: { type: String, required: true },
   phone: { type: String, required: true },
   whatsapp: { type: String },

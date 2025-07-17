@@ -1,5 +1,6 @@
 // types/companyProfile.ts
 export interface TCompanyProfile {
+  companyNameBN: string;
   companyName: string;
   email: string;
   phone: string;
