@@ -1,9 +1,6 @@
 import mongoose from 'mongoose';
 import config from './app/config';
 import app from './app';
-import { seedDefaultCompanyProfile } from './app/modules/companyProfile/seedDefaultCompanyProfile';
-import { User } from './app/modules/user/user.model';
-import { Tenant } from './app/modules/tenant/tenant.model';
 import { seedSuperAdmin } from './app/modules/user/user.utils';
 
 const tenantConnections: Record<string, mongoose.Connection> = {};
