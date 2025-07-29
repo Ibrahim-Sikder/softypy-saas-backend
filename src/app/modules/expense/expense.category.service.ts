@@ -45,19 +45,7 @@ export const getExpenseCategoryById = async (
       'ExpenseCategory',
     );
 
-    await getTenantModel(tenantDomain, 'Expense');
-
-    console.log('Fetching category for tenant:', tenantDomain, 'with ID:', id);
-
-    // Populate the expenses field
-    const category = await ExpenseCategory.findOne({ _id: id }).populate('expenses');
-
-    if (!category) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'This expense category is not found',
-      );
-    }
+    const category = await ExpenseCategory.findOne({ _id: id });
 
     return category;
   } catch (error: any) {
@@ -67,7 +55,6 @@ export const getExpenseCategoryById = async (
     );
   }
 };
-
 
 export const createExpenseCategory = async (
   tenantDomain: string,

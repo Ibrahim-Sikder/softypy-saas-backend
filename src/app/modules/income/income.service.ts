@@ -16,7 +16,7 @@ const createIncomeIntoDB = async (tenantDomain: string, payload: TIncome) => {
 const getAllIncomesFromDB = async (tenantDomain: string, limit: number, page: number) => {
   const { Model: Income } = await getTenantModel(tenantDomain, 'Income')
 
-  const searchQuery = {} // Extend this with filters if needed
+  const searchQuery = {}
 
   const incomes = await Income.aggregate([
     { $match: searchQuery },

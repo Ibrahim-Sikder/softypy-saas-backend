@@ -206,36 +206,46 @@ export const getSingleDateAttendance = async (tenantDomain: string, date: string
   return singleAttendance;
 };
 
-export const deleteAttendanceFromDB = async (tenantDomain: string, dateObj: { date: string }) => {
+export const deleteAttendanceFromDB = async (
+  tenantDomain: string,
+  dateObj: { date: string },
+) => {
   const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
   const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
+  console.log(dateObj)
 
+  // Step 1: Find all attendance records for the given date
   const existingAttendance = await Attendance.find({ date: dateObj.date });
 
-  const attendanceIds = existingAttendance.map((entry) => entry._id);
+  if (existingAttendance.length === 0) {
+    return []; // Nothing to delete
+  }
 
-  // Use for...of with await to handle async properly
-  for (const id of attendanceIds) {
-    const data = existingAttendance.find((d) => d._id.equals(id));
-    if (!data) continue;
+  const deletedAttendances: any[] = [];
 
-    const existingEmployee = await Employee.findById(data.employee);
+  for (const attendance of existingAttendance) {
+    const existingEmployee = await Employee.findById(attendance.employee);
 
-    if (existingEmployee) {
-      const deleted = await Attendance.findByIdAndDelete(id);
+    // Step 2: Remove attendance record
+    const deleted = await Attendance.findByIdAndDelete(attendance._id);
 
-      if (deleted) {
+    if (deleted) {
+      deletedAttendances.push(deleted); // Collect deleted data to return
+
+      // Step 3: Remove the attendance reference from the employee
+      if (existingEmployee) {
         await Employee.findByIdAndUpdate(
           existingEmployee._id,
-          { $pull: { attendance: id } },
+          { $pull: { attendance: attendance._id } },
           { new: true, runValidators: true },
         );
       }
     }
   }
 
-  return null;
+  return deletedAttendances;
 };
+
 export const AttendanceServices = {
   createAttendanceIntoDB,
   getTodayAttendanceFromDB,

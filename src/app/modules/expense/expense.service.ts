@@ -50,18 +50,12 @@ const getAllExpense = async (
     .search(SearchableFields)
     // .filter()
     // .sort()
-    .paginate()
-    .fields();
+    // .paginate()
+    // .fields();
 
   const meta = await categoryQuery.countTotal();
 
-  const expenses = await categoryQuery.modelQuery.populate([
-    {
-      path: 'category',
-      select: 'name',
-      model: ExpenseCategory, // ✅ This solves the issue
-    },
-  ]);
+  const expenses = await categoryQuery.modelQuery;
 
   return {
     meta,
@@ -73,12 +67,7 @@ const getAllExpense = async (
 const getSinigleExpense = async (tenantDomain: string, id: string) => {
   const { Model: Expense } = await getTenantModel(tenantDomain, 'Expense');
 
-  const result = await Expense.findById(id).populate([
-    {
-      path: 'category',
-      select: 'name',
-    },
-  ]);
+  const result = await Expense.findById(id);
 
   return result;
 };

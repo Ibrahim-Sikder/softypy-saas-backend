@@ -3,88 +3,30 @@ import type { TIncome } from './income.interface';
 
 export const incomeSchema: Schema<TIncome> = new Schema<TIncome>(
   {
-    category: [
-      {
-        type: String,
-        required: [true, 'Category is required.'],
-      },
-    ],
-    income_name: {
-      type: String,
-      required: [true, 'Income name is required.'],
+    date: {
+      type: Schema.Types.Mixed, 
     },
     invoice_number: {
-      type: String,
-      required: [true, 'Invoice number is required.'],
+      type: Schema.Types.Mixed,
     },
-    date: {
-      type: String,
-      required: [true, 'Date is required.'],
+    customer: {
+      type: Schema.Types.Mixed,
+    },
+    
+    income_source: {
+      type: Schema.Types.Mixed,
     },
     amount: {
-      type: Number,
-      required: [true, 'Amount is required.'],
+      type: Schema.Types.Mixed,
     },
-    description: {
-      type: String,
-    },
-    image: {
-      type: String,
-    },
-
-    receipt_number: {
-      type: String,
-    },
-    income_source: {
-      type: String,
-    },
-    service_type: {
-      type: String,
-    },
-
-    customer: {
-      type: String,
-    },
-    job_card: {
-      type: String,
-    },
-    invoice: {
-      type: String,
-    },
-    vehicle: {
-      type: String,
-    },
-    department: {
-      type: String,
-    },
-
     payment_method: {
-      type: String,
-    },
-    payment_status: {
-      type: String,
+      type: Schema.Types.Mixed,
     },
     reference_number: {
-      type: String,
+      type: Schema.Types.Mixed,
     },
-    tax_applied: {
-      type: Boolean,
-      default: false,
-    },
-    tax_rate: {
-      type: Number,
-      default: 0,
-    },
-    tax_amount: {
-      type: Number,
-      default: 0,
-    },
-    total_amount: {
-      type: Number,
-    },
-
-    document_notes: {
-      type: String,
+    description: {
+      type: Schema.Types.Mixed,
     },
   },
   {

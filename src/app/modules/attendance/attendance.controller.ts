@@ -3,22 +3,25 @@ import catchAsync from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { AttendanceServices } from './attendance.service';
 const createAttendance = catchAsync(async (req, res) => {
-  const { tenantDomain, payload } = req.body;  // extract payload as well
+  const { tenantDomain, payload } = req.body;
 
-  const result = await AttendanceServices.createAttendanceIntoDB(tenantDomain, payload);
+  const result = await AttendanceServices.createAttendanceIntoDB(
+    tenantDomain,
+    payload,
+  );
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
-    message: "Attendance created successful!",
+    message: 'Attendance created successful!',
     data: result,
   });
 });
 
-
 const getTodayAttendance = catchAsync(async (req, res) => {
   const tenantDomain = req.query.tenantDomain as string;
-  const result = await AttendanceServices.getTodayAttendanceFromDB(tenantDomain);
+  const result =
+    await AttendanceServices.getTodayAttendanceFromDB(tenantDomain);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -50,7 +53,10 @@ const getSingleDateAttendance = catchAsync(async (req, res) => {
   const { date } = req.params;
   const tenantDomain = req.query.tenantDomain as string;
 
-  const result = await AttendanceServices.getSingleDateAttendance(tenantDomain, date);
+  const result = await AttendanceServices.getSingleDateAttendance(
+    tenantDomain,
+    date,
+  );
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -61,7 +67,7 @@ const getSingleDateAttendance = catchAsync(async (req, res) => {
 });
 const getSingleAttendance = catchAsync(async (req, res) => {
   const { id } = req.params;
-const tenantDomain = req.query.tenantDomain as string;
+  const tenantDomain = req.query.tenantDomain as string;
   const result = await AttendanceServices.getSingleAttendance(tenantDomain, id);
 
   sendResponse(res, {
@@ -71,10 +77,15 @@ const tenantDomain = req.query.tenantDomain as string;
     data: result,
   });
 });
-
 const deleteAttendance = catchAsync(async (req, res) => {
   const tenantDomain = req.query.tenantDomain as string;
-  const result = await AttendanceServices.deleteAttendanceFromDB(tenantDomain ,req.body);
+  const date = req.query.date as string;
+
+  const result = await AttendanceServices.deleteAttendanceFromDB(tenantDomain, {
+    date,
+  });
+
+  console.log('From controller:', result);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,

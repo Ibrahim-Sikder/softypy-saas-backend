@@ -1,65 +1,30 @@
 import { z } from 'zod';
+import { stringOrArrayOrNumber } from '../../utils/type';
+
 
 const incomeValidationSchema = z.object({
   body: z.object({
-    category: z.array(z.string({ required_error: 'Category is required.' })),
-    income_name: z.string({ required_error: 'Income name is required.' }),
-    invoice_number: z.string(),
-
-    date: z.string({
-      required_error: 'Date is required.',
-    }),
-    amount: z
-      .number({
-        required_error: 'Amount is required.',
-        invalid_type_error: 'Amount must be a number',
-      }),
-    description: z.string().optional(),
-    image: z.string().optional(),
-    receipt_number: z.string().optional(),
-    income_source: z.string().optional(),
-
-    service_type: z.string().optional(),
-    customer: z.string({ required_error: 'Customer name is required.' }),
-    job_card: z.string({ required_error: 'Jobcard is required.' }),
-    invoice: z.string().optional(),
-    vehicle: z.string({ required_error: 'Vehicle is required.' }),
-    department: z.string().optional(),
-    payment_method: z.string().optional(),
-    payment_status: z.string(),
-    reference_number: z.string().optional(),
-    tax_applied: z.boolean().optional().default(false),
-    tax_rate: z.number().optional().default(0),
-    tax_amount: z.number().optional().default(0),
-    total_amount: z.number().optional(),
-    document_notes: z.string().optional(),
+    date: stringOrArrayOrNumber.optional(),
+    invoice_number: stringOrArrayOrNumber.optional(),
+    customer: stringOrArrayOrNumber.optional(),
+    income_source: stringOrArrayOrNumber.optional(),
+    amount: stringOrArrayOrNumber.optional(),
+    payment_method: stringOrArrayOrNumber.optional(),
+    reference_number: stringOrArrayOrNumber.optional(),
+    description: stringOrArrayOrNumber.optional(),
   }),
 });
+
 const updateIncomeValidationSchema = z.object({
   body: z.object({
-    category: z.array(z.string()).optional(),
-    income_name: z.string().optional(),
-    invoice_number: z.string().optional(),
-    date: z.string().optional(),
-    amount: z.number().optional(),
-    description: z.string().optional(),
-    image: z.string().optional(),
-    receipt_number: z.string().optional(),
-    income_source: z.string().optional(),
-    service_type: z.string().optional(),
-    customer: z.string().optional(),
-    job_card: z.string().optional(),
-    invoice: z.string().optional(),
-    vehicle: z.string().optional(),
-    department: z.string().optional(),
-    payment_method: z.string().optional(),
-    payment_status: z.string().optional(),
-    reference_number: z.string().optional(),
-    tax_applied: z.boolean().optional().default(false),
-    tax_rate: z.number().optional().default(0),
-    tax_amount: z.number().optional().default(0),
-    total_amount: z.number().optional(),
-    document_notes: z.string().optional(),
+    date: stringOrArrayOrNumber.optional(),
+    invoice_number: stringOrArrayOrNumber.optional(),
+    customer: stringOrArrayOrNumber.optional(),
+    income_source: stringOrArrayOrNumber.optional(),
+    amount: stringOrArrayOrNumber.optional(),
+    payment_method: stringOrArrayOrNumber.optional(),
+    reference_number: stringOrArrayOrNumber.optional(),
+    description: stringOrArrayOrNumber.optional(),
   }),
 });
 

@@ -8,9 +8,11 @@ const createLeaveRequest = async (
   payload: ILeaveRequest,
 ) => {
   try {
-    console.log(tenantDomain, payload)
     const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
-    const { Model: LeaveRequest } = await getTenantModel(tenantDomain, 'LeaveRequest');
+    const { Model: LeaveRequest } = await getTenantModel(
+      tenantDomain,
+      'LeaveRequest',
+    );
 
     const employeeExists = await Employee.findById(payload.employee);
     if (!employeeExists) {
@@ -22,27 +24,30 @@ const createLeaveRequest = async (
   } catch (error: any) {
     console.error('Error creating leave request:', error.message);
     throw new Error(
-      error.message || 'An unexpected error occurred while creating the leave request',
+      error.message ||
+        'An unexpected error occurred while creating the leave request',
     );
   }
 };
-
 
 const getAllLeaveRequests = async (
   tenantDomain: string,
   query: Record<string, unknown>,
 ) => {
-  const { Model: LeaveRequest } = await getTenantModel(tenantDomain, 'LeaveRequest');
+
+  const { Model: LeaveRequest } = await getTenantModel(
+    tenantDomain,
+    'LeaveRequest',
+  );
+  await getTenantModel(tenantDomain, 'Employee');
 
   const leaveRequestQuery = new QueryBuilder(LeaveRequest.find(), query)
     .search(['status', 'leaveType'])
-    // .filter()
-    // .sort()
     .paginate()
     .fields();
 
   const meta = await leaveRequestQuery.countTotal();
-  const leaveRequests = await leaveRequestQuery.modelQuery;
+  const leaveRequests = await leaveRequestQuery.modelQuery.populate('employee', 'full_name');
 
   return {
     meta,
@@ -50,14 +55,14 @@ const getAllLeaveRequests = async (
   };
 };
 
-
-
-
 const getSingleLeaveRequest = async (
   tenantDomain: string,
   leaveRequestId: string,
 ) => {
-  const { Model: LeaveRequest } = await getTenantModel(tenantDomain, 'LeaveRequest');
+  const { Model: LeaveRequest } = await getTenantModel(
+    tenantDomain,
+    'LeaveRequest',
+  );
   const result = await LeaveRequest.findById(leaveRequestId);
 
   return result;
@@ -67,7 +72,10 @@ const employeeLeaveRequest = async (
   tenantDomain: string,
   employeeId: string,
 ) => {
-  const { Model: LeaveRequest } = await getTenantModel(tenantDomain, 'LeaveRequest');
+  const { Model: LeaveRequest } = await getTenantModel(
+    tenantDomain,
+    'LeaveRequest',
+  );
   const result = await LeaveRequest.find({ employee: employeeId });
   return result;
 };
@@ -81,8 +89,12 @@ const updateLeaveRequest = async (
     if (!Types.ObjectId.isValid(leaveRequestId)) {
       throw new Error('Invalid leaveRequestId format');
     }
-  
-    const { Model: LeaveRequest } = await getTenantModel(tenantDomain, 'LeaveRequest');
+    console.log(leaveRequestId, payload)
+
+    const { Model: LeaveRequest } = await getTenantModel(
+      tenantDomain,
+      'LeaveRequest',
+    );
     const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
 
     const leaveRequestExists = await LeaveRequest.findById(leaveRequestId);
@@ -110,7 +122,8 @@ const updateLeaveRequest = async (
   } catch (error: any) {
     console.error('Error updating leave request:', error.message);
     throw new Error(
-      error.message || 'An unexpected error occurred while updating the leave request',
+      error.message ||
+        'An unexpected error occurred while updating the leave request',
     );
   }
 };
@@ -126,7 +139,10 @@ const deleteLeaveRequest = async (
     }
 
     // Get tenant-specific LeaveRequest model
-    const { Model: LeaveRequest } = await getTenantModel(tenantDomain, 'LeaveRequest');
+    const { Model: LeaveRequest } = await getTenantModel(
+      tenantDomain,
+      'LeaveRequest',
+    );
 
     // Check if the leave request exists
     const leaveRequestExists = await LeaveRequest.findById(leaveRequestId);
@@ -141,11 +157,11 @@ const deleteLeaveRequest = async (
   } catch (error: any) {
     console.error('Error deleting leave request:', error.message);
     throw new Error(
-      error.message || 'An unexpected error occurred while deleting the leave request',
+      error.message ||
+        'An unexpected error occurred while deleting the leave request',
     );
   }
 };
-
 
 export const leaveRequestServices = {
   createLeaveRequest,

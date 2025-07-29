@@ -1,56 +1,33 @@
 import mongoose, { model, Schema } from 'mongoose';
-import { IExpense, IExpenseCategory, IExpenseModel } from './expense.interface';
+import { IExpense, IExpenseCategory } from './expense.interface';
 
 export const expenseSchema: Schema<IExpense> = new Schema<IExpense>(
   {
-    date: { type: String, required: true },
-    expense_type: { type: String },
-    warehouse: { type: String, },
-    category: {
-      type: mongoose.Schema.Types.ObjectId,
+    date: { type: String },
+    invoice_id: { type: Schema.Types.Mixed },
+    expense_category: {
+      type: Schema.Types.Mixed,
       ref: 'ExpenseCategory',
-      required: true,
     },
-    voucher_no: { type: String},
-    tax: { type: String, },
-    expense_note: { type: String },
-    amount: { type: Schema.Types.Mixed, required: true },
-    payment_individual_markup: { type: String },
-    payment_method: { type: String, required: true },
-    payment_account: { type: String },
-    bank_account_no: { type: String },
-    check_no: { type: String },
-    card_number: { type: String },
-    card_holder_name: { type: String },
-    card_transaction_no: { type: String },
-    card_type: { type: String },
-    month_first: { type: String },
-    year: { type: String },
-    month_second: { type: String },
-    security_code: { type: String },
-    transaction_no: { type: String },
-    transactionId: { type: String },
-    document: { type: String },
-    cash_by: { type: String, default: '' },
+    vendor: { type: Schema.Types.Mixed },
+    amount: { type: Schema.Types.Mixed },
+    payment_method: { type: String },
+    reference_no: { type: String },
+    note: { type: String },
+    attachment: { type: String },
   },
-  {
-    timestamps: true,
-  },
+  { timestamps: true },
 );
-const Expense = model<IExpense, IExpenseModel>('Expense', expenseSchema);
+
+export const Expense = model<IExpense>('Expense', expenseSchema);
 
 export const expenseCategorySchema = new Schema<IExpenseCategory>({
-  name: { type: String, required: true, unique: true },
-  code: { type: String, required: true, unique: true },
-  expenses: [{ type: Schema.Types.ObjectId, ref: 'Expense' }],
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
+  name: { type: String },
+  code: { type: String },
 });
 
 // Expense Category Model
-const ExpenseCategory = model<IExpenseCategory>(
+export const ExpenseCategory = model<IExpenseCategory>(
   'ExpenseCategory',
   expenseCategorySchema,
 );
-
-export { Expense, ExpenseCategory };
