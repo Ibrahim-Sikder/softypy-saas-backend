@@ -13,7 +13,8 @@
     "prettier:fix": "npx prettier --write src",
     "test": "echo \"Error: no test specified\" && exit 1",
     "copy-files": "copyfiles -u 1 \"src/app/templates/**/*\" dist/",
-    "install": "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm install"
+    "install": "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm install",
+    "generate:module": "plop module"
   },
   "keywords": [],
   "author": "",
@@ -65,6 +66,7 @@
     "cross-env": "^7.0.3",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
+    "plop": "^4.0.1",
     "prettier": "^3.3.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.7.2"

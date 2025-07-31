@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import QueryBuilder from '../../builder/QueryBuilder';
-import { Brand } from './brand.model';
 import { TBrand } from './brand.interface';
 import { brandSearch } from './brand.constant';
 import { getTenantModel } from '../../utils/getTenantModels';
