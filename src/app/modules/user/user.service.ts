@@ -97,8 +97,46 @@ const deleteUser = async (tenantDomain: string, id: string) => {
   return result;
 };
 
+const updateUser = async (
+  tenantDomain: string,
+  id: string,
+  payload: Partial<TUser>,
+) => {
+  const { Model: User } = await getTenantModel(tenantDomain, 'User');
+
+  const existingUser = await User.findById(id);
+  if (!existingUser) {
+    throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
+  }
+
+  // Optional: Prevent duplicate email or username
+  if (payload.email && payload.email !== existingUser.email) {
+    const emailExists = await User.findOne({ email: payload.email });
+    if (emailExists) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Email already in use!');
+    }
+  }
+
+  if (payload.name && payload.name !== existingUser.name) {
+    const nameExists = await User.findOne({ name: payload.name });
+    if (nameExists) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Username already taken!');
+    }
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(id, payload, {
+    new: true,
+    runValidators: true,
+  });
+
+  return updatedUser;
+};
+
 export const UserServices = {
   createUser,
   getAllUser,
   deleteUser,
+  updateUser,
 };
+
+

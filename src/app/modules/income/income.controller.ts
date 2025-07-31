@@ -1,79 +1,130 @@
-import { StatusCodes } from 'http-status-codes';
-import catchAsync from '../../utils/catchAsync';
+import { NextFunction, Request, Response } from 'express';
+import httpStatus from 'http-status';
 import sendResponse from '../../utils/sendResponse';
-import { IncomeServices } from './income.service';
+import { incomeServices } from './income.service';
 
-const createIncome = catchAsync(async (req, res) => {
-  const {tenantDomain} = req.body
-  const result = await IncomeServices.createIncomeIntoDB(tenantDomain, req.body);
-  sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: 'Income added successful!',
-    data: result,
-  });
-});
+const createIncome = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const payload = req.body;
+    const tenantDomain = req.query.tenantDomain as string;
 
-const getAllIncomes = catchAsync(async (req, res) => {
-   const tenantDomain = req.query.tenantDomain as string;
-  const limit = parseInt(req.query.limit as string);
-  const page = parseInt(req.query.page as string);
+    if (payload.data) {
+      Object.assign(payload, JSON.parse(payload.data));
+      delete payload.data;
+    }
 
-  const result = await IncomeServices.getAllIncomesFromDB(tenantDomain, limit, page);
+    const result = await incomeServices.createIncome(tenantDomain, payload);
 
-  sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: 'Incomes are retrieved successful',
-    data: result,
-  });
-});
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: 'Income created successfully',
+      data: result,
+    });
+  } catch (err: any) {
+    console.error('Error in income controller:', err.message);
+    next(err);
+  }
+};
 
-const getSingleIncome = catchAsync(async (req, res) => {
-   const tenantDomain = req.query.tenantDomain as string;
-  const { id } = req.params;
+const getAllIncome = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const tenantDomain = req.query.tenantDomain as string;
 
-  const result = await IncomeServices.getSingleIncomeDetails(tenantDomain, id);
+    const result = await incomeServices.getAllIncome(tenantDomain, req.query);
 
-  sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: 'Income retrieved successful!',
-    data: result,
-  });
-});
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: 'Incomes retrieved successfully',
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
-const updateIncome = catchAsync(async (req, res) => {
-  const { id } = req.params;
-  const tenantDomain = req.query.tenantDomain as string
+const getSingleIncome = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = req.params;
+    const tenantDomain = req.query.tenantDomain as string;
 
-  console.log('update income ', tenantDomain);
+    const result = await incomeServices.getSingleIncome(tenantDomain, id);
 
-  const service = await IncomeServices.updateIncome(tenantDomain, id, req.body);
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: 'Income retrieved successfully',
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
-  sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: 'Income updated successfully!',
-    data: service,
-  });
-});
+const updateIncome = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const tenantDomain = req.query.tenantDomain as string;
+    const { id } = req.params;
 
-const deleteIncome = catchAsync(async (req, res) => {
-  const { id } = req.params;
-   const tenantDomain = req.query.tenantDomain as string;
-  const income = await IncomeServices.deleteIncome(tenantDomain, id);
-  sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: 'Income deleted successful!',
-    data: income,
-  });
-});
+    const result = await incomeServices.updateIncome(
+      tenantDomain,
+      id,
+      req.body,
+    );
 
-export const incomeController = {
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: 'Income updated successfully',
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deleteIncome = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = req.params;
+    const tenantDomain = req.query.tenantDomain as string;
+
+    const result = await incomeServices.deleteIncome(tenantDomain, id);
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: 'Income deleted successfully',
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const incomeControllers = {
   createIncome,
-  getAllIncomes,
+  getAllIncome,
   getSingleIncome,
   updateIncome,
   deleteIncome,

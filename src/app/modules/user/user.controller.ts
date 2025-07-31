@@ -37,9 +37,26 @@ const deleteUser = catchAsync(async (req, res) => {
     data: result,
   });
 });
+const updateUser = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const tenantDomain = req.query.tenantDomain as string;
+  const payload = req.body;
+
+  const result = await UserServices.updateUser(tenantDomain, id, payload);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'User updated successfully',
+    data: result,
+  });
+});
 
 export const UserController = {
   createUser,
   getAllUser,
   deleteUser,
+  updateUser,
 };
+
+

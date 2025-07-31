@@ -26,6 +26,9 @@ export const userSchema = new Schema<TUser>(
     tenantDomain: {
       type: String,
     },
+    image: {
+      type: String,
+    },
     tenantId: {
       type: Schema.Types.ObjectId,
       ref: 'Tenant',

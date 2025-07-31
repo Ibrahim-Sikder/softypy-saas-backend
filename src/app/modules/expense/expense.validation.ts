@@ -1,19 +1,25 @@
 import { z } from "zod";
 import { stringOrArrayOrNumber } from "../../utils/type";
 
+const expenseItemSchema = z.object({
+  name: z.string().min(1, "Item name is required"),
+  amount: z.number().min(0, "Amount must be non-negative"),
+});
+
 export const createExpenseValidationSchema = z.object({
   body: z.object({
     date: z.string().optional(),
     invoice_id: stringOrArrayOrNumber.optional(),
-    expense_category: stringOrArrayOrNumber.optional(),
-    vendor: stringOrArrayOrNumber.optional(),
-    amount: stringOrArrayOrNumber.optional(),
-    payment_method: stringOrArrayOrNumber.optional(),
-    reference_no: z.string().optional(),
+    invoiceCost: z.number().optional(),
+    expense_items: z.array(expenseItemSchema).optional(),
+    payment_method: z.string().optional(),
+    accountNumber: z.string().optional(),
+    transactionNumber: z.string().optional(),
     note: z.string().optional(),
     attachment: z.string().optional(),
   }),
 });
+
 export const createExpenseCategorySchema = z.object({
   body: z.object({
     name: z.string().optional(),

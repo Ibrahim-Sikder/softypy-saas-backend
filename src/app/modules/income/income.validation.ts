@@ -1,34 +1,20 @@
-import { z } from 'zod';
-import { stringOrArrayOrNumber } from '../../utils/type';
+import { z } from "zod";
+import { stringOrArrayOrNumber } from "../../utils/type";
 
-
-const incomeValidationSchema = z.object({
-  body: z.object({
-    date: stringOrArrayOrNumber.optional(),
-    invoice_number: stringOrArrayOrNumber.optional(),
-    customer: stringOrArrayOrNumber.optional(),
-    income_source: stringOrArrayOrNumber.optional(),
-    amount: stringOrArrayOrNumber.optional(),
-    payment_method: stringOrArrayOrNumber.optional(),
-    reference_number: stringOrArrayOrNumber.optional(),
-    description: stringOrArrayOrNumber.optional(),
-  }),
+const incomeItemSchema = z.object({
+  name: z.string(),
+  amount: z.number(),
 });
 
-const updateIncomeValidationSchema = z.object({
+export const createIncomeValidationSchema = z.object({
   body: z.object({
-    date: stringOrArrayOrNumber.optional(),
-    invoice_number: stringOrArrayOrNumber.optional(),
-    customer: stringOrArrayOrNumber.optional(),
-    income_source: stringOrArrayOrNumber.optional(),
-    amount: stringOrArrayOrNumber.optional(),
+    date: z.string().optional(),
+    invoice_id: stringOrArrayOrNumber.optional(),
+    invoiceEarning: z.number().optional(),
+    income_items: z.array(incomeItemSchema).optional(),
     payment_method: stringOrArrayOrNumber.optional(),
-    reference_number: stringOrArrayOrNumber.optional(),
-    description: stringOrArrayOrNumber.optional(),
+    accountNumber: stringOrArrayOrNumber.optional(),
+    transactionNumber: stringOrArrayOrNumber.optional(),
+    note: stringOrArrayOrNumber.optional(),
   }),
 });
-
-export const incomeValidation = {
-  incomeValidationSchema,
-  updateIncomeValidationSchema,
-};

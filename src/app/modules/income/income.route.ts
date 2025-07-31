@@ -1,23 +1,19 @@
-import express from 'express';
-
-import validateRequest from '../../middlewares/validateRequest';
-import { incomeValidation } from './income.validation';
-import { incomeController } from './income.controller';
+import express from "express";
+import validateRequest from "../../middlewares/validateRequest";
+import { createIncomeValidationSchema } from "./income.validation";
+import { incomeControllers } from "./income.controller";
 
 const router = express.Router();
+router
+  .route("/")
+  .post(validateRequest(createIncomeValidationSchema), incomeControllers.createIncome)
+  .get(incomeControllers.getAllIncome);
 
 router
-  .route('/')
-  .post(
-    validateRequest(incomeValidation.incomeValidationSchema),
-    incomeController.createIncome,
-  )
-  .get(incomeController.getAllIncomes);
+  .route("/:id")
+  .get(incomeControllers.getSingleIncome)
+  .put(incomeControllers.updateIncome)
+  .delete(incomeControllers.deleteIncome);
 
-router
-  .route('/:id')
-  .get(incomeController.getSingleIncome)
-  .put(incomeController.updateIncome)
-  .delete(incomeController.deleteIncome);
 
 export const IncomeRoutes = router;

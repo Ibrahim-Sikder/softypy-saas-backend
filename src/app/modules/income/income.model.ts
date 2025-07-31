@@ -1,37 +1,33 @@
-import mongoose, { Schema } from 'mongoose';
-import type { TIncome } from './income.interface';
+import mongoose, { Schema, model } from "mongoose";
+import { IIncome } from "./income.interface";
 
-export const incomeSchema: Schema<TIncome> = new Schema<TIncome>(
+export const incomeItemSchema = new Schema(
   {
-    date: {
-      type: Schema.Types.Mixed, 
-    },
-    invoice_number: {
-      type: Schema.Types.Mixed,
-    },
-    customer: {
-      type: Schema.Types.Mixed,
-    },
-    
-    income_source: {
-      type: Schema.Types.Mixed,
-    },
-    amount: {
-      type: Schema.Types.Mixed,
-    },
-    payment_method: {
-      type: Schema.Types.Mixed,
-    },
-    reference_number: {
-      type: Schema.Types.Mixed,
-    },
-    description: {
-      type: Schema.Types.Mixed,
-    },
+    name: { type: String },
+    amount: { type: Number,  },
   },
-  {
-    timestamps: true,
-  },
+  { _id: false },
 );
 
-export const Income = mongoose.model<TIncome>('Income', incomeSchema);
+export const incomeSchema = new Schema<IIncome>(
+  {
+    date: { type: String },
+    invoice_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Invoice",
+    },
+    income_items: { type: [incomeItemSchema] },
+    payment_method: { type: String },
+    accountNumber: { type: String },
+    transactionNumber: { type: String },
+    note: { type: String },
+    totalAmount: { type: Number },
+    serviceIncomeAmount: { type: Number },
+    partsIncomeAmount: { type: Number },
+    totalInvoiceIncome: { type: Number },
+    totalOtherIncome: { type: Number },
+  },
+  { timestamps: true },
+);
+
+export const Income = model<IIncome>("Income", incomeSchema);

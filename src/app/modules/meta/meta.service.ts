@@ -1,5 +1,6 @@
 import QueryBuilder from '../../builder/QueryBuilder';
 import { getTenantModel } from '../../utils/getTenantModels';
+
 import { CompanyType, CustomerType, ShowRoomType } from './meta.interface';
 import { buildSearchQuery } from './meta.search';
 import dayjs from 'dayjs';
@@ -242,6 +243,8 @@ const getAllMetaFromDB = async (
   const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
   const { Model: Quotation } = await getTenantModel(tenantDomain, 'Quotation');
   const { Model: Invoice } = await getTenantModel(tenantDomain, 'Invoice');
+  const { Model: Income } = await getTenantModel(tenantDomain, 'Income');
+  const { Model: Expense } = await getTenantModel(tenantDomain, 'Expense');
   const { Model: LeaveRequest } = await getTenantModel(
     tenantDomain,
     'LeaveRequest',
@@ -254,9 +257,11 @@ const getAllMetaFromDB = async (
   const totalJobCard = await JobCard.find({ isRecycled: false });
   const totalQuotation = await Quotation.find({ isRecycled: false });
   const totalInvoice = await Invoice.find({ isRecycled: false });
+  const totalIncome = await Income.find();
+  const totalExpense = await Expense.find();
   const leave = await LeaveRequest.find();
-
   const tenantInfo = await User.find();
+  console.log(totalExpense);
   const subscription = tenantInfo[0]?.tenantInfo?.subscription;
 
   let subscriptionDetails = null;
@@ -290,6 +295,48 @@ const getAllMetaFromDB = async (
   const formattedTotalAdvance = formatToBDComma(totalAdvance);
   const formattedTotalRemaining = formatToBDComma(totalRemaining);
 
+  // calculate expense
+  const totalOtherExpense = totalExpense.reduce(
+    (sum, expense) => sum + (expense.totalOtherExpense || 0),
+    0,
+  );
+  // ✅ Calculate income totals
+  const totalIncomeAmount = totalIncome.reduce(
+    (sum, income) => sum + (income.totalAmount || 0),
+    0,
+  );
+
+  const totalServiceIncome = totalIncome.reduce(
+    (sum, income) => sum + (income.serviceIncomeAmount || 0),
+    0,
+  );
+
+  const totalPartsIncome = totalIncome.reduce(
+    (sum, income) => sum + (income.partsIncomeAmount || 0),
+    0,
+  );
+
+  const totalOtherIncome = totalIncome.reduce(
+    (sum, income) => sum + (income.totalOtherIncome || 0),
+    0,
+  );
+
+  const totalInvoiceIncome = totalIncome.reduce(
+    (sum, income) => sum + (income.totalInvoiceIncome || 0),
+    0,
+  );
+
+  const totalExpenseAmount = totalExpense.reduce(
+    (sum, exp) => sum + (exp.totalAmount || 0),
+    0,
+  );
+
+  const totalInvoiceCost = totalExpense.reduce(
+    (sum, exp) => sum + (exp.invoiceCost || 0),
+    0,
+  );
+
+  // ✅ Quotation status summary
   const statusCounts = await Quotation.aggregate([
     {
       $match: {
@@ -313,6 +360,20 @@ const getAllMetaFromDB = async (
     {},
   );
 
+  const incomes = {
+    totalIncomeAmount,
+    totalInvoiceIncome,
+    totalOtherIncome,
+    serviceIncomeAmount: totalServiceIncome,
+    partsIncomeAmount: totalPartsIncome,
+  };
+
+  const expense = {
+    totalExpenseAmount,
+    totalInvoiceCost,
+    totalOtherExpense,
+  };
+
   return {
     statusSummary: {
       running: statusSummary['running'] || 0,
@@ -328,6 +389,8 @@ const getAllMetaFromDB = async (
     totalAdvance: formattedTotalAdvance,
     totalRemaining: formattedTotalRemaining,
     subscriptionInfo: subscriptionDetails,
+    incomes,
+    expense,
   };
 };
 

@@ -31,6 +31,7 @@ export interface TUser {
   lastLogin?: Date;
   passwordChangeAt: Date;
   isDeleted?: boolean;
+  image:string;
 }
 
 export interface UserModel extends Model<TUser> {

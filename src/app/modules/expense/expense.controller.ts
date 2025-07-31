@@ -11,10 +11,9 @@ const createExpense = async (
   next: NextFunction,
 ) => {
   try {
-    const file = req.file;
     const payload = req.body;
     const tenantDomain = req.query.tenantDomain as string;
-    console.log('for expense create', tenantDomain);
+
     if (payload.data) {
       Object.assign(payload, JSON.parse(payload.data));
       delete payload.data;
@@ -23,7 +22,6 @@ const createExpense = async (
     const result = await expenseServices.createExpense(
       tenantDomain,
       payload,
-      file,
     );
 
     sendResponse(res, {

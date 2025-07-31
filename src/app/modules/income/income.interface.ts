@@ -1,10 +1,21 @@
-export interface TIncome {
-  date?: string | string[] | number | null;
-  invoice_number?: string | string[] | number | null;
-  customer?: string | string[] | number | null;
-  income_source?: string | string[] | number | null;
-  amount?: string | string[] | number | null;
-  payment_method?: string | string[] | number | null;
-  reference_number?: string | string[] | number | null;
-  description?: string | string[] | number | null;
+import type { Document, ObjectId } from "mongoose";
+
+export interface IIncomeItem {
+  name: string;
+  amount: number;
+}
+
+export interface IIncome extends Document {
+  date: string;
+  invoice_id?: string | ObjectId;
+  income_items: IIncomeItem[];
+  payment_method: string;
+  accountNumber?: string;
+  transactionNumber?: string;
+  note?: string;
+  totalAmount?: number;
+  serviceIncomeAmount:number;
+  partsIncomeAmount:number;
+  totalInvoiceIncome:number;
+  totalOtherIncome:number
 }

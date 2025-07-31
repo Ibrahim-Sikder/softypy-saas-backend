@@ -40,6 +40,7 @@ import { authRoutes } from '../modules/Auth/auth.route';
 import { userRoutes } from '../modules/user/user.route';
 import { CompanyProfileRoutes } from '../modules/companyProfile/companyProfile.route';
 import { noteRoutes } from '../modules/note/note.route';
+import { contactRoutes } from '../contact/contact.route';
 
 const router = Router();
 
@@ -204,6 +205,10 @@ const moduleRoutes = [
   {
     path: '/notes',
     route: noteRoutes,
+  },
+  {
+    path: '/contact',
+    route: contactRoutes,
   },
   {
     path: '/meta',

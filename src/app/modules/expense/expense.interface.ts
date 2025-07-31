@@ -1,22 +1,25 @@
 import type { Document, ObjectId } from "mongoose";
+export interface IExpenseItem {
+  name: string;
+  amount: number;
+}
 
 export interface IExpense extends Document {
   date: string;
-  invoice_id: string;
-  expense_category: ObjectId;
-  vendor?: string;
-  amount: number | string;
+  invoice_id: string | ObjectId;
+  invoiceCost?: number;
+  expense_items: IExpenseItem[];
   payment_method: string;
-  reference_no?: string;
+  accountNumber?: string;
+  transactionNumber?: string;
   note?: string;
-  attachment?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+   totalAmount?: number;
+   totalOtherExpense?: number;
+
 }
+
 export interface IExpenseCategory extends Document {
   name: string
   code: string
   expenses?: ObjectId[]
-  createdAt?: Date
-  updatedAt?: Date
 }
