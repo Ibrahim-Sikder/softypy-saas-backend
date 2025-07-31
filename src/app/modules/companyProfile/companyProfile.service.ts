@@ -72,24 +72,22 @@ const updateCompanyProfile = async (
   return result;
 };
 
-
-// Keep this if it's used elsewhere, but ensure it's for CompanyProfile, not ExpenseCategory
 export const getSingleCompanyProfile = async (
   tenantDomain: string,
   id: string,
 ): Promise<TCompanyProfile | null> => {
   try {
-    const { Model: CompanyProfile } = await getTenantModel( // Changed to CompanyProfile
+    const { Model: CompanyProfile } = await getTenantModel(
       tenantDomain,
-      'CompanyProfile', // Changed to CompanyProfile
+      'CompanyProfile', 
     );
 
-    const profile = await CompanyProfile.findOne({ _id: id }); // Find one by _id
+    const profile = await CompanyProfile.findOne({ _id: id }); 
 
     if (!profile) {
       throw new AppError(
         httpStatus.NOT_FOUND,
-        'Company profile not found', // Corrected message
+        'Company profile not found', 
       );
     }
 
