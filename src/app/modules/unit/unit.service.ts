@@ -37,11 +37,18 @@ const getAllUnit = async (tenantDomain: string, query: Record<string, unknown>) 
     units,
   };
 };
-const getSinigleUnit = async (id: string) => {
+const getSinigleUnit = async (tenantDomain: string, id: string) => {
+  const { Model: Unit } = await getTenantModel(tenantDomain, 'Unit');
   const result = await Unit.findById(id);
   return result;
 };
-const updateUnit = async (id: string, payload: Partial<TUnit>) => {
+
+const updateUnit = async (
+  tenantDomain: string,
+  id: string,
+  payload: Partial<TUnit>
+) => {
+  const { Model: Unit } = await getTenantModel(tenantDomain, 'Unit');
   const result = await Unit.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
@@ -49,10 +56,9 @@ const updateUnit = async (id: string, payload: Partial<TUnit>) => {
   return result;
 };
 
-
-const deleteUnit = async (id: string) => {
+const deleteUnit = async (tenantDomain: string, id: string) => {
+  const { Model: Unit } = await getTenantModel(tenantDomain, 'Unit');
   const result = await Unit.deleteOne({ _id: id });
-
   return result;
 };
 

@@ -2,7 +2,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { TShowRoom } from './showRoom.interface';
 
-const showRoomSchema: Schema<TShowRoom> = new Schema<TShowRoom>(
+export  const showRoomSchema: Schema<TShowRoom> = new Schema<TShowRoom>(
   {
     showRoomId: {
       type: String,

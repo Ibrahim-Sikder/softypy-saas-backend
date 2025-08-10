@@ -6,6 +6,39 @@ import { connectToTenantDatabase } from '../../server';
 import { unitSchema } from '../modules/unit/unit.model';
 import { userSchema } from '../modules/user/user.model';
 import { brandSchema } from '../modules/brand/brand.model';
+import { customerSchema } from '../modules/customer/customer.model';
+import { vehicleSchema } from '../modules/vehicle/vehicle.model';
+import { addToJobCardSchema } from '../modules/jobCard/job-card.model';
+import { quotationSchema } from '../modules/quotation/quotation.model';
+import { moneyReceiptSchema } from '../modules/money-receipt/money-receipt.model';
+import { invoiceSchema } from '../modules/invoice/invoice.model';
+import { companySchema } from '../modules/company/company.model';
+import { showRoomSchema } from '../modules/showRoom/showRoom.model';
+import { stockSchema } from '../modules/stocks/stocks.model';
+import { StockTransactionSchema } from '../modules/stockTransaction/stockTransaction.model';
+import { ProductSchema } from '../modules/product/product.model';
+import { LeaveRequestSchema } from '../modules/leave/leave.model';
+import { supplierSchema } from '../modules/supplier/supplier.model';
+import { productTypeSchema } from '../modules/productType/productType.model';
+import { categorySchema } from '../modules/category/category.model';
+import { warehouseSchema } from '../modules/warehouse/warehouse.model';
+import { purchaseOrderSchema } from '../modules/purchaseorder/purchaseorder.model';
+import { purchaseSchema } from '../modules/purchase/purchase.model';
+import { purchaseReturnSchema } from '../modules/purchasereturn/purchasereturn.model';
+import { stockTransferSchema } from '../modules/stockTransfer/stockTransfer.model';
+import { employeeSchema } from '../modules/employee/employee.model';
+import { attendanceSchema } from '../modules/attendance/attendance.model';
+import { salarySchema } from '../modules/salary/salary.model';
+import { employeeOvertimeSchema } from '../modules/overtime/overtime.model';
+import { incomeSchema } from '../modules/income/income.model';
+import {
+  expenseCategorySchema,
+  expenseSchema,
+} from '../modules/expense/expense.model';
+import { companyProfileSchema } from '../modules/companyProfile/companyProfile.model';
+import { DonationSchema } from '../modules/donation/donatin.model';
+import { BillPaySchema } from '../modules/bill-pay/bill-pay.model';
+import { noteSchema } from '../modules/note/note.model';
 
 type SchemaMap = {
   [key: string]: mongoose.Schema;
@@ -13,15 +46,46 @@ type SchemaMap = {
 
 const schemas: SchemaMap = {
   User: userSchema,
+  Attendance: attendanceSchema,
+  Salary: salarySchema,
+  Employee: employeeSchema,
   Unit: unitSchema,
+  PurchaseReturn: purchaseReturnSchema,
   Brand: brandSchema,
+  Customer: customerSchema,
+  ShowRoom: showRoomSchema,
+  Company: companySchema,
+  Vehicle: vehicleSchema,
+  JobCard: addToJobCardSchema,
+  Quotation: quotationSchema,
+  Stocks: stockSchema,
+  Invoice: invoiceSchema,
+  Product: ProductSchema,
+  StockTransaction: StockTransactionSchema,
+  MoneyReceipt: moneyReceiptSchema,
+  LeaveRequest: LeaveRequestSchema,
+  Supplier: supplierSchema,
+  ProductType: productTypeSchema,
+  Category: categorySchema,
+  Warehouse: warehouseSchema,
+  PurchaseOrder: purchaseOrderSchema,
+  Purchase: purchaseSchema,
+  Stock: stockSchema,
+  StockTransfer: stockTransferSchema,
+  EmployeeOvertime: employeeOvertimeSchema,
+  Income: incomeSchema,
+  ExpenseCategory: expenseCategorySchema,
+  Expense: expenseSchema,
+  CompanyProfile: companyProfileSchema,
+  Donation: DonationSchema,
+  BillPay: BillPaySchema,
+  Note: noteSchema,
 };
 
 export const getTenantModel = async (
   tenantDomain: string,
-  modelName: keyof typeof schemas
+  modelName: keyof typeof schemas,
 ) => {
-  // Case-insensitive search for tenant domain
   const tenant = await Tenant.findOne({
     domain: { $regex: new RegExp(`^${tenantDomain}$`, 'i') },
   });
@@ -32,7 +96,7 @@ export const getTenantModel = async (
 
   const tenantConnection = await connectToTenantDatabase(
     tenant._id.toString(),
-    tenant.dbUri
+    tenant.dbUri,
   );
 
   const schema = schemas[modelName];
@@ -45,5 +109,6 @@ export const getTenantModel = async (
     tenantConnection.models[modelNameStr] ||
     tenantConnection.model(modelNameStr, schema);
 
-  return { Model, tenant };
+  // Add connection to the returned object here
+  return { Model, tenant, connection: tenantConnection };
 };

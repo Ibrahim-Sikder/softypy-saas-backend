@@ -28,11 +28,9 @@ function backupMongo(): void {
   ]);
 
   child.stdout.on('data', (data: Buffer) => {
-    console.log('stdout:\n', data.toString());
   });
 
   child.stderr.on('data', (data: Buffer) => {
-    console.log('stderr:\n', data.toString());
   });
 
   child.on('error', (error: Error) => {

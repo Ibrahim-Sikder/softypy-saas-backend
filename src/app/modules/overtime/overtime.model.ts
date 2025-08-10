@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { IEmployeeOvertime } from './overtime.interface';
 
-const overtimeEntrySchema: Schema = new Schema(
+export const overtimeEntrySchema: Schema = new Schema(
   {
     date: {
       type: Date,
@@ -39,7 +39,7 @@ const overtimeEntrySchema: Schema = new Schema(
   { timestamps: true }
 );
 
-const employeeOvertimeSchema: Schema = new Schema(
+export const employeeOvertimeSchema: Schema = new Schema(
   {
     employee: {
       type: mongoose.Schema.Types.ObjectId, 

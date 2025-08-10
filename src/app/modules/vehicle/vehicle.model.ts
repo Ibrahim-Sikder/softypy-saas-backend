@@ -2,7 +2,7 @@
 import mongoose, { Schema, Types } from 'mongoose';
 import { TVehicle } from './vehicle.interface';
 
-const vehicleSchema: Schema<TVehicle> = new Schema<TVehicle>(
+export const vehicleSchema: Schema<TVehicle> = new Schema<TVehicle>(
   {
     Id: {
       type: String,
@@ -40,27 +40,21 @@ const vehicleSchema: Schema<TVehicle> = new Schema<TVehicle>(
     },
     engine_no: {
       type: String,
-      required: [true, 'Engine no is required.'],
     },
     vehicle_brand: {
       type: String,
-      required: [true, 'Vehicle brand is required.'],
     },
     vehicle_name: {
       type: String,
-      required: [true, 'Vehicle name is required.'],
     },
     vehicle_model: {
       type: Number,
-      required: [true, 'Vehicle model is required.'],
     },
     vehicle_category: {
       type: String,
-      required: [true, 'Vehicle category is required.'],
     },
     color_code: {
       type: String,
-      required: [true, 'Color code is required.'],
     },
     mileageHistory: [
       {
@@ -70,7 +64,6 @@ const vehicleSchema: Schema<TVehicle> = new Schema<TVehicle>(
     ],
     fuel_type: {
       type: String,
-      required: [true, 'Fuel type is required.'],
     },
     driver_name: {
       type: String,

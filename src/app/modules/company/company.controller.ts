@@ -2,9 +2,16 @@ import { StatusCodes } from 'http-status-codes';
 import catchAsync from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { CompanyServices } from './company.service';
+import { Request, Response } from 'express';
 
-const createCompany = catchAsync(async (req, res) => {
-  const company = await CompanyServices.createCompanyDetails(req.body);
+const createCompany = catchAsync(async (req: Request, res: Response) => {
+  const { tenantDomain } = req.body;
+
+  const company = await CompanyServices.createCompanyDetails(
+    tenantDomain,
+    req.body,
+  );
+
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -16,14 +23,15 @@ const createCompany = catchAsync(async (req, res) => {
 const getAllCompanies = catchAsync(async (req, res) => {
   const limit = parseInt(req.query.limit as string);
   const page = parseInt(req.query.page as string);
-  const isRecycled = req.query.isRecycled as string; 
+  const isRecycled = req.query.isRecycled as string;
   const searchTerm = req.query.searchTerm as string;
-
+  const tenantDomain = req.query.tenantDomain as string;
   const result = await CompanyServices.getAllCompanyFromDB(
     limit,
     page,
     searchTerm,
-    isRecycled
+    isRecycled,
+    tenantDomain,
   );
 
   sendResponse(res, {
@@ -36,8 +44,12 @@ const getAllCompanies = catchAsync(async (req, res) => {
 
 const getSingleCompanyDetails = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const result = await CompanyServices.getSingleCompanyDetails(id);
+  const tenantDomain = req.query.tenantDomain as string;
+  //  const tenantDomain = req.headers.host || '';
+  const result = await CompanyServices.getSingleCompanyDetails(
+    tenantDomain,
+    id,
+  );
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -49,8 +61,13 @@ const getSingleCompanyDetails = catchAsync(async (req, res) => {
 
 const updateCompany = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const service = await CompanyServices.updateCompany(id, req.body);
+  const { tenantDomain } = req.body;
+  console.log('company tenant domain ', tenantDomain);
+  const service = await CompanyServices.updateCompany(
+    tenantDomain,
+    id,
+    req.body,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -60,8 +77,8 @@ const updateCompany = catchAsync(async (req, res) => {
 });
 const deleteCompany = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const service = await CompanyServices.deleteCompany(id);
+  const tenantDomain = req.query.tenantDomain as string;
+  const service = await CompanyServices.deleteCompany(tenantDomain, id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -69,10 +86,14 @@ const deleteCompany = catchAsync(async (req, res) => {
     data: service,
   });
 });
+
 const permanantlyDeleteCompany = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const service = await CompanyServices.permanantlyDeleteCompany(id);
+  const tenantDomain = req.query.tenantDomain as string;
+  const service = await CompanyServices.permanantlyDeleteCompany(
+    tenantDomain,
+    id,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -82,8 +103,11 @@ const permanantlyDeleteCompany = catchAsync(async (req, res) => {
 });
 const moveToRecyledbinCompany = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const service = await CompanyServices.moveToRecyledbinCompany(id);
+  const tenantDomain = req.query.tenantDomain as string;
+  const service = await CompanyServices.moveToRecyledbinCompany(
+    tenantDomain,
+    id,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -91,10 +115,14 @@ const moveToRecyledbinCompany = catchAsync(async (req, res) => {
     data: service,
   });
 });
+
 const restoreFromRecyledbinCompany = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const service = await CompanyServices.restoreFromRecyledbinCompany(id);
+  const tenantDomain = req.query.tenantDomain as string;
+  const service = await CompanyServices.restoreFromRecyledbinCompany(
+    tenantDomain,
+    id,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -114,6 +142,7 @@ const moveAllToRecycledBinMoneyReceipts = catchAsync(async (req, res) => {
   });
 });
 const restoreAllFromRecycledBinMoneyReceipts = catchAsync(async (req, res) => {
+  const tenantDomain = req.query.tenantDomain as string;
   const result = await CompanyServices.restoreAllFromRecycledBin();
 
   sendResponse(res, {
@@ -133,5 +162,5 @@ export const companyController = {
   moveToRecyledbinCompany,
   permanantlyDeleteCompany,
   restoreAllFromRecycledBinMoneyReceipts,
-  moveAllToRecycledBinMoneyReceipts
+  moveAllToRecycledBinMoneyReceipts,
 };

@@ -1,64 +1,67 @@
-import mongoose from 'mongoose';
+
 import { generateCompanyId } from './company.utils';
 import AppError from '../../errors/AppError';
 import { StatusCodes } from 'http-status-codes';
 import sanitizePayload from '../../middlewares/updateDataValidation';
-import { Vehicle } from '../vehicle/vehicle.model';
 import { TVehicle } from '../vehicle/vehicle.interface';
 import { CompanySearchableFields, vehicleFields } from './company.const';
 import { TCompany } from './company.interface';
 import { Company } from './company.model';
+import { getTenantModel } from '../../utils/getTenantModels';
 
-const createCompanyDetails = async (payload: {
-  company: TCompany;
-  vehicle: TVehicle;
-}) => {
-  const session = await mongoose.startSession();
+const createCompanyDetails = async (
+  tenantDomain: string,
+  payload: { company: TCompany; vehicle: TVehicle },
+) => {
+  const { Model: Company, connection: companyConnection } =
+    await getTenantModel(tenantDomain, 'Company');
+
+  const { Model: Vehicle, connection: vehicleConnection } =
+    await getTenantModel(tenantDomain, 'Vehicle');
+
+  if (companyConnection !== vehicleConnection) {
+    throw new Error(
+      'Company and Vehicle models must use the same tenant connection',
+    );
+  }
+
+  const session = await companyConnection.startSession();
   session.startTransaction();
 
   try {
     const { company, vehicle } = payload;
-
-    const companyId = await generateCompanyId();
-
-    // Create and save the customer
-    const sanitizeData = sanitizePayload(company);
+const companyId = await generateCompanyId(Company);
+    const sanitizedCompany = sanitizePayload(company);
 
     const companyData = new Company({
-      ...sanitizeData,
+      ...sanitizedCompany,
       companyId,
     });
 
     const savedCompany = await companyData.save({ session });
 
-    if (
-      savedCompany.user_type &&
-      savedCompany.user_type === 'company' &&
-      vehicle
-    ) {
-      const sanitizeData = sanitizePayload(vehicle);
+    if (savedCompany.user_type === 'company' && vehicle) {
+      const sanitizedVehicle = sanitizePayload(vehicle);
 
       const vehicleData = new Vehicle({
-        ...sanitizeData,
+        ...sanitizedVehicle,
         company: savedCompany._id,
         Id: savedCompany.companyId,
         user_type: savedCompany.user_type,
       });
-      if (!vehicleData.customer) {
-        vehicleData.customer = undefined; 
-      }
 
-      if (!vehicleData.showRoom) {
-        vehicleData.showRoom = undefined; 
-      }
+      if (!vehicleData.customer) vehicleData.customer = undefined;
+      if (!vehicleData.showRoom) vehicleData.showRoom = undefined;
 
       await vehicleData.save({ session });
 
       savedCompany.vehicles.push(vehicleData._id);
-
       await savedCompany.save({ session });
     } else {
-      throw new AppError(StatusCodes.CONFLICT, 'Something went wrong');
+      throw new AppError(
+        StatusCodes.CONFLICT,
+        'Vehicle data is missing or user type mismatch',
+      );
     }
 
     await session.commitTransaction();
@@ -68,7 +71,6 @@ const createCompanyDetails = async (payload: {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-
     throw error;
   }
 };
@@ -77,41 +79,35 @@ const getAllCompanyFromDB = async (
   limit: number,
   page: number,
   searchTerm: string,
-  isRecycled?:string,
+  isRecycled: string | undefined,
+  tenantDomain: string
 ) => {
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+
   let searchQuery: { [key: string]: any } = {};
 
-  
-
   if (searchTerm) {
-    const escapedFilteringData = searchTerm.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      '\\$&',
-    );
+    const escapedFilteringData = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    const companySearchQuery = CompanySearchableFields.map((field) => ({
+    const companySearchQuery = CompanySearchableFields.map(field => ({
       [field]: { $regex: escapedFilteringData, $options: 'i' },
     }));
 
-
-    const vehicleSearchQuery = vehicleFields.map((field) => {
-      if (field === "vehicles.vehicle_model") {
+    const vehicleSearchQuery = vehicleFields.map(field => {
+      if (field === 'vehicles.vehicle_model') {
         return { [field]: { $eq: Number(searchTerm) } };
       }
       return { [field]: { $regex: escapedFilteringData, $options: 'i' } };
     });
-    
 
     searchQuery = {
       $or: [...companySearchQuery, ...vehicleSearchQuery],
     };
   }
 
-    // Handle isRecycled filter 
-    if (isRecycled !== undefined) {
-      searchQuery.isRecycled = isRecycled === 'true';
-    }
-  
+  if (isRecycled !== undefined) {
+    searchQuery.isRecycled = isRecycled === 'true';
+  }
 
   const companies = await Company.aggregate([
     {
@@ -122,17 +118,9 @@ const getAllCompanyFromDB = async (
         as: 'vehicles',
       },
     },
-    {
-      $match: searchQuery,
-    },
-    {
-      $sort: { createdAt: -1 },
-    },
-    ...(page && limit ? [
-      { $skip: (page - 1) * limit },
-      { $limit: limit },
-    ] : []),
-     
+    { $match: searchQuery },
+    { $sort: { createdAt: -1 } },
+    ...(page && limit ? [{ $skip: (page - 1) * limit }, { $limit: limit }] : []),
   ]);
 
   const totalData = await Company.countDocuments(searchQuery);
@@ -150,7 +138,14 @@ const getAllCompanyFromDB = async (
   };
 };
 
-const getSingleCompanyDetails = async (id: string) => {
+const getSingleCompanyDetails = async (tenantDomain: string, id: string) => {
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  await getTenantModel(tenantDomain, 'JobCard');
+  await getTenantModel(tenantDomain, 'Quotation');
+  await getTenantModel(tenantDomain, 'Invoice');
+  await getTenantModel(tenantDomain, 'Vehicle');
+  await getTenantModel(tenantDomain, 'MoneyReceipt');
+
   const singleCompany = await Company.findById(id)
     .populate('jobCards')
     .populate({
@@ -162,10 +157,7 @@ const getSingleCompanyDetails = async (id: string) => {
       populate: { path: 'vehicle' },
     })
     .populate('money_receipts')
-    .populate({
-      path: 'vehicles',
-    })
-    .exec();
+    .populate('vehicles');
 
   if (!singleCompany) {
     throw new AppError(StatusCodes.NOT_FOUND, 'No company found');
@@ -174,38 +166,40 @@ const getSingleCompanyDetails = async (id: string) => {
   return singleCompany;
 };
 
+
 const updateCompany = async (
+  tenantDomain: string,
   id: string,
   payload: {
     company: Partial<TCompany>;
     vehicle: Partial<TVehicle>;
-  },
+  }
 ) => {
-  const { company, vehicle } = payload;
+  const { Model: Company, connection } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
 
-  // Start a session for transaction management
-  const session = await mongoose.startSession();
+  if (Company.db !== Vehicle.db) {
+    throw new Error('Company and Vehicle must come from the same tenant connection.');
+  }
+
+  const session = await connection.startSession();
   session.startTransaction();
 
   try {
+    const { company, vehicle } = payload;
     const sanitizedCompanyData = sanitizePayload(company);
+
     const updatedCompany = await Company.findByIdAndUpdate(
       id,
-      {
-        $set: sanitizedCompanyData,
-      },
-      {
-        new: true,
-        runValidators: true,
-        session, // use session for transaction
-      },
+      { $set: sanitizedCompanyData },
+      { new: true, runValidators: true, session }
     );
 
     if (!updatedCompany) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No company available');
+      throw new AppError(StatusCodes.NOT_FOUND, 'Company not found');
     }
 
-    if (vehicle.chassis_no) {
+    if (vehicle?.chassis_no) {
       const sanitizedVehicleData = sanitizePayload(vehicle);
 
       const existingVehicle = await Vehicle.findOne({
@@ -215,14 +209,8 @@ const updateCompany = async (
       if (existingVehicle) {
         await Vehicle.findByIdAndUpdate(
           existingVehicle._id,
-          {
-            $set: sanitizedVehicleData,
-          },
-          {
-            new: true,
-            runValidators: true,
-            session, // use session for transaction
-          },
+          { $set: sanitizedVehicleData },
+          { new: true, runValidators: true, session }
         );
       } else {
         const newVehicle = new Vehicle({
@@ -233,9 +221,7 @@ const updateCompany = async (
         });
 
         await newVehicle.save({ session });
-
         updatedCompany.vehicles.push(newVehicle._id);
-
         await updatedCompany.save({ session });
       }
     }
@@ -251,27 +237,26 @@ const updateCompany = async (
   }
 };
 
-const deleteCompany = async (id: string) => {
-  const session = await mongoose.startSession();
+
+const deleteCompany = async (tenantDomain: string, id: string) => {
+  const { Model: Company, connection } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+
+  if (Company.db !== Vehicle.db) {
+    throw new Error('Company and Vehicle must come from the same tenant connection.');
+  }
+
+  const session = await connection.startSession();
   session.startTransaction();
 
   try {
     const existingCompany = await Company.findById(id).session(session);
     if (!existingCompany) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No company exist.');
+      throw new AppError(StatusCodes.NOT_FOUND, 'Company not found');
     }
 
-    const vehicle = await Vehicle.deleteMany({
-      Id: existingCompany.companyId,
-    }).session(session);
-
-    const customer = await Company.findByIdAndDelete(
-      existingCompany._id,
-    ).session(session);
-
-    if (!customer || !vehicle) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No company available');
-    }
+    await Vehicle.deleteMany({ Id: existingCompany.companyId }).session(session);
+    await Company.findByIdAndDelete(existingCompany._id).session(session);
 
     await session.commitTransaction();
     session.endSession();
@@ -284,27 +269,22 @@ const deleteCompany = async (id: string) => {
   }
 };
 
-const permanantlyDeleteCompany = async (id: string) => {
-  const session = await mongoose.startSession();
+
+const permanantlyDeleteCompany = async (tenantDomain: string, id: string) => {
+  const { Model: Company, connection } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+
+  const session = await connection.startSession();
   session.startTransaction();
 
   try {
     const existingCompany = await Company.findById(id).session(session);
     if (!existingCompany) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No company exist.');
+      throw new AppError(StatusCodes.NOT_FOUND, 'No company exists.');
     }
 
-    const vehicle = await Vehicle.deleteMany({
-      Id: existingCompany.companyId,
-    }).session(session);
-
-    const customer = await Company.findByIdAndDelete(
-      existingCompany._id,
-    ).session(session);
-
-    if (!customer || !vehicle) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No company available');
-    }
+    await Vehicle.deleteMany({ Id: existingCompany.companyId }).session(session);
+    await Company.findByIdAndDelete(existingCompany._id).session(session);
 
     await session.commitTransaction();
     session.endSession();
@@ -316,62 +296,62 @@ const permanantlyDeleteCompany = async (id: string) => {
     throw error;
   }
 };
-const moveToRecyledbinCompany = async (id: string) => {
-  try {
-    const existingCompany = await Company.findById(id);
-    if (!existingCompany) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No company exist.');
-    }
 
-    const deletedCompany = await Company.findByIdAndUpdate(
-      existingCompany._id,
-      {
-        isRecycled: true,
-        recycledAt: new Date(), 
-      },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+const moveToRecyledbinCompany = async (tenantDomain: string, id: string) => {
+  console.log(tenantDomain, id )
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
 
-    if (!deletedCompany) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No company available');
-    }
-
-    return deletedCompany;
-  } catch (error) {
-    throw error;
+  const existingCompany = await Company.findById(id);
+  if (!existingCompany) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No company exists.');
   }
-};
-const restoreFromRecyledbinCompany = async (id: string) => {
-  try {
-    const existingCompany = await Company.findById(id);
-    if (!existingCompany) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No company exist.');
+
+  const updatedCompany = await Company.findByIdAndUpdate(
+    id,
+    {
+      isRecycled: true,
+      recycledAt: new Date(),
+    },
+    {
+      new: true,
+      runValidators: true,
     }
+  );
 
-    const deletedCompany = await Company.findByIdAndUpdate(
-      existingCompany._id,
-      {
-        isRecycled: false,
-        recycledAt: new Date(),
-      },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
-
-    if (!deletedCompany) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No company available');
-    }
-
-    return deletedCompany;
-  } catch (error) {
-    throw error;
+  if (!updatedCompany) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'Company not found for recycling.');
   }
+
+  return updatedCompany;
 };
+
+const restoreFromRecyledbinCompany = async (tenantDomain: string, id: string) => {
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+
+  const existingCompany = await Company.findById(id);
+  if (!existingCompany) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No company exists.');
+  }
+
+  const restoredCompany = await Company.findByIdAndUpdate(
+    existingCompany._id,
+    {
+      isRecycled: false,
+      recycledAt: null,
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+
+  if (!restoredCompany) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'Company could not be restored.');
+  }
+
+  return restoredCompany;
+};
+
 
 const moveAllToRecycledBin = async () => {
   const result = await Company.updateMany(
@@ -384,7 +364,7 @@ const moveAllToRecycledBin = async () => {
     },
     {
       runValidators: true,
-    }
+    },
   );
 
   return result;
@@ -402,7 +382,7 @@ const restoreAllFromRecycledBin = async () => {
     },
     {
       runValidators: true,
-    }
+    },
   );
 
   return result;
@@ -418,5 +398,5 @@ export const CompanyServices = {
   moveToRecyledbinCompany,
   permanantlyDeleteCompany,
   restoreAllFromRecycledBin,
-  moveAllToRecycledBin
+  moveAllToRecycledBin,
 };

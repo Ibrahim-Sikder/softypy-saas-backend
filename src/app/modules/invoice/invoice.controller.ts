@@ -6,7 +6,8 @@ import { InvoiceServices } from './invoice.service';
 import { RequestHandler } from 'express';
 
 const createInvoice = catchAsync(async (req, res) => {
-  const result = await InvoiceServices.createInvoiceDetails(req.body);
+  const { tenantDomain } = req.body;
+  const result = await InvoiceServices.createInvoiceDetails(tenantDomain, req.body);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -20,7 +21,10 @@ const getAllInvoices = catchAsync(async (req, res) => {
   const page = parseInt(req.query.page as string);
   const searchTerm = req.query.searchTerm as string;
   const isRecycled = req.query.isRecycled as string;
+   const tenantDomain = req.query.tenantDomain as string;
+
   const result = await InvoiceServices.getAllInvoicesFromDB(
+    tenantDomain,
     id,
     limit,
     page,
@@ -30,7 +34,7 @@ const getAllInvoices = catchAsync(async (req, res) => {
 
   const formattedInvoices = result.invoices.map((invoice) => ({
     ...invoice,
-    moneyReceipts: invoice.moneyReceipts || [], // Ensure it's included
+    moneyReceipts: invoice.moneyReceipts || [], 
     net_total: invoice.net_total
       ? invoice.net_total.toLocaleString('en-IN')
       : '0',
@@ -59,8 +63,9 @@ const getAllInvoices = catchAsync(async (req, res) => {
 
 const getSingleInvoice = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const tenantDomain = req.query.tenantDomain as string;
 
-  const result = await InvoiceServices.getSingleInvoiceDetails(id);
+  const result = await InvoiceServices.getSingleInvoiceDetails(tenantDomain ,id);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -72,8 +77,9 @@ const getSingleInvoice = catchAsync(async (req, res) => {
 
 const updateInvoice = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const invoice = await InvoiceServices.updateInvoiceIntoDB(id, req.body);
+  const { tenantDomain } = req.body;
+console.log(tenantDomain)
+  const invoice = await InvoiceServices.updateInvoiceIntoDB(tenantDomain,id, req.body);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -83,10 +89,12 @@ const updateInvoice = catchAsync(async (req, res) => {
 });
 const removeInvoiceFromUpdate = catchAsync(async (req, res) => {
   const { id } = req.query;
+  const tenantDomain = req.query.tenantDomain as string;
 
   const { index, invoice_name } = req.body;
 
   const invoice = await InvoiceServices.removeInvoiceFromUpdate(
+    tenantDomain,
     id as string,
     index,
     invoice_name,
@@ -101,8 +109,9 @@ const removeInvoiceFromUpdate = catchAsync(async (req, res) => {
 
 const deleteInvoice = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const tenantDomain = req.query.tenantDomain as string;
 
-  const invoice = await InvoiceServices.deleteInvoice(id);
+  const invoice = await InvoiceServices.deleteInvoice(tenantDomain,id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -112,8 +121,9 @@ const deleteInvoice = catchAsync(async (req, res) => {
 });
 const permanantlyDeleteInvoice = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const tenantDomain = req.query.tenantDomain as string;
 
-  const invoice = await InvoiceServices.permanantlyDeleteInvoice(id);
+  const invoice = await InvoiceServices.permanantlyDeleteInvoice(tenantDomain,id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -123,8 +133,9 @@ const permanantlyDeleteInvoice = catchAsync(async (req, res) => {
 });
 const moveToRecylebinInvoice = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const tenantDomain = req.query.tenantDomain as string;
 
-  const invoice = await InvoiceServices.moveToRecycledbinInvoice(id);
+  const invoice = await InvoiceServices.moveToRecycledbinInvoice(tenantDomain,id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -134,8 +145,9 @@ const moveToRecylebinInvoice = catchAsync(async (req, res) => {
 });
 const restoreFromRecylebinInvoice = catchAsync(async (req, res) => {
   const { id } = req.params;
+  const tenantDomain = req.query.tenantDomain as string;
 
-  const invoice = await InvoiceServices.restoreFromRecycledbinInvoice(id);
+  const invoice = await InvoiceServices.restoreFromRecycledbinInvoice(tenantDomain,id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -167,13 +179,14 @@ const restoreAllFromRecycledBinMoneyReceipts = catchAsync(async (req, res) => {
 
 const generateQuotationPdf: RequestHandler = catchAsync(async (req, res) => {
   const { invoiceId } = req.params;
-
+   const tenantDomain = req.query.tenantDomain as string;
   const baseUrl = (
     process.env.NEXT_PUBLIC_IMAGE_BASE_URL || 'https://api.trustautosolution.com'
   ).replace(/\/$/, '');
 
   try {
     const pdfBuffer = await InvoiceServices.generateInvoicePDF(
+      tenantDomain,
       invoiceId,
       baseUrl,
     );

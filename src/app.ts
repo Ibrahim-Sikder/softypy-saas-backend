@@ -77,6 +77,29 @@ cron.schedule('0 0 * * *', async () => {
   }
 });
 
+// cron.schedule('0 1 * * *', async () => {
+//   const now = new Date();
+
+//   try {
+//     const result = await Subscription.updateMany(
+//       {
+//         endDate: { $lt: now },
+//         isActive: true,
+//       },
+//       {
+//         $set: {
+//           status: 'Expired',
+//           isActive: false,
+//         },
+//       }
+//     );
+
+//     console.log(`✅ Cron Job Done: ${result.modifiedCount} subscription(s) marked as expired`);
+//   } catch (error) {
+//     console.error('❌ Error in subscription expiry cron job:', error);
+//   }
+// });
+
 app.post('/api/v1/restore', async (req: Request, res: Response) => {
   try {
     await restoreMongoDB();
@@ -105,13 +128,6 @@ app.get('/api/v1/backup-logs',  (req: Request, res: Response) => {
   }
 });
 
-// Scheduled backup every day at midnight
-// cron.schedule('0 0 * * *', () => {
-//   console.log('Running daily scheduled backup...');
-//   backupMongoDB()
-//     .then(() => console.log('Backup completed successfully'))
-//     .catch((error) => console.error('Backup failed:', error));
-// });
 
 
 app.use(globalErrorHandler);

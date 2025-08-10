@@ -6,14 +6,21 @@ import { JobCardServices } from './job-card.service';
 import { RequestHandler } from 'express';
 
 const createJobCard = catchAsync(async (req, res) => {
-  const jobCard = await JobCardServices.createJobCardDetails(req.body);
+  const { tenantDomain, ...restPayload } = req.body;
+
+  const jobCard = await JobCardServices.createJobCardDetails(
+    tenantDomain,
+    restPayload
+  );
+
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
-    message: 'Job card created successful!',
+    message: 'Job card created successfully!',
     data: jobCard,
   });
 });
+
 
 const getAllJobCards = catchAsync(async (req, res) => {
   const id = req.query.id as string;
@@ -21,7 +28,9 @@ const getAllJobCards = catchAsync(async (req, res) => {
   const page = parseInt(req.query.page as string);
   const searchTerm = req.query.searchTerm as string;
   const isRecycled = req.query.isRecycled as string;
+  const tenantDomain = req.query.tenantDomain as string;
   const result = await JobCardServices.getAllJobCardsFromDB(
+    tenantDomain,
     id,
     limit,
     page,
@@ -39,8 +48,9 @@ const getAllJobCards = catchAsync(async (req, res) => {
 
 const getSingleJobCardDetails = catchAsync(async (req, res) => {
   const { id } = req.params;
+const tenantDomain = req.query.tenantDomain as string;
 
-  const result = await JobCardServices.getSingleJobCardDetails(id);
+  const result = await JobCardServices.getSingleJobCardDetails(tenantDomain,id);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -51,8 +61,9 @@ const getSingleJobCardDetails = catchAsync(async (req, res) => {
 });
 const getSingleJobCardDetailsWithJobNo = catchAsync(async (req, res) => {
   const jobNo = req.query.jobNo as string;
-
-  const result = await JobCardServices.getSingleJobCardDetailsWithJobNo(jobNo);
+  console.log('for job',jobNo)
+const tenantDomain = req.query.tenantDomain as string;
+  const result = await JobCardServices.getSingleJobCardDetailsWithJobNo(tenantDomain,jobNo);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -64,8 +75,8 @@ const getSingleJobCardDetailsWithJobNo = catchAsync(async (req, res) => {
 
 const updateJobCardDetails = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const service = await JobCardServices.updateJobCardDetails(id, req.body);
+const {tenantDomain} = req.body;
+  const service = await JobCardServices.updateJobCardDetails(tenantDomain,id, req.body);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -75,8 +86,9 @@ const updateJobCardDetails = catchAsync(async (req, res) => {
 });
 const deleteJobCard = catchAsync(async (req, res) => {
   const { id } = req.params;
+const tenantDomain = req.query.tenantDomain as string;
 
-  const card = await JobCardServices.deleteJobCard(id);
+  const card = await JobCardServices.deleteJobCard(tenantDomain ,id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -84,10 +96,13 @@ const deleteJobCard = catchAsync(async (req, res) => {
     data: card,
   });
 });
+
+
 const permanantlyDeleteJobcard = catchAsync(async (req, res) => {
   const { id } = req.params;
+const tenantDomain = req.query.tenantDomain as string;
 
-  const card = await JobCardServices.deleteJobCard(id);
+  const card = await JobCardServices.deleteJobCard(tenantDomain ,id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -95,10 +110,13 @@ const permanantlyDeleteJobcard = catchAsync(async (req, res) => {
     data: card,
   });
 });
+
+
 const movetoRecyclebinJobCard = catchAsync(async (req, res) => {
   const { id } = req.params;
+const tenantDomain = req.query.tenantDomain as string;
 
-  const card = await JobCardServices.movetoRecyclebinJobcard(id);
+  const card = await JobCardServices.movetoRecyclebinJobcard(tenantDomain , id );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -108,8 +126,9 @@ const movetoRecyclebinJobCard = catchAsync(async (req, res) => {
 });
 const restorfromRecyclebinJobCard = catchAsync(async (req, res) => {
   const { id } = req.params;
+const tenantDomain = req.query.tenantDomain as string;
 
-  const card = await JobCardServices.restorefromRecyclebinJobcard(id);
+  const card = await JobCardServices.restorefromRecyclebinJobcard(tenantDomain,id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -119,8 +138,9 @@ const restorfromRecyclebinJobCard = catchAsync(async (req, res) => {
 });
 const getUserDetailsForJobCard = catchAsync(async (req, res) => {
   const { id, userType } = req.params;
+const tenantDomain = req.query.tenantDomain as string;
 
-  const card = await JobCardServices.getUserDetailsForJobCard(id, userType);
+  const card = await JobCardServices.getUserDetailsForJobCard(tenantDomain ,id, userType);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -131,6 +151,7 @@ const getUserDetailsForJobCard = catchAsync(async (req, res) => {
 
 const generateJobCardPdf: RequestHandler = catchAsync(async (req, res) => {
   const { jobcardId } = req.params;
+const tenantDomain = req.query.tenantDomain as string;
 
   const baseUrl = (
     process.env.NEXT_PUBLIC_IMAGE_BASE_URL ||
@@ -139,6 +160,7 @@ const generateJobCardPdf: RequestHandler = catchAsync(async (req, res) => {
 
   try {
     const pdfBuffer = await JobCardServices.generateJobCardPdf(
+      tenantDomain,
       jobcardId,
       baseUrl,
     );

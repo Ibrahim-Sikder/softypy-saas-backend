@@ -6,7 +6,9 @@ import { purchaseReturnServices } from './purchasereturn.service';
 const createPurchaseReturn = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const payload = req.body;
-    const result = await purchaseReturnServices.createPurchaseReturn(payload);
+      const { tenantDomain } = req.body;
+
+    const result = await purchaseReturnServices.createPurchaseReturn(tenantDomain,payload);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -18,9 +20,11 @@ const createPurchaseReturn = async (req: Request, res: Response, next: NextFunct
   }
 };
 
+
 const getAllPurchaseReturns = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await purchaseReturnServices.getAllPurchaseReturns(req.query);
+      const tenantDomain = req.query.tenantDomain as string;
+    const result = await purchaseReturnServices.getAllPurchaseReturns(tenantDomain,req.query);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -34,8 +38,9 @@ const getAllPurchaseReturns = async (req: Request, res: Response, next: NextFunc
 
 const getSinglePurchaseReturn = async (req: Request, res: Response, next: NextFunction) => {
   try {
+      const tenantDomain = req.query.tenantDomain as string;
     const { id } = req.params;
-    const result = await purchaseReturnServices.getSinglePurchaseReturn(id);
+    const result = await purchaseReturnServices.getSinglePurchaseReturn(tenantDomain,id);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -50,7 +55,9 @@ const getSinglePurchaseReturn = async (req: Request, res: Response, next: NextFu
 const updatePurchaseReturn = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const result = await purchaseReturnServices.updatePurchaseReturn(id, req.body);
+    const { tenantDomain } = req.body;
+    console.log(tenantDomain)
+    const result = await purchaseReturnServices.updatePurchaseReturn(tenantDomain,id, req.body);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -65,7 +72,8 @@ const updatePurchaseReturn = async (req: Request, res: Response, next: NextFunct
 const deletePurchaseReturn = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const result = await purchaseReturnServices.deletePurchaseReturn(id);
+      const tenantDomain = req.query.tenantDomain as string;
+    const result = await purchaseReturnServices.deletePurchaseReturn(tenantDomain,id);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,

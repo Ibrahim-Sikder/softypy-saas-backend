@@ -2,18 +2,24 @@ import QueryBuilder from '../../builder/QueryBuilder';
 import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { Request } from 'express';
-import { ExpenseCategory } from './expense.model';
 import { IExpenseCategory } from './expense.interface';
+import { getTenantModel } from '../../utils/getTenantModels';
 
 export const getAllExpenseCategories = async (
+  tenantDomain: string,
   query: Record<string, unknown>,
 ): Promise<any> => {
   try {
+    const { Model: ExpenseCategory } = await getTenantModel(
+      tenantDomain,
+      'ExpenseCategory',
+    );
+
     const categorySearchableFields = ['name', 'code'];
     const categoryQuery = new QueryBuilder(ExpenseCategory.find({}), query)
       .search(categorySearchableFields)
-      .filter()
-      .sort()
+      // .filter()
+      // .sort()
       .paginate()
       .fields();
 
@@ -30,18 +36,17 @@ export const getAllExpenseCategories = async (
 };
 
 export const getExpenseCategoryById = async (
+  tenantDomain: string,
   id: string,
 ): Promise<IExpenseCategory | null> => {
   try {
-    const category = await ExpenseCategory.findOne({ _id: id }).populate(
-      'expenses',
+    const { Model: ExpenseCategory } = await getTenantModel(
+      tenantDomain,
+      'ExpenseCategory',
     );
-    if (!category) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'This expense category is not found',
-      );
-    }
+
+    const category = await ExpenseCategory.findOne({ _id: id });
+
     return category;
   } catch (error: any) {
     throw new AppError(
@@ -52,9 +57,15 @@ export const getExpenseCategoryById = async (
 };
 
 export const createExpenseCategory = async (
+  tenantDomain: string,
   req: Request,
 ): Promise<IExpenseCategory | null> => {
   try {
+    const { Model: ExpenseCategory } = await getTenantModel(
+      tenantDomain,
+      'ExpenseCategory',
+    );
+
     const { name, code } = req.body;
     const category = await ExpenseCategory.findOne({ name, code });
 
@@ -76,29 +87,15 @@ export const createExpenseCategory = async (
 };
 
 export const updateExpenseCategory = async (
+  tenantDomain: string,
   id: string,
   req: Request,
 ): Promise<IExpenseCategory | null> => {
   try {
-    const { name, code } = req.body;
-
-    const category = await ExpenseCategory.findOne({ _id: id });
-    if (!category) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        'This expense category does not exist',
-      );
-    }
-
-    if (name || code) {
-      const categoryExists = await ExpenseCategory.findOne({ name, code });
-      if (categoryExists) {
-        throw new AppError(
-          httpStatus.CONFLICT,
-          'This expense category already exists',
-        );
-      }
-    }
+    const { Model: ExpenseCategory } = await getTenantModel(
+      tenantDomain,
+      'ExpenseCategory',
+    );
 
     const { ...remainingCategoryData } = req.body;
     const modifiedUpdatedData: Record<string, unknown> = {
@@ -124,9 +121,15 @@ export const updateExpenseCategory = async (
 };
 
 export const deleteExpenseCategory = async (
+  tenantDomain: string,
   id: string,
 ): Promise<void | null> => {
   try {
+    const { Model: ExpenseCategory } = await getTenantModel(
+      tenantDomain,
+      'ExpenseCategory',
+    );
+
     const category = await ExpenseCategory.findOne({ _id: id });
     if (!category) {
       throw new AppError(

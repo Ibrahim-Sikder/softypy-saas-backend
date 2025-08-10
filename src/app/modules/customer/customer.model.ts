@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { TCustomer } from './customer.interface';
 
-const customerSchema: Schema<TCustomer> = new Schema<TCustomer>(
+export const customerSchema: Schema<TCustomer> = new Schema<TCustomer>(
   {
     customerId: {
       type: String,
@@ -15,6 +15,10 @@ const customerSchema: Schema<TCustomer> = new Schema<TCustomer>(
       required: true,
     },
 
+    note: {
+        type: Schema.ObjectId,
+        ref: 'Note',
+      },
     vehicles: [
       {
         type: Schema.ObjectId,
@@ -81,12 +85,14 @@ const customerSchema: Schema<TCustomer> = new Schema<TCustomer>(
 
     driver_name: {
       type: String,
+      required: [true, 'Driver name is required'],
     },
     driver_country_code: {
       type: String,
     },
     driver_contact: {
       type: String,
+      required: [true, 'Driver contact number is required'],
     },
     customerOwnerName: {
       type: String,

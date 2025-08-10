@@ -6,10 +6,9 @@ import sendResponse from '../../utils/sendResponse';
 import { unitServices } from './unit.service';
 
 const createUnit = async (req: Request, res: Response, next: NextFunction) => {
-  const domain =
-    (req.headers.origin as string) || (req.headers.host as string) || '';
+  const { tenantDomain } = req.body;
   try {
-    const result = await unitServices.createUnit(domain, req.body);
+    const result = await unitServices.createUnit(tenantDomain, req.body);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -24,10 +23,13 @@ const createUnit = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 const getAllUnit = async (req: Request, res: Response, next: NextFunction) => {
-    const domain =
-    (req.headers.origin as string) || (req.headers.host as string) || '';
+  const tenantDomain =
+    (req.headers['x-tenant-domain'] as string) ||
+    (req.query.tenantDomain as string) ||
+    req.headers.host ||
+    '';
   try {
-    const result = await unitServices.getAllUnit(domain, req.query);
+    const result = await unitServices.getAllUnit(tenantDomain, req.query);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -46,7 +48,8 @@ const getSingleUnit = async (
 ) => {
   try {
     const { id } = req.params;
-    const result = await unitServices.getSinigleUnit(id);
+    const tenantDomain = req.query.tenantDomain as string;
+    const result = await unitServices.getSinigleUnit(tenantDomain, id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -61,7 +64,9 @@ const getSingleUnit = async (
 const deleteUnit = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const result = await unitServices.deleteUnit(id);
+    const tenantDomain = req.query.tenantDomain as string;
+    
+    const result = await unitServices.deleteUnit(tenantDomain, id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -77,7 +82,8 @@ const deleteUnit = async (req: Request, res: Response, next: NextFunction) => {
 const updateUnit = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const result = await unitServices.updateUnit(id, req.body);
+    const { tenantDomain } = req.body;
+    const result = await unitServices.updateUnit(tenantDomain, id, req.body);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

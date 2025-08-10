@@ -11,6 +11,8 @@ const createProduct = async (
   res: Response,
   next: NextFunction,
 ) => {
+
+    const { tenantDomain } = req.body;
   try {
     const file = req.file;
     const payload = req.body;
@@ -19,7 +21,7 @@ const createProduct = async (
       delete payload.data;
     }
 
-    const result = await productServices.createProduct(payload, file);
+    const result = await productServices.createProduct(tenantDomain,payload, file);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -40,7 +42,13 @@ const getAllProduct = async (
   next: NextFunction,
 ) => {
   try {
-    const result = await productServices.getAllProduct(req.query);
+     const tenantDomain =
+    (req.headers['x-tenant-domain'] as string) ||
+    (req.query.tenantDomain as string) ||
+    req.headers.host ||
+    '';
+
+    const result = await productServices.getAllProduct(tenantDomain,req.query);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -59,7 +67,8 @@ const getSingleProduct = async (
 ) => {
   try {
     const { id } = req.params;
-    const result = await productServices.getSinigleProduct(id);
+     const tenantDomain = req.query.tenantDomain as string;
+    const result = await productServices.getSinigleProduct(tenantDomain,id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -77,8 +86,9 @@ const deleteProduct = async (
   next: NextFunction,
 ) => {
   try {
+     const tenantDomain = req.query.tenantDomain as string;
     const { id } = req.params;
-    const result = await productServices.deleteProduct(id);
+    const result = await productServices.deleteProduct(tenantDomain,id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -106,8 +116,8 @@ const updateProduct = async (
         message: 'Invalid ID',
       });
     }
-
-    const result = await productServices.updateProduct(id, req.body);
+      const { tenantDomain } = req.body;
+    const result = await productServices.updateProduct(tenantDomain, id, req.body);
 
     if (!result) {
       return res.status(404).json({

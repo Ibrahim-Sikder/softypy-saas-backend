@@ -24,7 +24,7 @@ const paymentHistorySchema: Schema<TPaymentHistory> = new Schema(
   { _id: false },
 )
 
-const salarySchema: Schema<TSalaryDocument, Model<TSalaryDocument, {}, {}, TSalaryMethods>, {}, TSalaryMethods> = new Schema<TSalaryDocument, Model<TSalaryDocument, {}, {}, TSalaryMethods>, {}, TSalaryMethods>(
+export const salarySchema: Schema<TSalaryDocument, Model<TSalaryDocument, {}, {}, TSalaryMethods>, {}, TSalaryMethods> = new Schema<TSalaryDocument, Model<TSalaryDocument, {}, {}, TSalaryMethods>, {}, TSalaryMethods>(
   {
     employee: {
       type: Schema.Types.ObjectId,
@@ -84,11 +84,10 @@ salarySchema.methods.calculateTotalPayment = function (this: TSalaryDocument): n
 
 // Method to recalculate payment amounts
 salarySchema.methods.recalculatePayments = function (this: TSalaryDocument) {
-  console.log("🔄 Recalculating payments for salary:", this._id)
 
   // Ensure total_payment is up to date
   this.total_payment = this.calculateTotalPayment()
-  console.log("📊 Total payment calculated:", this.total_payment)
+
 
   // Calculate total paid from payment_history
   const paymentHistory = this.payment_history || []
@@ -105,17 +104,11 @@ salarySchema.methods.recalculatePayments = function (this: TSalaryDocument) {
     totalPaidAmount = legacyAdvance + legacyPay
   }
 
-  console.log("💰 Total paid amount:", totalPaidAmount)
-
-  // Update paid_amount
   this.paid_amount = totalPaidAmount
 
   // Calculate due_amount
   const expectedTotal = this.total_payment
   this.due_amount = Math.max(0, expectedTotal - totalPaidAmount)
-
-  console.log("🔴 Due amount calculated:", this.due_amount)
-
   // Update payment_status
   if (totalPaidAmount === 0) {
     this.payment_status = "pending"
@@ -125,8 +118,6 @@ salarySchema.methods.recalculatePayments = function (this: TSalaryDocument) {
   } else {
     this.payment_status = "partial"
   }
-
-  console.log("📈 Payment status:", this.payment_status)
 
   // Update legacy fields for backward compatibility
   this.paid = totalPaidAmount
@@ -160,13 +151,9 @@ salarySchema.methods.validatePaymentAmounts = function (this: TSalaryDocument): 
 
 // Pre-save middleware to auto-calculate payment amounts
 salarySchema.pre("save", function (next) {
-  console.log("🚀 Pre-save middleware triggered for salary:", this._id)
-  console.log("📝 Modified paths:", this.modifiedPaths())
-
   try {
     // Always recalculate if it's a new document
     if (this.isNew) {
-      console.log("🆕 New document - recalculating payments")
       this.recalculatePayments()
       return next()
     }
@@ -188,7 +175,6 @@ salarySchema.pre("save", function (next) {
 
     // Recalculate if any relevant fields have been modified
     if (salaryComponentsModified || paymentFieldsModified) {
-      console.log("🔄 Relevant fields modified - recalculating payments")
       this.recalculatePayments()
     }
 
@@ -206,13 +192,7 @@ salarySchema.pre("save", function (next) {
 
 // Post-save middleware for logging
 salarySchema.post("save", (doc) => {
-  console.log("✅ Salary saved successfully:", {
-    id: doc._id,
-    totalPayment: doc.total_payment,
-    paidAmount: doc.paid_amount,
-    dueAmount: doc.due_amount,
-    paymentStatus: doc.payment_status,
-  })
+
 })
 
 export const Salary = mongoose.model<TSalaryDocument>("Salary", salarySchema)

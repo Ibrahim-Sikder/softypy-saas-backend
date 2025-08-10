@@ -6,7 +6,10 @@ import catchAsync from '../../utils/catchAsync';
 import { expenseCategoryService } from './expense.category.service';
 
 const getAllExpenseCategories: RequestHandler = catchAsync(async (req, res) => {
+  const tenantDomain = req.query.tenantDomain as string;
+
   const result = await expenseCategoryService.getAllExpenseCategories(
+    tenantDomain,
     req.query,
   );
 
@@ -19,7 +22,10 @@ const getAllExpenseCategories: RequestHandler = catchAsync(async (req, res) => {
 });
 
 const getExpenseCategoryById: RequestHandler = catchAsync(async (req, res) => {
+  const tenantDomain = req.query.tenantDomain as string;
+
   const result = await expenseCategoryService.getExpenseCategoryById(
+    tenantDomain,
     req.params.id,
   );
 
@@ -31,8 +37,14 @@ const getExpenseCategoryById: RequestHandler = catchAsync(async (req, res) => {
   });
 });
 
+
 const createExpenseCategory: RequestHandler = catchAsync(async (req, res) => {
-  const result = await expenseCategoryService.createExpenseCategory(req);
+  const tenantDomain = req.query.tenantDomain as string;
+  console.log(tenantDomain);
+  const result = await expenseCategoryService.createExpenseCategory(
+    tenantDomain,
+    req,
+  );
 
   sendResponse(res, {
     success: true,
@@ -43,7 +55,10 @@ const createExpenseCategory: RequestHandler = catchAsync(async (req, res) => {
 });
 
 const updateExpenseCategory: RequestHandler = catchAsync(async (req, res) => {
+  const tenantDomain = req.query.tenantDomain as string;
+
   const result = await expenseCategoryService.updateExpenseCategory(
+    tenantDomain,
     req.params.id,
     req,
   );
@@ -57,7 +72,12 @@ const updateExpenseCategory: RequestHandler = catchAsync(async (req, res) => {
 });
 
 const deleteExpenseCategory: RequestHandler = catchAsync(async (req, res) => {
-  await expenseCategoryService.deleteExpenseCategory(req.params.id);
+  const tenantDomain = req.query.tenantDomain as string;
+
+  await expenseCategoryService.deleteExpenseCategory(
+    tenantDomain,
+    req.params.id,
+  );
 
   sendResponse(res, {
     success: true,

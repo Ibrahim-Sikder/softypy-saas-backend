@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { TQuotation } from './quotation.interface';
 
-const quotationSchema: Schema<TQuotation> = new Schema<TQuotation>(
+export const quotationSchema: Schema<TQuotation> = new Schema<TQuotation>(
   {
     quotation_no: {
       type: String,
@@ -20,9 +20,15 @@ const quotationSchema: Schema<TQuotation> = new Schema<TQuotation>(
     date: {
       type: String,
     },
+    tax: {
+      type: Number,
+    },
     customer: {
       type: Schema.ObjectId,
       ref: 'Customer',
+    },
+        mileage: {
+      type: Number,
     },
     company: {
       type: Schema.ObjectId,

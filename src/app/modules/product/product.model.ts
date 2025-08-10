@@ -2,7 +2,7 @@
 import mongoose, { Schema, model } from 'mongoose';
 import { TProduct } from './product.interface';
 
-const ProductSchema = new Schema<TProduct>(
+export const ProductSchema = new Schema<TProduct>(
   {
     product_name: {
       type: String,
@@ -14,6 +14,7 @@ const ProductSchema = new Schema<TProduct>(
     },
     image: {
       type: String,
+        required: true,
     },
     category: {
       type: mongoose.Schema.Types.ObjectId,
@@ -113,7 +114,7 @@ const ProductSchema = new Schema<TProduct>(
     expiryDateType: {
       type: String,
       enum: ['fixed', 'variable', 'none'],
-      required: true,
+
     },
     expiryDate: {
       type: String,

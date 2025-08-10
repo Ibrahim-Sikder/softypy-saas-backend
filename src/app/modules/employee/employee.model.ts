@@ -3,7 +3,7 @@ import { TEmployee } from './employee.interface';
 import config from '../../config';
 import bcrypt from 'bcrypt';
 
-const employeeSchema: Schema<TEmployee> = new Schema<TEmployee>(
+export const employeeSchema: Schema<TEmployee> = new Schema<TEmployee>(
   {
     attendance: [
       {

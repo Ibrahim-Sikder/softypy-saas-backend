@@ -1,8 +1,7 @@
 import { Schema, model, Types, Document } from 'mongoose';
 import { IStockTransaction } from './stockTransaction.interface';
 
-// Schema
-const StockTransactionSchema = new Schema<IStockTransaction>(
+export const StockTransactionSchema = new Schema<IStockTransaction>(
   {
     product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
     warehouse: { type: String  },
@@ -16,9 +15,8 @@ const StockTransactionSchema = new Schema<IStockTransaction>(
     date: { type: Date, default: Date.now },
   },
   {
-    timestamps: true, // Optional: adds createdAt and updatedAt
+    timestamps: true, 
   }
 );
 
-// Model
 export const StockTransaction = model<IStockTransaction>('StockTransaction', StockTransactionSchema);

@@ -9,109 +9,107 @@ import { Vehicle } from '../vehicle/vehicle.model';
 import { TCustomer } from './customer.interface';
 import { TVehicle } from '../vehicle/vehicle.interface';
 import { CustomerSearchableFields, vehicleFields } from './customer.const';
+import { getTenantModel } from '../../utils/getTenantModels';
 
-const createCustomerDetails = async (payload: {
-  customer: TCustomer;
-  vehicle: TVehicle;
-}) => {
-  const session = await mongoose.startSession();
+const createCustomerDetails = async (
+  tenantDomain: string,
+  payload: { customer: TCustomer; vehicle: TVehicle },
+) => {
+  console.log(tenantDomain)
+  const { Model: Customer, connection: customerConnection } =
+    await getTenantModel(tenantDomain, 'Customer');
+
+  const { Model: Vehicle, connection: vehicleConnection } =
+    await getTenantModel(tenantDomain, 'Vehicle');
+
+  if (customerConnection !== vehicleConnection) {
+    throw new Error(
+      'Customer and Vehicle models must be from the same tenant connection',
+    );
+  }
+
+  const session = await customerConnection.startSession();
   session.startTransaction();
 
   try {
     const { customer, vehicle } = payload;
+    const customerId = await generateCustomerId(Customer);
 
-    const customerId = await generateCustomerId();
-
-    // Create and save the customer
-    const sanitizeData = sanitizePayload(customer);
-
+    const sanitizedCustomer = sanitizePayload(customer);
     const customerData = new Customer({
-      ...sanitizeData,
+      ...sanitizedCustomer,
       customerId,
     });
+
     const savedCustomer = await customerData.save({ session });
 
-    if (
-      savedCustomer.user_type &&
-      savedCustomer.user_type === 'customer' &&
-      vehicle
-    ) {
-      const sanitizeData = sanitizePayload(vehicle);
+    if (savedCustomer.user_type === 'customer' && vehicle) {
+      const sanitizedVehicle = sanitizePayload(vehicle);
 
       const vehicleData = new Vehicle({
-        ...sanitizeData,
+        ...sanitizedVehicle,
         customer: savedCustomer._id,
         Id: savedCustomer.customerId,
         user_type: savedCustomer.user_type,
       });
-      if (!vehicleData.company) {
-        vehicleData.company = undefined; // Ensure no null value
-      }
 
-      if (!vehicleData.showRoom) {
-        vehicleData.showRoom = undefined; // Ensure no null value
-      }
+      if (!vehicleData.company) vehicleData.company = undefined;
+      if (!vehicleData.showRoom) vehicleData.showRoom = undefined;
 
       await vehicleData.save({ session });
 
       savedCustomer.vehicles.push(vehicleData._id);
-
       await savedCustomer.save({ session });
     } else {
-      throw new AppError(StatusCodes.CONFLICT, 'Something went wrong');
+      throw new AppError(
+        StatusCodes.CONFLICT,
+        'Vehicle data is missing or user type mismatch',
+      );
     }
 
     await session.commitTransaction();
     session.endSession();
 
-    return null;
+    return savedCustomer;
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-
     throw error;
   }
 };
 
 const getAllCustomersFromDB = async (
+  tenantDomain: string,
   limit: number,
   page: number,
   searchTerm: string,
-  isRecycled?: string
+  isRecycled?: string,
 ) => {
-  // Define the searchQuery type as an object that can have any key with any value
-  let searchQuery: { [key: string]: any } = {};
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
 
-  // Handle search term if provided
+  let searchQuery: { [key: string]: any } = {};
   if (searchTerm) {
     const escapedFilteringData = searchTerm.replace(
       /[.*+?^${}()|[\]\\]/g,
-      '\\$&'
+      '\\$&',
     );
 
-    
     const customerSearchQuery = CustomerSearchableFields.map((field) => ({
       [field]: { $regex: escapedFilteringData, $options: 'i' },
     }));
 
     const vehicleSearchQuery = vehicleFields.map((field) => {
-      if (field === "vehicles.vehicle_model") {
+      if (field === 'vehicles.vehicle_model') {
         return { [field]: { $eq: Number(searchTerm) } };
       }
       return { [field]: { $regex: escapedFilteringData, $options: 'i' } };
     });
-    
 
-    
     searchQuery = {
-      $or: [
-        ...vehicleSearchQuery,
-        ...customerSearchQuery,
-      ],
+      $or: [...vehicleSearchQuery, ...customerSearchQuery],
     };
   }
 
-  // Handle isRecycled filter 
   if (isRecycled !== undefined) {
     searchQuery.isRecycled = isRecycled === 'true';
   }
@@ -150,15 +148,14 @@ const getAllCustomersFromDB = async (
       },
     },
     {
-      $match: searchQuery, // Apply the dynamic search query
+      $match: searchQuery,
     },
     {
       $sort: { createdAt: -1 },
     },
-    ...(page && limit ? [
-      { $skip: (page - 1) * limit },
-      { $limit: limit },
-    ] : []),
+    ...(page && limit
+      ? [{ $skip: (page - 1) * limit }, { $limit: limit }]
+      : []),
   ]);
 
   const totalData = await Customer.countDocuments(searchQuery);
@@ -176,9 +173,18 @@ const getAllCustomersFromDB = async (
   };
 };
 
+export const getSingleCustomerDetails = async (
+  tenantDomain: string,
+  id: string,
+) => {
+  await getTenantModel(tenantDomain, 'JobCard');
+  await getTenantModel(tenantDomain, 'Quotation');
+  await getTenantModel(tenantDomain, 'Invoice');
+  await getTenantModel(tenantDomain, 'Vehicle');
+  await getTenantModel(tenantDomain, 'MoneyReceipt');
 
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
 
-const getSingleCustomerDetails = async (id: string) => {
   const singleCustomer = await Customer.findById(id)
     .populate('jobCards')
     .populate({
@@ -190,9 +196,7 @@ const getSingleCustomerDetails = async (id: string) => {
       populate: { path: 'vehicle' },
     })
     .populate('money_receipts')
-    .populate({
-      path: 'vehicles',
-    })
+    .populate('vehicles')
     .exec();
 
   if (!singleCustomer) {
@@ -203,29 +207,40 @@ const getSingleCustomerDetails = async (id: string) => {
 };
 
 const updateCustomer = async (
+  tenantDomain: string,
   id: string,
   payload: {
     customer: Partial<TCustomer>;
     vehicle: Partial<TVehicle>;
   },
 ) => {
-  const { customer, vehicle } = payload;
 
-  // Start a session for transaction management
-  const session = await mongoose.startSession();
+  const { customer, vehicle } = payload;
+  const { Model: Customer, connection: customerConnection } =
+    await getTenantModel(tenantDomain, 'Customer');
+
+  const { Model: Vehicle, connection: vehicleConnection } =
+    await getTenantModel(tenantDomain, 'Vehicle');
+
+  if (customerConnection !== vehicleConnection) {
+    throw new Error(
+      'Customer and Vehicle models must be from the same tenant connection',
+    );
+  }
+
+  const session = await customerConnection.startSession();
   session.startTransaction();
 
   try {
     const sanitizedCustomerData = sanitizePayload(customer);
+
     const updatedCustomer = await Customer.findByIdAndUpdate(
       id,
-      {
-        $set: sanitizedCustomerData,
-      },
+      { $set: sanitizedCustomerData },
       {
         new: true,
         runValidators: true,
-        session, // use session for transaction
+        session,
       },
     );
 
@@ -233,7 +248,8 @@ const updateCustomer = async (
       throw new AppError(StatusCodes.NOT_FOUND, 'No customer available');
     }
 
-    if (vehicle.chassis_no) {
+    // If vehicle data exists and has chassis_no, try to update or create
+    if (vehicle?.chassis_no) {
       const sanitizedVehicleData = sanitizePayload(vehicle);
 
       const existingVehicle = await Vehicle.findOne({
@@ -249,7 +265,7 @@ const updateCustomer = async (
           {
             new: true,
             runValidators: true,
-            session, // use session for transaction
+            session,
           },
         );
       } else {
@@ -260,10 +276,14 @@ const updateCustomer = async (
           user_type: updatedCustomer.user_type,
         });
 
+        // Optional: ensure optional fields like company/showRoom are undefined if empty
+        if (!newVehicle.company) newVehicle.company = undefined;
+        if (!newVehicle.showRoom) newVehicle.showRoom = undefined;
+
         await newVehicle.save({ session });
 
+        // Update the customer's vehicle list
         updatedCustomer.vehicles.push(newVehicle._id);
-
         await updatedCustomer.save({ session });
       }
     }
@@ -311,8 +331,12 @@ const deleteCustomer = async (id: string) => {
     throw error;
   }
 };
-const permanantlyDeleteCustomer = async (id: string) => {
-  const session = await mongoose.startSession();
+const permanantlyDeleteCustomer = async (tenantDomain: string, id: string) => {
+  console.log(tenantDomain, id)
+  const { Model: Customer, connection } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+
+  const session = await connection.startSession();
   session.startTransaction();
 
   try {
@@ -325,11 +349,9 @@ const permanantlyDeleteCustomer = async (id: string) => {
       Id: existingCustomer.customerId,
     }).session(session);
 
-    const customer = await Customer.findByIdAndDelete(
-      existingCustomer._id,
-    ).session(session);
+    const deletedCustomer = await Customer.findByIdAndDelete(existingCustomer._id).session(session);
 
-    if (!customer || !vehicle) {
+    if (!deletedCustomer || !vehicle) {
       throw new AppError(StatusCodes.NOT_FOUND, 'No customer available');
     }
 
@@ -343,55 +365,52 @@ const permanantlyDeleteCustomer = async (id: string) => {
     throw error;
   }
 };
-const moveToRecycledCustomer = async (id: string) => {
 
-  try {
-    const existingCustomer = await Customer.findById(id)
-    if (!existingCustomer) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No customer exist.');
-    }
+const moveToRecycledCustomer = async (tenantDomain: string, id: string) => {
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
 
-    const customer = await Customer.findByIdAndUpdate(
-      existingCustomer._id,
-      { isRecycled: true, recycledAt: new Date() },
-      { new: true, runValidators: true }
-    );
-
-    if (!customer) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No customer available');
-    }
-
-
-    return customer; 
-  } catch (error) {
-
-    throw error;
+  const existingCustomer = await Customer.findById(id);
+  if (!existingCustomer) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No customer exist.');
   }
-};
-const restoreFromRecycledCustomer = async (id: string) => {
 
-  try {
-    const recycledCustomer = await Customer.findById(id);
-    if (!recycledCustomer) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No customer exist.');
-    }
-    const restoredCustomer = await Customer.findByIdAndUpdate(
-      recycledCustomer._id,
-      { isRecycled: false, recycledAt: null },
-      { new: true, runValidators: true }
-    );
+  const updatedCustomer = await Customer.findByIdAndUpdate(
+    existingCustomer._id,
+    { isRecycled: true, recycledAt: new Date() },
+    { new: true, runValidators: true }
+  );
 
-    if (!restoredCustomer) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No customer available for restoration.');
-    }
-
-
-    return restoredCustomer;
-  } catch (error) {
-
-    throw error;
+  if (!updatedCustomer) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No customer available');
   }
+
+  return updatedCustomer;
 };
+
+const restoreFromRecycledCustomer = async (tenantDomain: string, id: string) => {
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+
+  const recycledCustomer = await Customer.findById(id);
+  if (!recycledCustomer) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No customer exist.');
+  }
+
+  const restoredCustomer = await Customer.findByIdAndUpdate(
+    recycledCustomer._id,
+    { isRecycled: false, recycledAt: null },
+    { new: true, runValidators: true }
+  );
+
+  if (!restoredCustomer) {
+    throw new AppError(
+      StatusCodes.NOT_FOUND,
+      'No customer available for restoration.'
+    );
+  }
+
+  return restoredCustomer;
+};
+
 
 const moveAllToRecycledBin = async () => {
   const result = await Customer.updateMany(
@@ -404,7 +423,7 @@ const moveAllToRecycledBin = async () => {
     },
     {
       runValidators: true,
-    }
+    },
   );
 
   return result;
@@ -422,7 +441,7 @@ const restoreAllFromRecycledBin = async () => {
     },
     {
       runValidators: true,
-    }
+    },
   );
 
   return result;
@@ -437,5 +456,5 @@ export const CustomerServices = {
   moveToRecycledCustomer,
   permanantlyDeleteCustomer,
   moveAllToRecycledBin,
-  restoreAllFromRecycledBin
+  restoreAllFromRecycledBin,
 };

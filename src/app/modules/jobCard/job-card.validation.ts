@@ -9,18 +9,12 @@ const jobCardValidationSchema = z.object({
     job_no: z
       .number({ required_error: 'Job no is required.' })
       .nonnegative({ message: 'Job number must be a positive number' }),
-    date: z.string({ required_error: 'Date is required.' }),
-    note: z.string({ required_error: 'Note is required.' }),
-    vehicle_body_report: z.string({
-      required_error: 'Vehicle body report is required.',
-    }),
-    technician_name: z.string({
-      required_error: 'Technician name is required.',
-    }),
+    date: z.string(),
+    note: z.string().optional(),
+    vehicle_body_report: z.string().optional(),
+    technician_name: z.string().optional(),
 
-    technician_date: z.string({
-      required_error: 'Technician date is required.',
-    }),
+    technician_date: z.string().optional(),
   }),
 });
 

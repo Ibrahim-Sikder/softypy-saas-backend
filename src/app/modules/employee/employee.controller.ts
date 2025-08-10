@@ -4,7 +4,8 @@ import sendResponse from '../../utils/sendResponse';
 import { EmployeeServices } from './employee.service';
 
 const createEmployee = catchAsync(async (req, res) => {
-  const result = await EmployeeServices.createEmployeeIntoDB(req.body);
+   const {tenantDomain} = req.body
+  const result = await EmployeeServices.createEmployeeIntoDB(tenantDomain, req.body);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -16,10 +17,11 @@ const createEmployee = catchAsync(async (req, res) => {
 const getAllEmployees = catchAsync(async (req, res) => {
   const limit = parseInt(req.query.limit as string);
   const page = parseInt(req.query.page as string);
-
+ const tenantDomain = req.query.tenantDomain as string;
   const searchTerm = req.query.searchTerm as string;
 
   const result = await EmployeeServices.getAllEmployeesFromDB(
+    tenantDomain,
     limit,
     page,
     searchTerm,
@@ -35,8 +37,8 @@ const getAllEmployees = catchAsync(async (req, res) => {
 
 const getSingleEmployee = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const result = await EmployeeServices.getSingleEmployeeDetails(id);
+ const tenantDomain = req.query.tenantDomain as string;
+  const result = await EmployeeServices.getSingleEmployeeDetails(tenantDomain, id);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -48,8 +50,9 @@ const getSingleEmployee = catchAsync(async (req, res) => {
 
 const updateEmployee = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const employee = await EmployeeServices.updateEmployeeIntoDB(id, req.body);
+ const {tenantDomain} = req.body
+ 
+  const employee = await EmployeeServices.updateEmployeeIntoDB(tenantDomain, id, req.body);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -60,8 +63,8 @@ const updateEmployee = catchAsync(async (req, res) => {
 
 const deleteEmployee = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const employee = await EmployeeServices.deleteEmployee(id);
+ const tenantDomain = req.query.tenantDomain as string;
+  const employee = await EmployeeServices.deleteEmployee(tenantDomain, id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -71,8 +74,8 @@ const deleteEmployee = catchAsync(async (req, res) => {
 });
 const restoreFromRecycledEmployee = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const employee = await EmployeeServices.restoreFromRecycledEmployee(id);
+ const tenantDomain = req.query.tenantDomain as string;
+  const employee = await EmployeeServices.restoreFromRecycledEmployee(tenantDomain , id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -82,8 +85,8 @@ const restoreFromRecycledEmployee = catchAsync(async (req, res) => {
 });
 const permanentlyDeleteEmployee = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const employee = await EmployeeServices.permanentlyDeleteEmployee(id);
+ const tenantDomain = req.query.tenantDomain as string;
+  const employee = await EmployeeServices.permanentlyDeleteEmployee(tenantDomain, id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -93,8 +96,8 @@ const permanentlyDeleteEmployee = catchAsync(async (req, res) => {
 });
 const moveToRecycledEmployee = catchAsync(async (req, res) => {
   const { id } = req.params;
-
-  const employee = await EmployeeServices.moveToRecycledEmployee(id);
+ const tenantDomain = req.query.tenantDomain as string;
+  const employee = await EmployeeServices.moveToRecycledEmployee(tenantDomain, id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -103,8 +106,8 @@ const moveToRecycledEmployee = catchAsync(async (req, res) => {
   });
 });
 const moveAllToRecycledBinMoneyReceipts = catchAsync(async (req, res) => {
-  const result = await EmployeeServices.moveAllToRecycledBin();
-
+  const tenantDomain = req.query.tenantDomain as string;     
+  const result = await EmployeeServices.moveAllToRecycledBin(tenantDomain);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -113,7 +116,8 @@ const moveAllToRecycledBinMoneyReceipts = catchAsync(async (req, res) => {
   });
 });
 const restoreAllFromRecycledBinMoneyReceipts = catchAsync(async (req, res) => {
-  const result = await EmployeeServices.restoreAllFromRecycledBin();
+   const tenantDomain = req.query.tenantDomain as string;
+  const result = await EmployeeServices.restoreAllFromRecycledBin(tenantDomain);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
