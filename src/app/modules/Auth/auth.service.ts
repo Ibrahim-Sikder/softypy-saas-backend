@@ -14,8 +14,6 @@ import { Tenant } from '../tenant/tenant.model';
 
 export const loginUser = async (payload: TLoginUser) => {
 
-console.log('user login info ', payload)
-  // for superadmin 
   if (payload.tenantDomain === 'superadmin') {
     const user = await User.findOne({ name: payload.name, role: 'superadmin' }).select('+password');
 
@@ -55,12 +53,21 @@ console.log('user login info ', payload)
   // for this auth check all tenant user 
   const tenant = await Tenant.findOne({ domain: payload.tenantDomain });
 
+  console.log(tenant)
+
   if (!tenant || !tenant.isActive) {
     throw new AppError(httpStatus.NOT_FOUND, 'Tenant not found or inactive');
   }
 
   if (!tenant.subscription || !tenant.subscription.isPaid || !tenant.subscription.isActive) {
     throw new AppError(httpStatus.FORBIDDEN, 'Subscription is inactive or not paid');
+  }
+
+  const now = new Date() 
+  const subscriptionEnd = new Date(tenant.subscription.endDate);
+
+  if( now > subscriptionEnd ){
+    throw new AppError(httpStatus.FORBIDDEN, 'Subscription has expired !')
   }
 
   const tenantConnection = await connectToTenantDatabase(

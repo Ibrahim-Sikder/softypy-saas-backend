@@ -86,7 +86,7 @@ const getAllUser = async (tenantDomain: string) => {
     return result;
   } else {
     const result = await User.find();
-    console.log('without tenant', result)
+
     return result;
   }
 };

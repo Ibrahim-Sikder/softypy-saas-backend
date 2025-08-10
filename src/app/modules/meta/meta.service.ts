@@ -261,7 +261,6 @@ const getAllMetaFromDB = async (
   const totalExpense = await Expense.find();
   const leave = await LeaveRequest.find();
   const tenantInfo = await User.find();
-  console.log(totalExpense);
   const subscription = tenantInfo[0]?.tenantInfo?.subscription;
 
   let subscriptionDetails = null;
