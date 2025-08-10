@@ -75,7 +75,7 @@ const tenantDomain = req.query.tenantDomain as string;
 
 const updateJobCardDetails = catchAsync(async (req, res) => {
   const { id } = req.params;
-const tenantDomain = req.query.tenantDomain as string;
+const {tenantDomain} = req.body;
   const service = await JobCardServices.updateJobCardDetails(tenantDomain,id, req.body);
   sendResponse(res, {
     statusCode: StatusCodes.OK,

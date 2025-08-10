@@ -442,6 +442,7 @@ const updateJobCardDetails = async (
     vehicle: TVehicle;
   },
 ) => {
+  console.log('tenant domain this  ', payload);
   const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
   const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
   const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
@@ -490,14 +491,18 @@ const updateJobCardDetails = async (
   if (!updateJobCard) {
     throw new AppError(StatusCodes.NOT_ACCEPTABLE, 'Something went wrong!');
   }
+if (vehicle.chassis_no) {
+  const updatedVehicle = await Vehicle.findOneAndUpdate(
+    { chassis_no: vehicle.chassis_no },
+    { $set: sanitizePayload(vehicle) },
+    { new: true, runValidators: true }
+  );
 
-  if (vehicle.chassis_no) {
-    await Vehicle.findOneAndUpdate(
-      { chassis_no: vehicle.chassis_no },
-      { $set: { mileageHistory: vehicle.mileageHistory || [] } },
-      { new: true, runValidators: true },
-    );
+  if (!updatedVehicle) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'Vehicle not found for given chassis_no');
   }
+}
+
 
   const sanitizeJobCard = sanitizePayload(jobCard);
 
@@ -713,7 +718,7 @@ export const generateJobCardPdf = async (
     .populate('showRoom')
     .populate('vehicle');
 
-    console.log(jobcard)
+  console.log(jobcard);
 
   if (!jobcard) {
     throw new Error('jobcard not found');

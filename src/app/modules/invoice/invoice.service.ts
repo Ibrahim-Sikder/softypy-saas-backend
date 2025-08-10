@@ -29,6 +29,8 @@ import ejs from 'ejs';
 import { amountInWords } from '../../middlewares/taka-in-words';
 import { formatToIndianCurrency } from '../quotation/quotation.utils';
 import { getTenantModel } from '../../utils/getTenantModels';
+
+
 const createInvoiceDetails = async (
   tenantDomain: string,
   payload: {
@@ -437,16 +439,19 @@ const updateInvoiceIntoDB = async (
   }
 };
 
-const removeInvoiceFromUpdate = async (
+export const removeInvoiceFromUpdate = async (
   tenantDomain: string,
   id: string,
   index: number,
   invoice_name: string,
 ) => {
-  const existingInvoice = await Invoice.findById(id);
+  // Get the Invoice model for the tenant
+  const { Model: Invoice } = await getTenantModel(tenantDomain, 'Invoice');
 
+  // Find the existing invoice
+  const existingInvoice = await Invoice.findById(id);
   if (!existingInvoice) {
-    throw new AppError(StatusCodes.NOT_FOUND, 'No invoice exit.');
+    throw new AppError(StatusCodes.NOT_FOUND, 'No invoice exists.');
   }
 
   let updateInvoice;
@@ -454,16 +459,14 @@ const removeInvoiceFromUpdate = async (
   if (invoice_name === 'parts') {
     updateInvoice = await Invoice.findByIdAndUpdate(
       existingInvoice._id,
-
       { $pull: { input_data: { $eq: existingInvoice.input_data[index] } } },
-
       { new: true, runValidators: true },
     );
   }
+
   if (invoice_name === 'service') {
     updateInvoice = await Invoice.findByIdAndUpdate(
       existingInvoice._id,
-
       {
         $pull: {
           service_input_data: {
@@ -471,7 +474,6 @@ const removeInvoiceFromUpdate = async (
           },
         },
       },
-
       { new: true, runValidators: true },
     );
   }
