@@ -1,51 +1,53 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import QueryBuilder from '../../builder/QueryBuilder';
-import { ImageUpload } from '../../utils/ImageUpload';
-import path from 'path';
-import { Expense } from './expense.model';
-
 import { SearchableFields } from './expense.const';
 import { IExpense } from './expense.interface';
+import { getTenantModel } from '../../utils/getTenantModels';
 
-const createExpense = async (payload: any, file?: Express.Multer.File) => {
+const createExpense = async (tenantDomain: string, payload: any) => {
+  const { Model: Expense } = await getTenantModel(tenantDomain, 'Expense');
+
   try {
-    if (file) {
-      const imageName = file.filename;
-      const imagePath = path.join(process.cwd(), 'uploads', file.filename);
-      const folder = 'expense-images';
+    const expenseItems = payload.expense_items ?? [];
+    const totalOtherExpense = expenseItems.reduce(
+      (sum: number, item: any) => sum + (Number(item.amount) || 0),
+      0,
+    );
 
-      const cloudinaryResult = await ImageUpload(imagePath, imageName, folder);
+    const invoiceCost = Number(payload.invoiceCost) || 0;
+    const totalAmount = totalOtherExpense + invoiceCost;
 
-      payload.document = cloudinaryResult.secure_url;
-    }
-    if (payload.document && typeof payload.document !== 'string') {
-      throw new Error('Invalid image URL format');
-    }
+    const newExpense = await Expense.create({
+      totalOtherExpense,
+      totalAmount,
+      ...payload,
+    });
 
-    const newCategory = await Expense.create(payload);
-    return newCategory;
+    return newExpense;
   } catch (error: any) {
-    console.error('Error creating brand:', error.message);
     throw new Error(
-      error.message || 'An unexpected error occurred while creating the brand',
+      error.message ||
+        'An unexpected error occurred while creating the expense',
     );
   }
 };
-const getAllExpense = async (query: Record<string, unknown>) => {
-  const categoryQuery = new QueryBuilder(Expense.find(), query)
-    .search(SearchableFields)
-    .filter()
-    .sort()
-    .paginate()
-    .fields();
+
+
+const getAllExpense = async (
+  tenantDomain: string,
+  query: Record<string, unknown>,
+) => {
+  const { Model: Expense } = await getTenantModel(tenantDomain, 'Expense');
+
+  const categoryQuery = new QueryBuilder(Expense.find(), query).search(
+    SearchableFields,
+  );
 
   const meta = await categoryQuery.countTotal();
-  const expenses = await categoryQuery.modelQuery.populate([
-    {
-      path: 'category',
-      select: 'name',
-    },
-  ]);
+  const expenses = await categoryQuery.modelQuery.populate({
+    path: 'invoice_id',
+    select: 'Id invoice_no',
+  });
 
   return {
     meta,
@@ -53,31 +55,70 @@ const getAllExpense = async (query: Record<string, unknown>) => {
   };
 };
 
+const getSinigleExpense = async (tenantDomain: string, id: string) => {
+  const { Model: Expense } = await getTenantModel(tenantDomain, 'Expense');
 
-const getSinigleExpense = async (id: string) => {
-  const result = await Expense.findById(id).populate([
-    {
-      path: 'category',
-      select: 'name',
-    },
-  ]);
-  return result;
-};
-const updateExpense = async (id: string, payload: Partial<IExpense>) => {
-  const result = await Expense.findByIdAndUpdate(id, payload, {
-    new: true,
-    runValidators: true,
+  const result = await Expense.findById(id).populate({
+    path: 'invoice_id',
+    select: 'Id invoice_no',
   });
 
-  if (!result) {
-    throw new Error('Expense not found');
-  }
   return result;
 };
+const updateExpense = async (
+  tenantDomain: string,
+  id: string,
+  payload: Partial<IExpense>,
+) => {
+  const { Model: Expense } = await getTenantModel(tenantDomain, 'Expense');
 
-const deleteExpense = async (id: string) => {
+  try {
+    let totalAmount: number | undefined;
+    if (
+      Array.isArray(payload.expense_items) ||
+      payload.invoiceCost !== undefined
+    ) {
+      const items = payload.expense_items ?? [];
+      const someExpense = items.reduce(
+        (sum: number, item: any) => sum + (Number(item.amount) || 0),
+        0,
+      );
+
+      totalAmount = someExpense + (Number(payload.invoiceCost) || 0);
+    }
+
+
+    const updatedPayload = {
+      ...payload,
+      ...(totalAmount !== undefined && { totalAmount }),
+    };
+
+    const result = await Expense.findByIdAndUpdate(
+      id,
+      { $set: updatedPayload },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+
+    if (!result) {
+      throw new Error('Expense not found');
+    }
+
+    return result;
+  } catch (error: any) {
+    throw new Error(
+      error.message || 'An unexpected error occurred while updating the expense',
+    );
+  }
+};
+
+
+const deleteExpense = async (tenantDomain: string, id: string) => {
+  const { Model: Expense } = await getTenantModel(tenantDomain, 'Expense');
+
   const result = await Expense.deleteOne({ _id: id });
-
   return result;
 };
 

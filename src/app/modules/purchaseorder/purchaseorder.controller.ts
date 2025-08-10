@@ -3,10 +3,18 @@ import httpStatus from 'http-status';
 import sendResponse from '../../utils/sendResponse';
 import { purchaseOrderServices } from './purchaseorder.service';
 
-const createPurchaseOrder = async (req: Request, res: Response, next: NextFunction) => {
+const createPurchaseOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const payload = req.body;
-    const result = await purchaseOrderServices.createPurchaseOrder(payload);
+    const { tenantDomain } = req.body;
+    const result = await purchaseOrderServices.createPurchaseOrder(
+      tenantDomain,
+      payload,
+    );
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -19,9 +27,18 @@ const createPurchaseOrder = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-const getAllPurchaseOrders = async (req: Request, res: Response, next: NextFunction) => {
+const getAllPurchaseOrders = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    const result = await purchaseOrderServices.getAllPurchaseOrders(req.query);
+    const tenantDomain = req.query.tenantDomain as string;
+
+    const result = await purchaseOrderServices.getAllPurchaseOrders(
+      tenantDomain,
+      req.query,
+    );
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -33,10 +50,21 @@ const getAllPurchaseOrders = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-const getSinglePurchaseOrder = async (req: Request, res: Response, next: NextFunction) => {
+const getSinglePurchaseOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id } = req.params;
-    const result = await purchaseOrderServices.getSinglePurchaseOrder(id);
+    console.log('id', id)
+    const tenantDomain = req.query.tenantDomain as string;
+    console.log('tenant domain', tenantDomain)
+    console.log('single purchase', tenantDomain);
+    const result = await purchaseOrderServices.getSinglePurchaseOrder(
+      tenantDomain,
+      id,
+    );
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -48,10 +76,19 @@ const getSinglePurchaseOrder = async (req: Request, res: Response, next: NextFun
   }
 };
 
-const updatePurchaseOrder = async (req: Request, res: Response, next: NextFunction) => {
+const updatePurchaseOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id } = req.params;
-    const result = await purchaseOrderServices.updatePurchaseOrder(id, req.body);
+    const tenantDomain = req.query.tenantDomain as string;
+    const result = await purchaseOrderServices.updatePurchaseOrder(
+      tenantDomain,
+      id,
+      req.body,
+    );
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -59,14 +96,22 @@ const updatePurchaseOrder = async (req: Request, res: Response, next: NextFuncti
       data: result,
     });
   } catch (err) {
-    next(err)
+    next(err);
   }
 };
 
-const deletePurchaseOrder = async (req: Request, res: Response, next: NextFunction) => {
+const deletePurchaseOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id } = req.params;
-    const result = await purchaseOrderServices.deletePurchaseOrder(id);
+    const tenantDomain = req.query.tenantDomain as string;
+    const result = await purchaseOrderServices.deletePurchaseOrder(
+      tenantDomain,
+      id,
+    );
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,

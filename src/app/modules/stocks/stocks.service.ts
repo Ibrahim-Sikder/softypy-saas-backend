@@ -1,18 +1,73 @@
 import mongoose from 'mongoose';
 import { IStock } from './stock.interface';
-import { Stocks } from './stocks.model';
-import StockTransfer from '../stockTransfer/stockTransfer.model';
-import { Product } from '../product/product.model';
+import { getTenantModel } from '../../utils/getTenantModels';
 
-const createStock = async (payload: IStock): Promise<IStock> => {
+export const createStock = async (
+  tenantDomain: string,
+  payload: IStock,
+): Promise<IStock> => {
+  const { Model: Stocks } = await getTenantModel(tenantDomain, 'Stock');
   const stock = await Stocks.create(payload);
   return stock;
 };
 
+export const getSingleStock = async (
+  tenantDomain: string,
+  id: string,
+): Promise<IStock | null> => {
+  const { Model: Stocks } = await getTenantModel(tenantDomain, 'Stock');
+  const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
+  const { Model: Warehouse } = await getTenantModel(tenantDomain, 'Warehouse');
 
-const getAllStocks = async () => {
+  const stock = await Stocks.findById(id).populate([
+    { path: 'product', model: Product },
+    { path: 'warehouse', model: Warehouse },
+  ]);
+  return stock;
+};
+
+export const updateStock = async (
+  tenantDomain: string,
+  id: string,
+  payload: Partial<IStock>,
+): Promise<IStock | null> => {
+  const { Model: Stocks } = await getTenantModel(tenantDomain, 'Stock');
+  const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
+  const { Model: Warehouse } = await getTenantModel(tenantDomain, 'Warehouse');
+
+  const updatedStock = await Stocks.findByIdAndUpdate(id, payload, {
+    new: true,
+    runValidators: true,
+  }).populate([
+    { path: 'product', model: Product },
+    { path: 'warehouse', model: Warehouse },
+  ]);
+
+  return updatedStock;
+};
+
+export const deleteStock = async (
+  tenantDomain: string,
+  id: string,
+): Promise<{ deleted: boolean }> => {
+  const { Model: Stocks } = await getTenantModel(tenantDomain, 'Stock');
+  const result = await Stocks.findByIdAndDelete(id);
+  return { deleted: !!result };
+};
+const getAllStocks = async (tenantDomain: string) => {
+  const { Model: Stocks } = await getTenantModel(tenantDomain, 'Stock');
+  const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
+  const { Model: Warehouse } = await getTenantModel(tenantDomain, 'Warehouse');
+  const { Model: Category } = await getTenantModel(tenantDomain, 'Category');
+  const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+  const { Model: Brand } = await getTenantModel(tenantDomain, 'Brand');
+  const { Model: ProductType } = await getTenantModel(
+    tenantDomain,
+    'ProductType',
+  );
+  const { Model: Unit } = await getTenantModel(tenantDomain, 'Unit');
+  console.log('stocks tenant ', tenantDomain);
   const stocks = await Stocks.aggregate([
-    // Group by product + warehouse
     {
       $group: {
         _id: {
@@ -20,23 +75,27 @@ const getAllStocks = async () => {
           warehouse: '$warehouse',
         },
         inQuantity: {
-          $sum: {
-            $cond: [{ $eq: ['$type', 'in'] }, '$quantity', 0],
-          },
+          $sum: { $cond: [{ $eq: ['$type', 'in'] }, '$quantity', 0] },
         },
         outQuantity: {
-          $sum: {
-            $cond: [{ $eq: ['$type', 'out'] }, '$quantity', 0],
-          },
+          $sum: { $cond: [{ $eq: ['$type', 'out'] }, '$quantity', 0] },
         },
         totalPurchaseValue: {
           $sum: {
-            $cond: [{ $eq: ['$type', 'in'] }, { $multiply: ['$quantity', '$purchasePrice'] }, 0],
+            $cond: [
+              { $eq: ['$type', 'in'] },
+              { $multiply: ['$quantity', '$purchasePrice'] },
+              0,
+            ],
           },
         },
         totalSellingValue: {
           $sum: {
-            $cond: [{ $eq: ['$type', 'in'] }, { $multiply: ['$quantity', '$sellingPrice'] }, 0],
+            $cond: [
+              { $eq: ['$type', 'in'] },
+              { $multiply: ['$quantity', '$sellingPrice'] },
+              0,
+            ],
           },
         },
         lastPurchasePrice: { $last: '$purchasePrice' },
@@ -53,8 +112,6 @@ const getAllStocks = async () => {
         },
       },
     },
-
-    // Calculate average prices and stock
     {
       $addFields: {
         stock: { $subtract: ['$inQuantity', '$outQuantity'] },
@@ -74,11 +131,9 @@ const getAllStocks = async () => {
         },
       },
     },
-
-    // Populate product
     {
       $lookup: {
-        from: 'products',
+        from: Product.collection.name,
         localField: '_id.product',
         foreignField: '_id',
         as: 'product',
@@ -86,10 +141,9 @@ const getAllStocks = async () => {
     },
     { $unwind: '$product' },
 
-    // Populate warehouse
     {
       $lookup: {
-        from: 'warehouses',
+        from: Warehouse.collection.name,
         localField: '_id.warehouse',
         foreignField: '_id',
         as: 'warehouse',
@@ -97,20 +151,21 @@ const getAllStocks = async () => {
     },
     { $unwind: '$warehouse' },
 
-    // Populate nested product fields
     {
       $lookup: {
-        from: 'categories',
+        from: Category.collection.name,
         localField: 'product.category',
         foreignField: '_id',
         as: 'product.category',
       },
     },
-    { $unwind: { path: '$product.category', preserveNullAndEmptyArrays: true } },
+    {
+      $unwind: { path: '$product.category', preserveNullAndEmptyArrays: true },
+    },
 
     {
       $lookup: {
-        from: 'suppliers',
+        from: Supplier.collection.name,
         localField: 'product.suppliers',
         foreignField: '_id',
         as: 'product.suppliers',
@@ -119,7 +174,7 @@ const getAllStocks = async () => {
 
     {
       $lookup: {
-        from: 'brands',
+        from: Brand.collection.name,
         localField: 'product.brand',
         foreignField: '_id',
         as: 'product.brand',
@@ -129,17 +184,22 @@ const getAllStocks = async () => {
 
     {
       $lookup: {
-        from: 'producttypes',
+        from: ProductType.collection.name,
         localField: 'product.product_type',
         foreignField: '_id',
         as: 'product.product_type',
       },
     },
-    { $unwind: { path: '$product.product_type', preserveNullAndEmptyArrays: true } },
+    {
+      $unwind: {
+        path: '$product.product_type',
+        preserveNullAndEmptyArrays: true,
+      },
+    },
 
     {
       $lookup: {
-        from: 'units',
+        from: Unit.collection.name,
         localField: 'product.unit',
         foreignField: '_id',
         as: 'product.unit',
@@ -151,76 +211,18 @@ const getAllStocks = async () => {
   return stocks;
 };
 
-
-
-const getSingleStock = async (id: string): Promise<IStock | null> => {
-  const stock = await Stocks.findById(id).populate(['product', 'warehouse']);
-  return stock;
-};
-
-const updateStock = async (
-  id: string,
-  payload: Partial<IStock>,
-): Promise<IStock | null> => {
-  const updatedStock = await Stocks.findByIdAndUpdate(id, payload, {
-    new: true,
-    runValidators: true,
-  }).populate(['product', 'warehouse']);
-
-  return updatedStock;
-};
-
-const deleteStock = async (id: string): Promise<{ deleted: boolean }> => {
-  const result = await Stocks.findByIdAndDelete(id);
-  return { deleted: !!result };
-};
-
-export const calculateCurrentStock = async (
-  productId: string,
-  warehouseId: string,
-  session?: mongoose.ClientSession
-): Promise<number> => {
-  const result = await Stocks.aggregate([
-    {
-      $match: {
-        product: new mongoose.Types.ObjectId(productId),
-        warehouse: new mongoose.Types.ObjectId(warehouseId),
-      },
-    },
-    {
-      $group: {
-        _id: null,
-        totalIn: {
-          $sum: {
-            $cond: [{ $eq: ['$type', 'in'] }, '$quantity', 0],
-          },
-        },
-        totalOut: {
-          $sum: {
-            $cond: [{ $eq: ['$type', 'out'] }, '$quantity', 0],
-          },
-        },
-      },
-    },
-    {
-      $project: {
-        currentStock: { $subtract: ['$totalIn', '$totalOut'] },
-      },
-    },
-  ]).session(session || null); // use session if provided
-
-  return result[0]?.currentStock || 0;
-};
-
-export const transferStock = async (payload: {
-  product: string;
-  fromWarehouse: string;
-  toWarehouse: string;
-  quantity: number;
-  note?: string;
-  batchNumber?: string;
-  expiryDate?: Date;
-}) => {
+export const transferStock = async (
+  tenantDomain: string,
+  payload: {
+    product: string;
+    fromWarehouse: string;
+    toWarehouse: string;
+    quantity: number;
+    note?: string;
+    batchNumber?: string;
+    expiryDate?: Date;
+  },
+) => {
   const {
     product,
     fromWarehouse,
@@ -231,11 +233,29 @@ export const transferStock = async (payload: {
     expiryDate,
   } = payload;
 
-  const session = await mongoose.startSession();
+  // Use same connection for session and all model access
+  const { Model: Stocks, connection: tenantConnection } = await getTenantModel(
+    tenantDomain,
+    'Stocks',
+  );
+  const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
+  const { Model: StockTransfer } = await getTenantModel(
+    tenantDomain,
+    'StockTransfer',
+  );
+
+  // 🚨 Start session from the tenantConnection, not from mongoose
+  const session = await tenantConnection.startSession();
   session.startTransaction();
 
   try {
-    const currentStock = await calculateCurrentStock(product, fromWarehouse, session);
+    const currentStock = await calculateCurrentStock(
+      tenantDomain,
+      product,
+      fromWarehouse,
+      session,
+    );
+
     if (currentStock < quantity) {
       throw new Error('There is not enough stock to transfer.');
     }
@@ -269,7 +289,11 @@ export const transferStock = async (payload: {
           transferId,
         },
       ],
-      { session, runValidators: true }
+      {
+        session,
+        runValidators: true,
+        ordered: true, // ✅ REQUIRED FIX
+      },
     );
 
     const transferRecord = await StockTransfer.create(
@@ -285,21 +309,33 @@ export const transferStock = async (payload: {
           note,
         },
       ],
-      { session }
+      { session },
     );
 
-    const newStockInToWarehouse = await calculateCurrentStock(product, toWarehouse, session);
-    const newStockInFromWarehouse = await calculateCurrentStock(product, fromWarehouse, session);
+    const newStockInToWarehouse = await calculateCurrentStock(
+      tenantDomain,
+      product,
+      toWarehouse,
+      session,
+    );
+
+    const newStockInFromWarehouse = await calculateCurrentStock(
+      tenantDomain,
+      product,
+      fromWarehouse,
+      session,
+    );
 
     await Product.findByIdAndUpdate(
       product,
       {
         $set: {
-          quantity: newStockInFromWarehouse + newStockInToWarehouse, 
+          quantity: newStockInFromWarehouse + newStockInToWarehouse,
         },
       },
-      { session }
+      { session },
     );
+
     await session.commitTransaction();
     return transferRecord[0];
   } catch (error) {
@@ -311,7 +347,45 @@ export const transferStock = async (payload: {
   }
 };
 
+export const calculateCurrentStock = async (
+  tenantDomain: string,
+  productId: string,
+  warehouseId: string,
+  session?: mongoose.ClientSession,
+): Promise<number> => {
+  const { Model: Stocks } = await getTenantModel(tenantDomain, 'Stocks');
 
+  const result = await Stocks.aggregate([
+    {
+      $match: {
+        product: new mongoose.Types.ObjectId(productId),
+        warehouse: new mongoose.Types.ObjectId(warehouseId),
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalIn: {
+          $sum: {
+            $cond: [{ $eq: ['$type', 'in'] }, '$quantity', 0],
+          },
+        },
+        totalOut: {
+          $sum: {
+            $cond: [{ $eq: ['$type', 'out'] }, '$quantity', 0],
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        currentStock: { $subtract: ['$totalIn', '$totalOut'] },
+      },
+    },
+  ]).session(session || null);
+
+  return result[0]?.currentStock || 0;
+};
 
 export const stockServices = {
   createStock,

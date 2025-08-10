@@ -24,7 +24,31 @@ export const userSchema = new Schema<TUser>(
       select: false,
     },
     tenantDomain: {
-      type: String
+      type: String,
+    },
+    image: {
+      type: String,
+    },
+    tenantId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Tenant',
+    },
+    tenantInfo: {
+      name: String,
+      domain: String,
+      businessType: String,
+      dbUri: String,
+      isActive: Boolean,
+      subscription: {
+        plan: String,
+        startDate: Date,
+        endDate: Date,
+        status: String,
+        isPaid: Boolean,
+        isActive: Boolean,
+        paymentMethod: String,
+        amount: Number,
+      },
     },
     createdBy: {
       type: String,
@@ -36,7 +60,7 @@ export const userSchema = new Schema<TUser>(
       default: 'active',
     },
     role: {
-      type: String
+      type: String,
     },
     lastLogin: {
       type: Date,
@@ -56,39 +80,27 @@ export const userSchema = new Schema<TUser>(
         return ret;
       },
     },
-  },
+  }
 );
 
-// Virtual populate to get role information
-// userSchema.virtual('role', {
-//   ref: 'Role',
-//   localField: 'role',
-//   foreignField: '_id',
-//   justOne: true,
-// });
-
 userSchema.pre('save', async function (next) {
-  // eslint-disable-next-line @typescript-eslint/no-this-alias
-  const user = this; // doc
-  // hashing password and save into DB
+  const user = this;
   user.password = await bcrypt.hash(user.password, Number(config.default_pass));
   next();
 });
 
-// set '' after saving password
 userSchema.post('save', function (doc, next) {
   doc.password = '';
   next();
 });
 
 userSchema.statics.isUserExistsByCustomId = async function (name: string) {
-  const isUserExists = await User.findOne({ name }).select('+password');
-  return isUserExists;
+  return await this.findOne({ name }).select('+password');
 };
 
 userSchema.statics.isPasswordMatched = async function (
-  plaingTextPassword,
-  hashedPassword,
+  plaingTextPassword: string,
+  hashedPassword: string,
 ) {
   return await bcrypt.compare(plaingTextPassword, hashedPassword);
 };
@@ -97,8 +109,7 @@ userSchema.statics.isJWTIssuedBeforePasswordChanged = function (
   passwordChangedTimestamp: Date,
   jwtIssuedTimestamp: number,
 ) {
-  const passwordChangedTime =
-    new Date(passwordChangedTimestamp).getTime() / 1000;
+  const passwordChangedTime = new Date(passwordChangedTimestamp).getTime() / 1000;
   return passwordChangedTime > jwtIssuedTimestamp;
 };
 

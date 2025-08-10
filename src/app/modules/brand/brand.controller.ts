@@ -7,8 +7,9 @@ import { brandServices } from './brand.service';
 
 const createBrand = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const domain = (req.headers.origin as string) || (req.headers.host as string) || '';
-    const result = await brandServices.createBrand(domain, req.body);
+     const { tenantDomain } = req.body;
+
+    const result = await brandServices.createBrand(tenantDomain, req.body);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -24,7 +25,13 @@ const createBrand = async (req: Request, res: Response, next: NextFunction) => {
 
 const getAllBrand = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await brandServices.getAllBrand(req.query);
+    const tenantDomain =
+      (req.headers['x-tenant-domain'] as string) ||
+      (req.query.tenantDomain as string) ||
+      req.headers.host ||
+      '';
+
+    const result = await brandServices.getAllBrand(tenantDomain,req.query);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -43,7 +50,8 @@ const getSingleBrand = async (
 ) => {
   try {
     const { id } = req.params;
-    const result = await brandServices.getSinigleBrand(id);
+    const tenantDomain = req.query.tenantDomain as string;
+    const result = await brandServices.getSinigleBrand(tenantDomain, id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -58,7 +66,8 @@ const getSingleBrand = async (
 const deleteBrand = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const result = await brandServices.deleteBrand(id);
+    const tenantDomain = req.query.tenantDomain as string;
+    const result = await brandServices.deleteBrand(tenantDomain, id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -74,7 +83,9 @@ const deleteBrand = async (req: Request, res: Response, next: NextFunction) => {
 const updateBrand = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const result = await brandServices.updateBrand(id, req.body);
+     const { tenantDomain } = req.body;
+
+    const result = await brandServices.updateBrand(tenantDomain,id, req.body);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

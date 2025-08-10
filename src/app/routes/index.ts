@@ -38,6 +38,10 @@ import { stockTransactionRoutes } from '../modules/stockTransaction/stockTransac
 import { teanentRoute } from '../modules/tenant/tenant.route';
 import { authRoutes } from '../modules/Auth/auth.route';
 import { userRoutes } from '../modules/user/user.route';
+import { CompanyProfileRoutes } from '../modules/companyProfile/companyProfile.route';
+import { noteRoutes } from '../modules/note/note.route';
+import { contactRoutes } from '../contact/contact.route';
+import { companyBrandRoutes } from '../modules/companyBrand/route';
 
 const router = Router();
 
@@ -191,9 +195,25 @@ const moduleRoutes = [
     path: '/auth',
     route: authRoutes,
   },
-    {
+  {
     path: '/user',
     route: userRoutes,
+  },
+  {
+    path: '/company-profile',
+    route: CompanyProfileRoutes,
+  },
+  {
+    path: '/notes',
+    route: noteRoutes,
+  },
+  {
+    path: '/contact',
+    route: contactRoutes,
+  },
+  {
+    path: '/company-brand',
+    route: companyBrandRoutes,
   },
   {
     path: '/meta',

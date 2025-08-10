@@ -1,13 +1,27 @@
-import StockTransfer from './stockTransfer.model';
+import { getTenantModel } from '../../utils/getTenantModels';
+const getAllStockTransfers = async (tenantDomain: string) => {
+  const { Model: StockTransfer } = await getTenantModel(
+    tenantDomain,
+    'StockTransfer'
+  );
 
-const getAllStockTransfers = async () => {
   const transfers = await StockTransfer.find()
     .populate(['product', 'fromWarehouse', 'toWarehouse'])
     .sort({ createdAt: -1 });
+
   return transfers;
 };
 
-const deleteStockTransfer = async (id: string): Promise<{ deleted: boolean }> => {
+// Delete a specific stock transfer by ID
+const deleteStockTransfer = async (
+  tenantDomain: string,
+  id: string
+): Promise<{ deleted: boolean }> => {
+  const { Model: StockTransfer } = await getTenantModel(
+    tenantDomain,
+    'StockTransfer'
+  );
+
   const result = await StockTransfer.findByIdAndDelete(id);
   return { deleted: !!result };
 };

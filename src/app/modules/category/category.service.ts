@@ -3,10 +3,15 @@ import QueryBuilder from '../../builder/QueryBuilder';
 import { ImageUpload } from '../../utils/ImageUpload';
 import { categorySearch } from './category.constant';
 import { TCategory } from './category.interface';
-import { Category } from './category.model';
 import path from 'path';
-import fs from 'fs'
-const createCategory = async (payload: any, file?: Express.Multer.File) => {
+import fs from 'fs';
+import { getTenantModel } from '../../utils/getTenantModels';
+export const createCategory = async (
+  tenantDomain: string,
+  payload: any,
+  file?: Express.Multer.File,
+) => {
+  const { Model: Category } = await getTenantModel(tenantDomain, 'Category');
 
   try {
     if (file) {
@@ -25,16 +30,25 @@ const createCategory = async (payload: any, file?: Express.Multer.File) => {
     if (payload.image && typeof payload.image !== 'string') {
       throw new Error('Invalid image URL format');
     }
+
     const newCategory = await Category.create(payload);
     return newCategory;
   } catch (error: any) {
     console.error('Error creating category:', error.message);
-    throw new Error(error.message || 'An unexpected error occurred while creating the category');
+    throw new Error(
+      error.message ||
+        'An unexpected error occurred while creating the category',
+    );
   }
 };
 
 
-const getAllCategory = async (query: Record<string, unknown>) => {
+export const getAllCategory = async (
+  tenantDomain: string,
+  query: Record<string, unknown>,
+) => {
+  const { Model: Category } = await getTenantModel(tenantDomain, 'Category');
+
   const categoryQuery = new QueryBuilder(Category.find(), query)
     .search(categorySearch)
     .filter()
@@ -50,11 +64,21 @@ const getAllCategory = async (query: Record<string, unknown>) => {
     categories,
   };
 };
-const getSinigleCategory = async (id: string) => {
+export const getSinigleCategory = async (tenantDomain: string, id: string) => {
+  const { Model: Category } = await getTenantModel(tenantDomain, 'Category');
+
   const result = await Category.findById(id);
   return result;
 };
-const updateCategory = async (id: string, payload: Partial<TCategory>) => {
+
+
+export const updateCategory = async (
+  tenantDomain: string,
+  id: string,
+  payload: Partial<TCategory>,
+) => {
+  const { Model: Category } = await getTenantModel(tenantDomain, 'Category');
+
   const result = await Category.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
@@ -62,9 +86,11 @@ const updateCategory = async (id: string, payload: Partial<TCategory>) => {
   return result;
 };
 
-const deleteCategory = async (id: string) => {
-  const result = await Category.deleteOne({ _id: id });
+// 3. Delete Category
+export const deleteCategory = async (tenantDomain: string, id: string) => {
+  const { Model: Category } = await getTenantModel(tenantDomain, 'Category');
 
+  const result = await Category.deleteOne({ _id: id });
   return result;
 };
 

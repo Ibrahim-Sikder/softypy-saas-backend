@@ -1,9 +1,8 @@
-import mongoose from 'mongoose';
+
 import { generateCompanyId } from './company.utils';
 import AppError from '../../errors/AppError';
 import { StatusCodes } from 'http-status-codes';
 import sanitizePayload from '../../middlewares/updateDataValidation';
-import { Vehicle } from '../vehicle/vehicle.model';
 import { TVehicle } from '../vehicle/vehicle.interface';
 import { CompanySearchableFields, vehicleFields } from './company.const';
 import { TCompany } from './company.interface';
@@ -31,7 +30,7 @@ const createCompanyDetails = async (
 
   try {
     const { company, vehicle } = payload;
-    const companyId = await generateCompanyId();
+const companyId = await generateCompanyId(Company);
     const sanitizedCompany = sanitizePayload(company);
 
     const companyData = new Company({

@@ -95,12 +95,17 @@ export const invoiceSchema: Schema<TInvoice> = new Schema<TInvoice>(
     advance: {
       type: Number,
     },
+    tax: {
+      type: Number,
+    },
     due: {
+      type: Number,
+    },
+    mileage: {
       type: Number,
     },
     isRecycled: { type: Boolean, default: false },
     recycledAt: { type: Date, default: null },
-
   },
   {
     timestamps: true,

@@ -20,9 +20,15 @@ export const quotationSchema: Schema<TQuotation> = new Schema<TQuotation>(
     date: {
       type: String,
     },
+    tax: {
+      type: Number,
+    },
     customer: {
       type: Schema.ObjectId,
       ref: 'Customer',
+    },
+        mileage: {
+      type: Number,
     },
     company: {
       type: Schema.ObjectId,

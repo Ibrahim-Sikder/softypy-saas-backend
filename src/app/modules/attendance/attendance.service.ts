@@ -1,12 +1,18 @@
 import { StatusCodes } from 'http-status-codes';
 import AppError from '../../errors/AppError';
 import { TAttendance } from './attendance.interface';
-import { Attendance } from './attendance.model';
-import { Employee } from '../employee/employee.model';
-import mongoose from 'mongoose';
+import { getTenantModel } from '../../utils/getTenantModels';
 
-const createAttendanceIntoDB = async (payload: TAttendance[]) => {
-  const session = await mongoose.startSession();
+export const createAttendanceIntoDB = async (
+  tenantDomain: string,
+  payload: TAttendance[]
+) => {
+  // Get Employee model and connection from tenant model getter
+  const { Model: Employee, connection } = await getTenantModel(tenantDomain, 'Employee');
+  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+
+  // Start session from tenant-specific connection
+  const session = await connection.startSession();
   session.startTransaction();
 
   try {
@@ -14,35 +20,31 @@ const createAttendanceIntoDB = async (payload: TAttendance[]) => {
 
     for (const id of attendanceIds) {
       const data = payload.find((d) => d.employee === id);
+      if (!data) continue;
 
+      // Use session on all queries
       const existingEmployee = await Employee.findById(id).session(session);
+      if (!existingEmployee) continue;
 
-      if (existingEmployee && data) {
-        const checkTodaysAttendance = await Attendance.findOneAndUpdate(
-          {
-            employee: id,
-            date: data.date,
-          },
-          {
-            $set: data,
-          },
-          { session, new: true, runValidators: true },
+      const checkTodaysAttendance = await Attendance.findOneAndUpdate(
+        { employee: id, date: data.date },
+        { $set: data },
+        { session, new: true, runValidators: true }
+      );
+
+      if (!checkTodaysAttendance) {
+        const attendance = new Attendance({
+          ...data,
+          employee: existingEmployee._id,
+        });
+
+        await attendance.save({ session });
+
+        await Employee.findByIdAndUpdate(
+          existingEmployee._id,
+          { $push: { attendance: attendance._id } },
+          { new: true, runValidators: true, session }
         );
-
-        if (!checkTodaysAttendance) {
-          const attendance = new Attendance({
-            ...data,
-            employee: existingEmployee._id,
-          });
-
-          await attendance.save({ session });
-
-          await Employee.findByIdAndUpdate(
-            existingEmployee._id,
-            { $push: { attendance: attendance._id } },
-            { new: true, runValidators: true, session },
-          );
-        }
       }
     }
 
@@ -56,7 +58,10 @@ const createAttendanceIntoDB = async (payload: TAttendance[]) => {
   }
 };
 
-const getTodayAttendanceFromDB = async () => {
+
+export const getTodayAttendanceFromDB = async (tenantDomain: string) => {
+  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+
   const parsedDate = new Date();
   const day = parsedDate.getDate().toString().padStart(2, '0');
   const month = (parsedDate.getMonth() + 1).toString().padStart(2, '0');
@@ -65,49 +70,21 @@ const getTodayAttendanceFromDB = async () => {
 
   const todayAttendance = await Attendance.find({ date: formattedDate });
 
-  const presentEntries = todayAttendance.filter(
-    (attendance) => attendance.present,
-  ).length;
-
-  const presentPercentage = Number(
-    (presentEntries / todayAttendance.length) * 100,
-  ).toFixed(2);
-
-  const absentEntries = todayAttendance.filter(
-    (attendance) => attendance.absent,
-  ).length;
-
-  const absentPercentage = Number(
-    (absentEntries / todayAttendance.length) * 100,
-  ).toFixed(2);
-  const lateEntries = todayAttendance.filter(
-    (attendance) => attendance.late_status,
-  ).length;
-
-  const latePercentage = Number(
-    (lateEntries / todayAttendance.length) * 100,
-  ).toFixed(2);
-
-  if (!todayAttendance) {
-    throw new AppError(StatusCodes.NOT_FOUND, 'No todays attendance found');
+  if (!todayAttendance.length) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No today\'s attendance found');
   }
 
-  const isIntegerPresentPercentage = presentPercentage.endsWith('.00');
+  const presentEntries = todayAttendance.filter(attendance => attendance.present).length;
+  const absentEntries = todayAttendance.filter(attendance => attendance.absent).length;
+  const lateEntries = todayAttendance.filter(attendance => attendance.late_status).length;
 
-  const finalPresentPercentage = isIntegerPresentPercentage
-    ? parseInt(presentPercentage)
-    : presentPercentage;
-  const isIntegerAbsentPercentage = absentPercentage.endsWith('.00');
+  const presentPercentage = ((presentEntries / todayAttendance.length) * 100).toFixed(2);
+  const absentPercentage = ((absentEntries / todayAttendance.length) * 100).toFixed(2);
+  const latePercentage = ((lateEntries / todayAttendance.length) * 100).toFixed(2);
 
-  const finalAbsentPercentage = isIntegerAbsentPercentage
-    ? parseInt(absentPercentage)
-    : absentPercentage;
-
-  const isIntegerLatePercentage = latePercentage.endsWith('.00');
-
-  const finalLatePercentage = isIntegerLatePercentage
-    ? parseInt(latePercentage)
-    : latePercentage;
+  const finalPresentPercentage = presentPercentage.endsWith('.00') ? parseInt(presentPercentage) : presentPercentage;
+  const finalAbsentPercentage = absentPercentage.endsWith('.00') ? parseInt(absentPercentage) : absentPercentage;
+  const finalLatePercentage = latePercentage.endsWith('.00') ? parseInt(latePercentage) : latePercentage;
 
   return {
     presentPercentage: finalPresentPercentage,
@@ -119,39 +96,36 @@ const getTodayAttendanceFromDB = async () => {
     date: formattedDate,
   };
 };
-
-const getAllAttendanceByCurrentMonth = async (
+export const getAllAttendanceByCurrentMonth = async (
+  tenantDomain: string,
   limit: number,
   page: number,
   searchTerm: string,
 ) => {
-  // Get the current date
+  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
 
-  // Format month and year to match the date format in the database
   const formattedMonth = currentMonth.toString().padStart(2, '0');
   const formattedYear = currentYear.toString();
 
-  // Create a date pattern to match current month and year
   const datePattern = new RegExp(`^\\d{2}-${formattedMonth}-${formattedYear}$`);
 
-  // Build the query to filter by date pattern and searchTerm if provided
-  const query = {
+  const query: Record<string, any> = {
     date: datePattern,
-    ...(searchTerm && {
-      $or: [
-        { date: new RegExp(searchTerm, 'i') },
-        { full_name: new RegExp(searchTerm, 'i') },
-      ],
-    }),
   };
 
-  // Get all distinct dates from the filtered Attendance collection
+  if (searchTerm) {
+    query.$or = [
+      { date: new RegExp(searchTerm, 'i') },
+      { full_name: new RegExp(searchTerm, 'i') },
+    ];
+  }
+
   const distinctDates = await Attendance.distinct('date', query);
 
-  // Filter the dates to ensure they belong to the current month and year
   const currentMonthDates = distinctDates.filter((date) => {
     const [, month, year] = date.split('-');
     return (
@@ -159,77 +133,46 @@ const getAllAttendanceByCurrentMonth = async (
     );
   });
 
-  // Initialize an array to store attendance results for each date
   const attendanceResults = [];
 
-  // Iterate over each date and calculate the percentages
   for (const date of currentMonthDates) {
     const todayAttendance = await Attendance.find({ date });
 
-    const presentEntries = todayAttendance.filter(
-      (attendance) => attendance.present,
-    ).length;
-
+    const presentEntries = todayAttendance.filter(a => a.present).length;
     const presentPercentage = Number(
-      (presentEntries / todayAttendance.length) * 100,
+      (presentEntries / todayAttendance.length) * 100
     ).toFixed(2);
 
-    const absentEntries = todayAttendance.filter(
-      (attendance) => attendance.absent,
-    ).length;
-
+    const absentEntries = todayAttendance.filter(a => a.absent).length;
     const absentPercentage = Number(
-      (absentEntries / todayAttendance.length) * 100,
+      (absentEntries / todayAttendance.length) * 100
     ).toFixed(2);
 
-    const lateEntries = todayAttendance.filter(
-      (attendance) => attendance.late_status,
-    ).length;
-
+    const lateEntries = todayAttendance.filter(a => a.late_status).length;
     const latePercentage = Number(
-      (lateEntries / todayAttendance.length) * 100,
+      (lateEntries / todayAttendance.length) * 100
     ).toFixed(2);
 
     if (!todayAttendance.length) {
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        `No attendance found for date: ${date}`,
+        `No attendance found for date: ${date}`
       );
     }
 
-    const isIntegerPresentPercentage = presentPercentage.endsWith('.00');
-    const finalPresentPercentage = isIntegerPresentPercentage
-      ? parseInt(presentPercentage)
-      : presentPercentage;
-
-    const isIntegerAbsentPercentage = absentPercentage.endsWith('.00');
-    const finalAbsentPercentage = isIntegerAbsentPercentage
-      ? parseInt(absentPercentage)
-      : absentPercentage;
-
-    const isIntegerLatePercentage = latePercentage.endsWith('.00');
-    const finalLatePercentage = isIntegerLatePercentage
-      ? parseInt(latePercentage)
-      : latePercentage;
-
-    // Add the results for the current date to the array
     attendanceResults.push({
       date,
-      presentPercentage: finalPresentPercentage,
+      presentPercentage: presentPercentage.endsWith('.00') ? parseInt(presentPercentage) : presentPercentage,
       presentEntries,
-      absentPercentage: finalAbsentPercentage,
+      absentPercentage: absentPercentage.endsWith('.00') ? parseInt(absentPercentage) : absentPercentage,
       absentEntries,
-      latePercentage: finalLatePercentage,
+      latePercentage: latePercentage.endsWith('.00') ? parseInt(latePercentage) : latePercentage,
       lateEntries,
     });
   }
 
-  // Implement pagination
   const startIndex = (page - 1) * limit;
-  const paginatedResults = attendanceResults.slice(
-    startIndex,
-    startIndex + limit,
-  );
+  const paginatedResults = attendanceResults.slice(startIndex, startIndex + limit);
 
   return {
     totalPages: Math.ceil(attendanceResults.length / limit),
@@ -239,50 +182,68 @@ const getAllAttendanceByCurrentMonth = async (
   };
 };
 
-const getSingleAttendance = async (employee: string) => {
+export const getSingleAttendance = async (tenantDomain: string, employee: string) => {
+  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+
   const singleAttendance = await Attendance.find({ employee });
 
-  if (!singleAttendance) {
+  if (!singleAttendance || singleAttendance.length === 0) {
     throw new AppError(StatusCodes.NOT_FOUND, 'No attendance found');
   }
 
   return singleAttendance;
 };
 
-const getSingleDateAttendance = async (date: string) => {
+export const getSingleDateAttendance = async (tenantDomain: string, date: string) => {
+  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+
   const singleAttendance = await Attendance.find({ date });
 
-  if (!singleAttendance) {
+  if (!singleAttendance || singleAttendance.length === 0) {
     throw new AppError(StatusCodes.NOT_FOUND, 'No attendance found');
   }
 
   return singleAttendance;
 };
 
-const deleteAttendanceFromDB = async (date: { date: string }) => {
-  const existingAttendance = await Attendance.find({ date: date.date });
+export const deleteAttendanceFromDB = async (
+  tenantDomain: string,
+  dateObj: { date: string },
+) => {
+  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
+  console.log(dateObj)
 
-  const attendanceIds = existingAttendance.map((entry) => entry._id);
+  // Step 1: Find all attendance records for the given date
+  const existingAttendance = await Attendance.find({ date: dateObj.date });
 
-  attendanceIds.forEach(async (id) => {
-    const data = existingAttendance.find((d) => d._id === id);
+  if (existingAttendance.length === 0) {
+    return []; // Nothing to delete
+  }
 
-    const existingEmployee = await Employee.findById(data?.employee);
+  const deletedAttendances: any[] = [];
 
-    if (existingEmployee && data) {
-      const checkTodaysAttendance = await Attendance.findByIdAndDelete(id);
+  for (const attendance of existingAttendance) {
+    const existingEmployee = await Employee.findById(attendance.employee);
 
-      if (checkTodaysAttendance) {
+    // Step 2: Remove attendance record
+    const deleted = await Attendance.findByIdAndDelete(attendance._id);
+
+    if (deleted) {
+      deletedAttendances.push(deleted); // Collect deleted data to return
+
+      // Step 3: Remove the attendance reference from the employee
+      if (existingEmployee) {
         await Employee.findByIdAndUpdate(
           existingEmployee._id,
-          { $pull: { attendance: id } },
+          { $pull: { attendance: attendance._id } },
           { new: true, runValidators: true },
         );
       }
     }
-  });
+  }
 
-  return null;
+  return deletedAttendances;
 };
 
 export const AttendanceServices = {

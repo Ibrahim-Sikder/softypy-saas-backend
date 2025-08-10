@@ -1,23 +1,22 @@
-import { Supplier } from './supplier.model';
+import mongoose from 'mongoose';
 
-const findLastSupplierId = async () => {
-  const lastSupplier = await Supplier.findOne(
-    {},
-    {
-      supplierId: 1,
-    },
-  )
-    .sort({ createdAt: -1 })
-    .lean();
+const counterSchema = new mongoose.Schema({
+  _id: String, // e.g. "supplierId"
+  seq: { type: Number, default: 0 },
+});
 
-  return lastSupplier?.supplierId
-    ? lastSupplier?.supplierId.substring(3)
-    : undefined;
-};
+const Counter = mongoose.model('Counter', counterSchema);
+
+async function getNextSequence(name: string): Promise<number> {
+  const counter = await Counter.findByIdAndUpdate(
+    name,
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+  return counter.seq;
+}
 
 export const generateSupplierId = async () => {
-  const currentId = (await findLastSupplierId()) || '0000';
-  let incrementId = (Number(currentId) + 1).toString().padStart(4, '0');
-  incrementId = `S:1${incrementId}`;
-  return incrementId;
+  const seq = await getNextSequence('supplierId');
+  return `S-${seq.toString().padStart(4, '0')}`;
 };

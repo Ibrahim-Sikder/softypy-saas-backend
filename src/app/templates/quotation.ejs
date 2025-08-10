@@ -101,9 +101,9 @@
                         style="display: flex; align-items: center; justify-content: space-between;  margin-bottom: 8px;">
                         <% if (logoBase64) { %>
                         <img style="width: 120px;" src="data:image/png;base64,<%= logoBase64 %>"
-                            alt="Trust Auto Solutions" />
+                            alt="SofyPy Garages" />
                         <% } else { %>
-                        <img style="width: 120px;" src="<%= imageUrl %>/images/logo.png" alt="Trust Auto Solutions"
+                        <img style="width: 120px;" src="<%= imageUrl %>/images/logo.png" alt="SofyPy Garages"
                             onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';" />
                         <% } %>
 
@@ -401,6 +401,9 @@
                         <% if (quotation && quotation.vat && quotation.vat !== 0) { %>
                         <b style="font-size: 12px;">VAT</b>
                         <% } %>
+                        <% if (quotation && quotation.tax && quotation.tax !== 0) { %>
+                        <b style="font-size: 12px;">Tax</b>
+                        <% } %>
                         <b style="font-size: 12px;">Grand Total</b>
                         <% if (quotation && quotation.advance && quotation.advance !== 0) { %>
                         <b style="font-size: 12px;">Advance</b>
@@ -423,6 +426,9 @@
 
                         <% if (quotation && quotation.vat && quotation.vat !== 0) { %>
                         <small>: <%= quotation.vat %>%</small>
+                        <% } %>
+                        <% if (quotation && quotation.tax && quotation.tax !== 0) { %>
+                        <small>: <%= quotation.tax %>%</small>
                         <% } %>
 
                         <small>:

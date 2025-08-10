@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { TProductType } from './productType.interface';
 
-const productTypeSchema: Schema = new Schema<TProductType>(
+export const productTypeSchema: Schema = new Schema<TProductType>(
   {
     product_type: {
       type: String,

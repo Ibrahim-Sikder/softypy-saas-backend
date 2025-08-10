@@ -8,32 +8,78 @@ import bcrypt from 'bcrypt';
 import { JwtPayload } from 'jsonwebtoken';
 import AppError from '../../errors/AppError';
 import { User, userSchema } from '../user/user.model';
-import { NextFunction } from 'express';
 import { connectToTenantDatabase } from '../../../server';
 import { Tenant } from '../tenant/tenant.model';
 
 
 export const loginUser = async (payload: TLoginUser) => {
 
-  // Step 1: Find the tenant by domain
+  if (payload.tenantDomain === 'superadmin') {
+    const user = await User.findOne({ name: payload.name, role: 'superadmin' }).select('+password');
+
+    if (!user) {
+      throw new AppError(httpStatus.NOT_FOUND, "Super admin not found!");
+    }
+
+    const isPasswordMatch = await bcrypt.compare(payload.password, user.password);
+
+    if (!isPasswordMatch) {
+      throw new AppError(httpStatus.FORBIDDEN, "Password doesn't match!");
+    }
+
+    const jwtPayload = {
+      userId: user._id.toString(),
+      role: user.role,
+      name: user.name,
+    };
+
+    if (!config.jwt_access_secret || !config.jwt_refresh_secret) {
+      throw new Error('JWT secrets are not defined in config');
+    }
+    const accessToken = createToken(jwtPayload, config.jwt_access_secret as string, config.jwt_access_expires_in as string);
+    const refreshToken = createToken(jwtPayload, config.jwt_refresh_secret as string, config.jwt_refresh_expires_in as string);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        userId: user._id,
+        name: user.name,
+        role: user.role,
+      },
+    };
+  }
+
+  // for this auth check all tenant user 
   const tenant = await Tenant.findOne({ domain: payload.tenantDomain });
+
+  console.log(tenant)
+
   if (!tenant || !tenant.isActive) {
     throw new AppError(httpStatus.NOT_FOUND, 'Tenant not found or inactive');
   }
 
-  // Step 2: Connect to tenant DB
+  if (!tenant.subscription || !tenant.subscription.isPaid || !tenant.subscription.isActive) {
+    throw new AppError(httpStatus.FORBIDDEN, 'Subscription is inactive or not paid');
+  }
+
+  const now = new Date() 
+  const subscriptionEnd = new Date(tenant.subscription.endDate);
+
+  if( now > subscriptionEnd ){
+    throw new AppError(httpStatus.FORBIDDEN, 'Subscription has expired !')
+  }
+
   const tenantConnection = await connectToTenantDatabase(
     tenant._id.toString(),
-    tenant.dbUri,
+    tenant.dbUri
   );
 
-  // Step 3: Get tenant-specific User model
-  const User = tenantConnection.model('User', userSchema);
+  const TenantUser = tenantConnection.model('User', userSchema);
+  const user = await TenantUser.findOne({ name: payload.name }).select('+password');
 
-  // Step 4: Find user by name
-  const user = await User.findOne({ name: payload.name }).select('+password');
   if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'Invalid user name or password');
+    throw new AppError(httpStatus.NOT_FOUND, "User name doesn't match!");
   }
 
   if (user?.isDeleted) {
@@ -42,10 +88,9 @@ export const loginUser = async (payload: TLoginUser) => {
 
   const isPasswordMatch = await bcrypt.compare(payload.password, user.password);
   if (!isPasswordMatch) {
-    throw new AppError(httpStatus.FORBIDDEN, 'Invalid user name or password');
+    throw new AppError(httpStatus.FORBIDDEN, "Password doesn't match!");
   }
 
-  // Step 5: Generate JWT tokens
   const jwtPayload = {
     userId: user._id.toString(),
     role: user.role,
@@ -53,17 +98,8 @@ export const loginUser = async (payload: TLoginUser) => {
     tenantId: tenant._id.toString(),
   };
 
-  const accessToken = createToken(
-    jwtPayload,
-    config.jwt_access_secret as string,
-    config.jwt_access_expires_in as string,
-  );
-
-  const refreshToken = createToken(
-    jwtPayload,
-    config.jwt_refresh_secret as string,
-    config.jwt_refresh_expires_in as string,
-  );
+  const accessToken = createToken(jwtPayload, config.jwt_access_secret as string, config.jwt_access_expires_in as string);
+  const refreshToken = createToken(jwtPayload, config.jwt_refresh_secret as string, config.jwt_refresh_expires_in as string);
 
   return {
     accessToken,
@@ -73,10 +109,10 @@ export const loginUser = async (payload: TLoginUser) => {
       name: user.name,
       role: user.role,
       tenantId: tenant._id,
-      token: accessToken,
     },
   };
 };
+
 
 
 const changePassword = async (

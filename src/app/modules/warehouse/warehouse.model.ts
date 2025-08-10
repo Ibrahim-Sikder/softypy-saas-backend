@@ -1,34 +1,23 @@
-import mongoose, { Document, Schema } from 'mongoose';
-import { IWarehouse } from './warehouse.interface';
+import mongoose, { Schema } from "mongoose";
+import { IWarehouse } from "./warehouse.interface";
 
-const warehouseSchema = new Schema<IWarehouse>(
+export const warehouseSchema = new Schema<IWarehouse>(
   {
+    warehouseId: { type: String, required: true, unique: true }, // ✅ Auto ID
     name: { type: String, required: true },
-    code: { type: String, required: true },
-    product: {
-      type: Schema.Types.ObjectId,
-      ref: 'Product',
-      required: true,
-    },
-    type: { type: String, required: true },
-    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
-    address: { type: String, required: true },
-    city: { type: String, required: true },
-    division: { type: String, required: true },
-    postalCode: { type: String, required: true },
-    country: { type: String, default: 'Bangladesh' },
-    latitude: { type: String, default: '' },
-    longitude: { type: String, default: '' },
-    manager: { type: String, required: true },
+    address: { type: String },
+    city: { type: String },
+    manager: { type: String },
     phone: { type: String },
-    email: { type: String },
-    description: { type: String },
-    totalProducts: { type: Number },
-    totalQuantity: { type: Number },
+    type: { type: String },
+    capacity: { type: Number },
+    openingDate: { type: String },
+    status: { type: String, enum: ["active", "inactive"], default: "active" },
+    note: { type: String },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
-const Warehouse = mongoose.model<IWarehouse>('Warehouse', warehouseSchema);
+const Warehouse = mongoose.model<IWarehouse>("Warehouse", warehouseSchema);
 
 export default Warehouse;

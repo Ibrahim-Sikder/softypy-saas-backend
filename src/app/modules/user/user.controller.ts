@@ -4,21 +4,18 @@ import catchAsync from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 
 const createUser = catchAsync(async (req, res) => {
-  const domain =
-    (req.headers.origin as string) || (req.headers.host as string) || '';
   const result = await UserServices.createUser(req.body);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'User is created successfully',
+    message: 'User is created successfully this is new',
     data: result,
   });
 });
 
 const getAllUser = catchAsync(async (req, res) => {
-  const domain =
-    (req.headers.origin as string) || (req.headers.host as string) || '';
-  const result = await UserServices.getAllUser(domain);
+  const tenantDomain = req.query.tenantDomain as string;
+  const result = await UserServices.getAllUser(tenantDomain);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -27,9 +24,11 @@ const getAllUser = catchAsync(async (req, res) => {
     data: result,
   });
 });
+
 const deleteUser = catchAsync(async (req, res) => {
   const { id } = req.params;
-  const result = await UserServices.deleteUser(id);
+  const tenantDomain = req.query.tenantDomain as string;
+  const result = await UserServices.deleteUser(tenantDomain, id);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -38,9 +37,26 @@ const deleteUser = catchAsync(async (req, res) => {
     data: result,
   });
 });
+const updateUser = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const tenantDomain = req.query.tenantDomain as string;
+  const payload = req.body;
+
+  const result = await UserServices.updateUser(tenantDomain, id, payload);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'User updated successfully',
+    data: result,
+  });
+});
 
 export const UserController = {
   createUser,
   getAllUser,
   deleteUser,
+  updateUser,
 };
+
+
