@@ -5,22 +5,24 @@ import httpStatus from 'http-status';
 import sendResponse from '../../utils/sendResponse';
 import { expenseServices } from './expense.service';
 
-
-
 const createExpense = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
   try {
-    const file = req.file;
     const payload = req.body;
+    const tenantDomain = req.query.tenantDomain as string;
+
     if (payload.data) {
       Object.assign(payload, JSON.parse(payload.data));
       delete payload.data;
     }
 
-    const result = await expenseServices.createExpense(payload, file);
+    const result = await expenseServices.createExpense(
+      tenantDomain,
+      payload,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -39,7 +41,9 @@ const getAllExpense = async (
   next: NextFunction,
 ) => {
   try {
-    const result = await expenseServices.getAllExpense(req.query);
+    const tenantDomain = req.query.tenantDomain as string;
+
+    const result = await expenseServices.getAllExpense(tenantDomain, req.query);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -58,7 +62,9 @@ const getSingleExpense = async (
 ) => {
   try {
     const { id } = req.params;
-    const result = await expenseServices.getSinigleExpense(id);
+    const tenantDomain = req.query.tenantDomain as string;
+
+    const result = await expenseServices.getSinigleExpense(tenantDomain, id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -76,8 +82,10 @@ const deleteExpense = async (
   next: NextFunction,
 ) => {
   try {
+    const tenantDomain = req.query.tenantDomain as string;
+
     const { id } = req.params;
-    const result = await expenseServices.deleteExpense(id);
+    const result = await expenseServices.deleteExpense(tenantDomain, id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -96,8 +104,14 @@ const updateExpense = async (
   next: NextFunction,
 ) => {
   try {
+    const tenantDomain = req.query.tenantDomain as string;
+
     const { id } = req.params;
-    const result = await expenseServices.updateExpense(id, req.body);
+    const result = await expenseServices.updateExpense(
+      tenantDomain,
+      id,
+      req.body,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

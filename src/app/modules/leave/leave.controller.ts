@@ -3,10 +3,18 @@ import httpStatus from 'http-status';
 import sendResponse from '../../utils/sendResponse';
 import { leaveRequestServices } from './leave.service';
 
-const createLeaveRequest = async (req: Request, res: Response, next: NextFunction) => {
+const createLeaveRequest = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const payload = req.body;
-    const result = await leaveRequestServices.createLeaveRequest(payload);
+    const { tenantDomain } = req.body;
+    const result = await leaveRequestServices.createLeaveRequest(
+      tenantDomain,
+      payload,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -20,9 +28,17 @@ const createLeaveRequest = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-const getAllLeaveRequests = async (req: Request, res: Response, next: NextFunction) => {
+const getAllLeaveRequests = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const tenantDomain = req.query.tenantDomain as string;
   try {
-    const result = await leaveRequestServices.getAllLeaveRequests(req.query);
+    const result = await leaveRequestServices.getAllLeaveRequests(
+      tenantDomain,
+      req.query,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -35,11 +51,19 @@ const getAllLeaveRequests = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-const getSingleLeaveRequest = async (req: Request, res: Response, next: NextFunction) => {
+const getSingleLeaveRequest = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { leaveRequestsId } = req.params;
-
-    const result = await leaveRequestServices.getSingleLeaveRequest(leaveRequestsId);
+    //  const tenantDomain = req.headers.host || '';
+    const tenantDomain = req.query.tenantDomain as string;
+    const result = await leaveRequestServices.getSingleLeaveRequest(
+      tenantDomain,
+      leaveRequestsId,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -51,24 +75,31 @@ const getSingleLeaveRequest = async (req: Request, res: Response, next: NextFunc
     next(err);
   }
 };
-const employeeLeaveRequest = async (req: Request, res: Response, next: NextFunction) => {
+const employeeLeaveRequest = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { employeeId } = req.query;
-
+    const tenantDomain = req.query.tenantDomain as string;
 
     if (!employeeId) {
       return res.status(400).json({
         success: false,
-        message: "Employee ID is required",
+        message: 'Employee ID is required',
       });
     }
 
-    const result = await leaveRequestServices.employeeLeaveRequest(employeeId as string);
+    const result = await leaveRequestServices.employeeLeaveRequest(
+      tenantDomain,
+      employeeId as string,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
-      message: "Leave request retrieved successfully",
+      message: 'Leave request retrieved successfully',
       data: result,
     });
   } catch (err) {
@@ -76,11 +107,19 @@ const employeeLeaveRequest = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-
-const updateLeaveRequest = async (req: Request, res: Response, next: NextFunction) => {
+const updateLeaveRequest = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { leaveRequestsId } = req.params;
-    const result = await leaveRequestServices.updateLeaveRequest(leaveRequestsId, req.body);
+    const {tenantDomain} = req.body
+    const result = await leaveRequestServices.updateLeaveRequest(
+      tenantDomain,
+      leaveRequestsId,
+      req.body,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -93,10 +132,18 @@ const updateLeaveRequest = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-const deleteLeaveRequest = async (req: Request, res: Response, next: NextFunction) => {
+const deleteLeaveRequest = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
+    const tenantDomain = req.query.tenantDomain as string;
     const { leaveRequestsId } = req.params;
-    const result = await leaveRequestServices.deleteLeaveRequest(leaveRequestsId);
+    const result = await leaveRequestServices.deleteLeaveRequest(
+      tenantDomain,
+      leaveRequestsId,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -115,5 +162,5 @@ export const leaveRequestControllers = {
   getSingleLeaveRequest,
   updateLeaveRequest,
   deleteLeaveRequest,
-  employeeLeaveRequest
+  employeeLeaveRequest,
 };

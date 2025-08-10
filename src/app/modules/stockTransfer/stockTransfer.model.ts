@@ -1,7 +1,7 @@
 import { Schema, model } from 'mongoose';
 import { IStockTransfer } from './stockTransfer.interface';
 
-const stockTransferSchema = new Schema<IStockTransfer>({
+export const stockTransferSchema = new Schema<IStockTransfer>({
   product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
   fromWarehouse: { type: Schema.Types.ObjectId, ref: 'Warehouse', required: true },
   toWarehouse: { type: Schema.Types.ObjectId, ref: 'Warehouse', required: true },

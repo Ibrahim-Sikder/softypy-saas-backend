@@ -12,13 +12,9 @@ const createPurchase = async (
 ) => {
   try {
     const payload = req.body;
+    const { tenantDomain } = req.body;
 
-    // if (payload.data) {
-    //   Object.assign(payload, JSON.parse(payload.data));
-    //   delete payload.data;
-    // }
-
-    const result = await purchaseServices.createPurchase(payload);
+    const result = await purchaseServices.createPurchase(tenantDomain, payload);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -38,7 +34,12 @@ const getAllPurchase = async (
   next: NextFunction,
 ) => {
   try {
-    const result = await purchaseServices.getAllPurchase(req.query);
+    const tenantDomain = req.query.tenantDomain as string;
+
+    const result = await purchaseServices.getAllPurchase(
+      tenantDomain,
+      req.query,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -57,7 +58,9 @@ const getSinglePurchase = async (
 ) => {
   try {
     const { id } = req.params;
-    const result = await purchaseServices.getSiniglePurchase(id);
+    const tenantDomain = req.query.tenantDomain as string;
+
+    const result = await purchaseServices.getSiniglePurchase(tenantDomain, id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -76,7 +79,9 @@ const deletePurchase = async (
 ) => {
   try {
     const { id } = req.params;
-    const result = await purchaseServices.deletePurchase(id);
+    const tenantDomain = req.query.tenantDomain as string;
+
+    const result = await purchaseServices.deletePurchase(tenantDomain, id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -96,7 +101,13 @@ const updatePurchase = async (
 ) => {
   try {
     const { id } = req.params;
-    const result = await purchaseServices.updatePurchase(id, req.body);
+    const { tenantDomain } = req.body;
+
+    const result = await purchaseServices.updatePurchase(
+      tenantDomain,
+      id,
+      req.body,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

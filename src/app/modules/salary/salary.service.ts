@@ -1,26 +1,30 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { StatusCodes } from "http-status-codes"
 import AppError from "../../errors/AppError"
-import { Employee } from "../employee/employee.model"
 import type { TSalary, TSalaryFilters, TPartialPayment, TPaymentHistory } from "./salary.interface"
-import { Salary } from "./salary.model"
 import mongoose from "mongoose"
 import { getMonthName } from "./salary.const"
+import { getTenantModel } from "../../utils/getTenantModels"
 
-const createSalaryIntoDB = async (payload: TSalary[]) => {
-  const session = await mongoose.startSession()
+const createSalaryIntoDB = async (tenantDomain: string, payload: TSalary[]) => {
+  // Get tenant-specific models and DB connection
+  const { Model: Employee, connection } = await getTenantModel(tenantDomain, 'Employee')
+  const { Model: Salary } = await getTenantModel(tenantDomain, 'Salary')
+
+  // Start a session on the tenant-specific connection
+  const session = await connection.startSession()
   session.startTransaction()
 
   try {
-
     // Extract unique employee IDs from the payload
     const employeeIds = [...new Set(payload.map((entry) => entry.employee))]
 
-    // Fetch all employees and existing salaries in bulk
+    // Fetch employees
     const employees = await Employee.find({ _id: { $in: employeeIds } })
       .session(session)
       .lean()
 
+    // Fetch existing salaries to check duplicates
     const existingSalaries = await Salary.find({
       employee: { $in: employeeIds },
       month_of_salary: { $in: payload.map((d) => d.month_of_salary) },
@@ -32,50 +36,56 @@ const createSalaryIntoDB = async (payload: TSalary[]) => {
       .lean()
 
     // Create lookup maps
-    const employeeMap = new Map(employees.map((e) => [e._id.toString(), e]))
+    const employeeMap = new Map(
+      employees.map((e) => [(e as { _id: mongoose.Types.ObjectId })._id.toString(), e])
+    )
     const salaryMap = new Map(
-      existingSalaries.map((s) => [`${s.employee}-${s.month_of_salary}-${s.year_of_salary}`, s]),
+      existingSalaries.map(
+        (s) => [`${s.employee}-${s.month_of_salary}-${s.year_of_salary}`, s],
+      ),
     )
 
-    // Process each payload entry
+    // Prepare salary documents
     const salaryPromises = payload.map(async (data) => {
       const existingEmployee = employeeMap.get(data.employee.toString())
 
       if (!existingEmployee) {
-        throw new AppError(StatusCodes.NOT_FOUND, `Employee with ID ${data.employee} not found.`)
+        throw new AppError(
+          StatusCodes.NOT_FOUND,
+          `Employee with ID ${data.employee} not found.`,
+        )
       }
 
       const year = data.year_of_salary || new Date().getFullYear().toString()
       const salaryKey = `${data.employee}-${data.month_of_salary}-${year}`
-      const checkExistMonthSalary = salaryMap.get(salaryKey)
 
-      if (checkExistMonthSalary) {
+      if (salaryMap.has(salaryKey)) {
         throw new AppError(
           StatusCodes.CONFLICT,
           `Salary already exists for ${existingEmployee.full_name} in ${data.month_of_salary} ${year}.`,
         )
       }
 
-      // Create initial payment history for advance and pay
+      // Payment history
       const paymentHistory: TPaymentHistory[] = []
       if (data.advance && data.advance > 0) {
         paymentHistory.push({
           amount: data.advance,
           date: new Date(),
-          note: "Advance payment",
-          payment_method: "cash",
+          note: 'Advance payment',
+          payment_method: 'cash',
         })
       }
+
       if (data.pay && data.pay > 0) {
         paymentHistory.push({
           amount: data.pay,
           date: new Date(),
-          note: "Initial payment",
-          payment_method: "cash",
+          note: 'Initial payment',
+          payment_method: 'cash',
         })
       }
 
-      // Create salary document
       const salary = new Salary({
         ...data,
         employee: existingEmployee._id,
@@ -83,11 +93,11 @@ const createSalaryIntoDB = async (payload: TSalary[]) => {
         full_name: existingEmployee.full_name,
         year_of_salary: year,
         payment_history: paymentHistory,
-        // Let the pre-save middleware calculate everything
       })
+
       await salary.save({ session })
 
-      // Update employee's salary array
+      // Link salary to employee
       await Employee.findByIdAndUpdate(
         existingEmployee._id,
         { $push: { salary: salary._id } },
@@ -105,28 +115,31 @@ const createSalaryIntoDB = async (payload: TSalary[]) => {
   } catch (error) {
     await session.abortTransaction()
     session.endSession()
-    console.error("❌ Error creating salary records:", error)
+    console.error('❌ Error creating salary records:', error)
     throw error
   }
 }
 
-const addPartialPayment = async (paymentData: TPartialPayment) => {
-  const session = await mongoose.startSession()
+const addPartialPayment = async (tenantDomain: string, paymentData: TPartialPayment) => {
+  // Get tenant-specific Salary model and DB connection
+  const { Model: Salary, connection } = await getTenantModel(tenantDomain, 'Salary')
+
+  const session = await connection.startSession()
   session.startTransaction()
 
   try {
     const salary = await Salary.findById(paymentData.salaryId).session(session)
 
     if (!salary) {
-      throw new AppError(StatusCodes.NOT_FOUND, "Salary record not found.")
+      throw new AppError(StatusCodes.NOT_FOUND, 'Salary record not found.')
     }
 
-    if (salary.payment_status === "completed") {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Salary is already fully paid.")
+    if (salary.payment_status === 'completed') {
+      throw new AppError(StatusCodes.BAD_REQUEST, 'Salary is already fully paid.')
     }
 
     if (paymentData.amount <= 0) {
-      throw new AppError(StatusCodes.BAD_REQUEST, "Payment amount must be greater than 0.")
+      throw new AppError(StatusCodes.BAD_REQUEST, 'Payment amount must be greater than 0.')
     }
 
     const currentDueAmount = salary.due_amount || 0
@@ -142,10 +155,11 @@ const addPartialPayment = async (paymentData: TPartialPayment) => {
     salary.payment_history.push({
       amount: paymentData.amount,
       date: new Date(),
-      note: paymentData.note || "Partial payment",
-      payment_method: paymentData.payment_method || "cash",
+      note: paymentData.note || 'Partial payment',
+      payment_method: paymentData.payment_method || 'cash',
       created_by: paymentData.created_by,
     })
+
     await salary.save({ session })
 
     await session.commitTransaction()
@@ -154,54 +168,55 @@ const addPartialPayment = async (paymentData: TPartialPayment) => {
   } catch (error) {
     await session.abortTransaction()
     session.endSession()
-    console.error("❌ Error adding partial payment:", error)
+    console.error('❌ Error adding partial payment:', error)
     throw error
   }
 }
 
-const updateSalaryIntoDB = async (id: string, payload: Partial<TSalary>) => {
-  const session = await mongoose.startSession()
+const updateSalaryIntoDB = async (
+  tenantDomain: string,
+  id: string,
+  payload: Partial<TSalary>,
+) => {
+  // Use the tenant's connection for the session
+  const { Model: Salary, connection } = await getTenantModel(tenantDomain, 'Salary')
+
+  const session = await connection.startSession()
   session.startTransaction()
 
   try {
-
-    // Don't use .lean() to preserve methods
+    // Fetch the existing salary record
     const existingSalary = await Salary.findById(id).session(session)
 
     if (!existingSalary) {
-      throw new AppError(StatusCodes.NOT_FOUND, "Salary record not found.")
+      throw new AppError(StatusCodes.NOT_FOUND, 'Salary record not found.')
     }
 
-
-
-    // Fields that should not be directly updated (calculated fields)
+    // Fields that should not be updated
     const excludedFields = [
-      "payment_history",
-      "paid_amount",
-      "due_amount",
-      "payment_status",
-      "_id",
-      "createdAt",
-      "updatedAt",
-      "__v",
+      'payment_history',
+      'paid_amount',
+      'due_amount',
+      'payment_status',
+      '_id',
+      'createdAt',
+      'updatedAt',
+      '__v',
     ]
 
-    // Update only allowed fields
+    // Apply updates only to allowed fields
     Object.keys(payload).forEach((key) => {
       if (!excludedFields.includes(key)) {
-       
         ;(existingSalary as any)[key] = (payload as any)[key]
       }
     })
 
-    // Check if salary components were modified
-    const salaryComponentsChanged = ["bonus", "overtime_amount", "salary_amount", "previous_due", "cut_salary"].some(
+    // Recalculate total payment if relevant fields changed
+    const salaryComponentsChanged = ['bonus', 'overtime_amount', 'salary_amount', 'previous_due', 'cut_salary'].some(
       (field) => payload[field as keyof TSalary] !== undefined,
     )
 
     if (salaryComponentsChanged) {
-   
-      // Manual calculation if method is not available
       const bonus = Number(existingSalary.bonus) || 0
       const overtimeAmount = Number(existingSalary.overtime_amount) || 0
       const salaryAmount = Number(existingSalary.salary_amount) || 0
@@ -212,42 +227,47 @@ const updateSalaryIntoDB = async (id: string, payload: Partial<TSalary>) => {
       existingSalary.total_payment = newTotalPayment
     }
 
-    // Force recalculation by marking relevant fields as modified
-    existingSalary.markModified("total_payment")
+    existingSalary.markModified('total_payment')
 
-    // Mark payment_history as modified to trigger recalculation
     if (existingSalary.payment_history) {
-      existingSalary.markModified("payment_history")
+      existingSalary.markModified('payment_history')
     }
 
     await existingSalary.save({ session })
 
- 
-
     await session.commitTransaction()
     session.endSession()
+
     return existingSalary
   } catch (error) {
     await session.abortTransaction()
     session.endSession()
-    console.error("❌ Error updating salary:", error)
+    console.error('❌ Error updating salary:', error)
     throw error
   }
 }
 
-const deleteSalaryFromDB = async (id: string) => {
-  const session = await mongoose.startSession()
+
+const deleteSalaryFromDB = async (tenantDomain: string, id: string) => {
+  const { Model: Salary, connection } = await getTenantModel(tenantDomain, 'Salary')
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee')
+
+  const session = await connection.startSession()
   session.startTransaction()
 
   try {
     const salary = await Salary.findById(id).session(session)
 
     if (!salary) {
-      throw new AppError(StatusCodes.NOT_FOUND, "Salary record not found.")
+      throw new AppError(StatusCodes.NOT_FOUND, 'Salary record not found.')
     }
 
     // Remove salary reference from employee
-    await Employee.findByIdAndUpdate(salary.employee, { $pull: { salary: salary._id } }, { session })
+    await Employee.findByIdAndUpdate(
+      salary.employee,
+      { $pull: { salary: salary._id } },
+      { session },
+    )
 
     // Delete the salary record
     const result = await Salary.deleteOne({ _id: id }).session(session)
@@ -258,12 +278,14 @@ const deleteSalaryFromDB = async (id: string) => {
   } catch (error) {
     await session.abortTransaction()
     session.endSession()
-    console.error("❌ Error deleting salary:", error)
+    console.error('❌ Error deleting salary:', error)
     throw error
   }
 }
 
-const getSalariesForCurrentMonth = async (searchTerm?: string) => {
+const getSalariesForCurrentMonth = async (tenantDomain: string, searchTerm?: string) => {
+  const { Model: Salary } = await getTenantModel(tenantDomain, 'Salary')
+
   const now = new Date()
   const currentMonth = now.getMonth() + 1
   const currentMonthName = getMonthName(currentMonth)
@@ -273,8 +295,8 @@ const getSalariesForCurrentMonth = async (searchTerm?: string) => {
   }
 
   const salaries = await Salary.find(query)
-    .populate("employee", "full_name employeeId")
-    .populate("payment_history.created_by", "name")
+    .populate('employee', 'full_name employeeId')
+    .populate('payment_history.created_by', 'name')
     .sort({ createdAt: -1 })
     .lean()
 
@@ -288,7 +310,9 @@ const getSalariesForCurrentMonth = async (searchTerm?: string) => {
   }
 }
 
-const getSingleSalary = async (employeeId?: string) => {
+const getSingleSalary = async (tenantDomain: string, employeeId?: string) => {
+  const { Model: Salary } = await getTenantModel(tenantDomain, 'Salary')
+
   let matchQuery: any = {}
 
   if (employeeId) {
@@ -298,45 +322,41 @@ const getSingleSalary = async (employeeId?: string) => {
   }
 
   const salaries = await Salary.aggregate([
-    {
-      $match: matchQuery,
-    },
+    { $match: matchQuery },
     {
       $lookup: {
-        from: "employees",
-        localField: "employee",
-        foreignField: "_id",
-        as: "employee",
+        from: 'employees',
+        localField: 'employee',
+        foreignField: '_id',
+        as: 'employee',
       },
     },
-    {
-      $unwind: "$employee",
-    },
+    { $unwind: '$employee' },
     {
       $lookup: {
-        from: "users",
-        localField: "payment_history.created_by",
-        foreignField: "_id",
-        as: "payment_user_docs",
+        from: 'users',
+        localField: 'payment_history.created_by',
+        foreignField: '_id',
+        as: 'payment_user_docs',
       },
     },
     {
       $addFields: {
         payment_history: {
           $map: {
-            input: "$payment_history",
-            as: "ph",
+            input: '$payment_history',
+            as: 'ph',
             in: {
               $mergeObjects: [
-                "$$ph",
+                '$$ph',
                 {
                   created_by: {
                     $arrayElemAt: [
                       {
                         $filter: {
-                          input: "$payment_user_docs",
-                          as: "user",
-                          cond: { $eq: ["$$user._id", "$$ph.created_by"] },
+                          input: '$payment_user_docs',
+                          as: 'user',
+                          cond: { $eq: ['$$user._id', '$$ph.created_by'] },
                         },
                       },
                       0,
@@ -349,12 +369,8 @@ const getSingleSalary = async (employeeId?: string) => {
         },
       },
     },
-    {
-      $unset: "payment_user_docs",
-    },
-    {
-      $sort: { createdAt: -1 },
-    },
+    { $unset: 'payment_user_docs' },
+    { $sort: { createdAt: -1 } },
   ])
 
   return {
@@ -362,14 +378,22 @@ const getSingleSalary = async (employeeId?: string) => {
   }
 }
 
-const getAllSalaries = async (limit: number, page: number, searchTerm?: string) => {
+
+const getAllSalaries = async (
+  tenantDomain: string,
+  limit: number,
+  page: number,
+  searchTerm?: string,
+) => {
+  const { Model: Salary } = await getTenantModel(tenantDomain, 'Salary')
+
   const matchStage: any = {}
 
-  if (searchTerm && searchTerm.trim() !== "") {
+  if (searchTerm && searchTerm.trim() !== '') {
     matchStage.$or = [
-      { month_of_salary: { $regex: new RegExp(searchTerm, "i") } },
-      { full_name: { $regex: new RegExp(searchTerm, "i") } },
-      { employeeId: { $regex: new RegExp(searchTerm, "i") } },
+      { month_of_salary: { $regex: new RegExp(searchTerm, 'i') } },
+      { full_name: { $regex: new RegExp(searchTerm, 'i') } },
+      { employeeId: { $regex: new RegExp(searchTerm, 'i') } },
     ]
   }
 
@@ -377,38 +401,38 @@ const getAllSalaries = async (limit: number, page: number, searchTerm?: string) 
     ...(Object.keys(matchStage).length > 0 ? [{ $match: matchStage }] : []),
     {
       $lookup: {
-        from: "employees",
-        localField: "employee",
-        foreignField: "_id",
-        as: "employee",
+        from: 'employees',
+        localField: 'employee',
+        foreignField: '_id',
+        as: 'employee',
       },
     },
-    { $unwind: "$employee" },
+    { $unwind: '$employee' },
     {
       $lookup: {
-        from: "users",
-        localField: "payment_history.created_by",
-        foreignField: "_id",
-        as: "payment_user_docs",
+        from: 'users',
+        localField: 'payment_history.created_by',
+        foreignField: '_id',
+        as: 'payment_user_docs',
       },
     },
     {
       $addFields: {
         payment_history: {
           $map: {
-            input: "$payment_history",
-            as: "ph",
+            input: '$payment_history',
+            as: 'ph',
             in: {
               $mergeObjects: [
-                "$$ph",
+                '$$ph',
                 {
                   created_by: {
                     $arrayElemAt: [
                       {
                         $filter: {
-                          input: "$payment_user_docs",
-                          as: "user",
-                          cond: { $eq: ["$$user._id", "$$ph.created_by"] },
+                          input: '$payment_user_docs',
+                          as: 'user',
+                          cond: { $eq: ['$$user._id', '$$ph.created_by'] },
                         },
                       },
                       0,
@@ -421,7 +445,7 @@ const getAllSalaries = async (limit: number, page: number, searchTerm?: string) 
         },
       },
     },
-    { $unset: "payment_user_docs" },
+    { $unset: 'payment_user_docs' },
     { $sort: { createdAt: -1 } },
     { $skip: (page - 1) * limit },
     { $limit: limit },
@@ -429,7 +453,7 @@ const getAllSalaries = async (limit: number, page: number, searchTerm?: string) 
 
   const totalDataAggregation = await Salary.aggregate([
     ...(Object.keys(matchStage).length > 0 ? [{ $match: matchStage }] : []),
-    { $count: "totalCount" },
+    { $count: 'totalCount' },
   ])
 
   const totalData = totalDataAggregation.length > 0 ? totalDataAggregation[0].totalCount : 0
@@ -444,8 +468,10 @@ const getAllSalaries = async (limit: number, page: number, searchTerm?: string) 
   }
 }
 
-const getSalariesWithPaymentStatus = async (filters: TSalaryFilters = {}) => {
+const getSalariesWithPaymentStatus = async (tenantDomain: string, filters: TSalaryFilters = {}) => {
   const { page = 1, limit = 10, month, year, payment_status, searchTerm } = filters
+
+  const { Model: Salary } = await getTenantModel(tenantDomain, 'Salary')
 
   const query: any = {}
 
@@ -454,17 +480,17 @@ const getSalariesWithPaymentStatus = async (filters: TSalaryFilters = {}) => {
   if (payment_status) query.payment_status = payment_status
   if (searchTerm) {
     query.$or = [
-      { full_name: { $regex: searchTerm, $options: "i" } },
-      { employeeId: { $regex: searchTerm, $options: "i" } },
-      { month_of_salary: { $regex: searchTerm, $options: "i" } },
+      { full_name: { $regex: searchTerm, $options: 'i' } },
+      { employeeId: { $regex: searchTerm, $options: 'i' } },
+      { month_of_salary: { $regex: searchTerm, $options: 'i' } },
     ]
   }
 
   const skip = (page - 1) * limit
 
   const salaries = await Salary.find(query)
-    .populate("employee", "full_name employeeId")
-    .populate("payment_history.created_by", "name")
+    .populate('employee', 'full_name employeeId')
+    .populate('payment_history.created_by', 'name')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
@@ -484,20 +510,24 @@ const getSalariesWithPaymentStatus = async (filters: TSalaryFilters = {}) => {
   }
 }
 
-const getSalaryPaymentHistory = async (salaryId: string) => {
+
+const getSalaryPaymentHistory = async (tenantDomain: string, salaryId: string) => {
+  const { Model: Salary } = await getTenantModel(tenantDomain, 'Salary')
+
   const salary = await Salary.findById(salaryId)
-    .populate("employee", "full_name employeeId")
-    .populate("payment_history.created_by", "name")
+    .populate('employee', 'full_name employeeId')
+    .populate('payment_history.created_by', 'name')
     .lean()
 
   if (!salary) {
-    throw new AppError(StatusCodes.NOT_FOUND, "Salary record not found.")
+    throw new AppError(StatusCodes.NOT_FOUND, 'Salary record not found.')
   }
 
   return salary
 }
+const getSalaryStatistics = async (tenantDomain: string, month?: string, year?: string) => {
+  const { Model: Salary } = await getTenantModel(tenantDomain, 'Salary')
 
-const getSalaryStatistics = async (month?: string, year?: string) => {
   const currentDate = new Date()
   const currentMonth = month || getMonthName(currentDate.getMonth() + 1)
   const currentYear = year || currentDate.getFullYear().toString()
@@ -513,17 +543,17 @@ const getSalaryStatistics = async (month?: string, year?: string) => {
       $group: {
         _id: null,
         totalSalaries: { $sum: 1 },
-        totalAmount: { $sum: "$total_payment" },
-        totalPaidAmount: { $sum: "$paid_amount" },
-        totalDueAmount: { $sum: "$due_amount" },
+        totalAmount: { $sum: '$total_payment' },
+        totalPaidAmount: { $sum: '$paid_amount' },
+        totalDueAmount: { $sum: '$due_amount' },
         completedPayments: {
-          $sum: { $cond: [{ $eq: ["$payment_status", "completed"] }, 1, 0] },
+          $sum: { $cond: [{ $eq: ['$payment_status', 'completed'] }, 1, 0] },
         },
         partialPayments: {
-          $sum: { $cond: [{ $eq: ["$payment_status", "partial"] }, 1, 0] },
+          $sum: { $cond: [{ $eq: ['$payment_status', 'partial'] }, 1, 0] },
         },
         pendingPayments: {
-          $sum: { $cond: [{ $eq: ["$payment_status", "pending"] }, 1, 0] },
+          $sum: { $cond: [{ $eq: ['$payment_status', 'pending'] }, 1, 0] },
         },
       },
     },
@@ -547,8 +577,12 @@ const getSalaryStatistics = async (month?: string, year?: string) => {
   }
 }
 
-const recalculateAllSalaries = async () => {
-  const session = await mongoose.startSession()
+
+
+const recalculateAllSalaries = async (tenantDomain: string) => {
+  const { Model: Salary, connection } = await getTenantModel(tenantDomain, 'Salary')
+
+  const session = await connection.startSession()
   session.startTransaction()
 
   try {
@@ -572,12 +606,13 @@ const recalculateAllSalaries = async () => {
   } catch (error) {
     await session.abortTransaction()
     session.endSession()
-    console.error("❌ Error recalculating salaries:", error)
+    console.error('❌ Error recalculating salaries:', error)
     throw error
   }
 }
 
-const calculateTotalPaymentManually = (salaryData: any): number => {
+
+const calculateTotalPaymentManually = (tenantDomain: string, salaryData: any): number => {
   const bonus = Number(salaryData.bonus) || 0
   const overtimeAmount = Number(salaryData.overtime_amount) || 0
   const salaryAmount = Number(salaryData.salary_amount) || 0
@@ -586,6 +621,7 @@ const calculateTotalPaymentManually = (salaryData: any): number => {
 
   return Math.max(0, bonus + overtimeAmount + salaryAmount + previousDue - cutSalary)
 }
+
 
 export const SalaryServices = {
   createSalaryIntoDB,
@@ -599,5 +635,5 @@ export const SalaryServices = {
   getSalaryPaymentHistory,
   getSalaryStatistics,
   recalculateAllSalaries,
-  calculateTotalPaymentManually, // Add this
+  calculateTotalPaymentManually
 }

@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { TCategory } from './category.interface';
 
-const categorySchema: Schema = new Schema<TCategory>(
+export const categorySchema: Schema = new Schema<TCategory>(
   {
     sub_category: {
       type: String,

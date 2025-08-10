@@ -13,12 +13,17 @@ const createProductType = async (
   try {
     const file = req.file;
     const payload = req.body;
+    const { tenantDomain } = req.body;
+
     if (payload.data) {
       Object.assign(payload, JSON.parse(payload.data));
       delete payload.data;
     }
 
-    const result = await productTypeServices.createProductType(payload);
+    const result = await productTypeServices.createProductType(
+      tenantDomain,
+      payload,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -38,7 +43,17 @@ const getAllProductType = async (
   next: NextFunction,
 ) => {
   try {
-    const result = await productTypeServices.getAllProductType(req.query);
+    const tenantDomain =
+      (req.headers['x-tenant-domain'] as string) ||
+      (req.query.tenantDomain as string) ||
+      req.headers.host ||
+      '';
+    //  const tenantDomain = req.headers.host || '';
+    console.log('for get p', tenantDomain);
+    const result = await productTypeServices.getAllProductType(
+      tenantDomain,
+      req.query,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -57,7 +72,11 @@ const getSingleProductType = async (
 ) => {
   try {
     const { id } = req.params;
-    const result = await productTypeServices.getSinigleProductType(id);
+    const tenantDomain = req.query.tenantDomain as string;
+    const result = await productTypeServices.getSinigleProductType(
+      tenantDomain,
+      id,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -75,8 +94,12 @@ const deleteProductType = async (
   next: NextFunction,
 ) => {
   try {
+    const tenantDomain = req.query.tenantDomain as string;
     const { id } = req.params;
-    const result = await productTypeServices.deleteProductType(id);
+    const result = await productTypeServices.deleteProductType(
+      tenantDomain,
+      id,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -95,8 +118,13 @@ const updateProductType = async (
   next: NextFunction,
 ) => {
   try {
+    const { tenantDomain } = req.body;
     const { id } = req.params;
-    const result = await productTypeServices.updateProductType(id, req.body);
+    const result = await productTypeServices.updateProductType(
+      tenantDomain,
+      id,
+      req.body,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

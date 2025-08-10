@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import config from './app/config';
 import app from './app';
+import { seedSuperAdmin } from './app/modules/user/user.utils';
 
 const tenantConnections: Record<string, mongoose.Connection> = {};
 
@@ -11,7 +12,10 @@ export const connectToCentralDatabase = async () => {
   }
 };
 
-export const connectToTenantDatabase = async (tenantId: string, dbUri: string) => {
+export const connectToTenantDatabase = async (
+  tenantId: string,
+  dbUri: string,
+) => {
   if (tenantConnections[tenantId]) {
     return tenantConnections[tenantId];
   }
@@ -25,6 +29,7 @@ export const connectToTenantDatabase = async (tenantId: string, dbUri: string) =
 const startServer = async () => {
   try {
     await connectToCentralDatabase();
+    await seedSuperAdmin();
 
     app.listen(config.port, () => {
       console.log(`🚀 Server is running on port ${config.port}`);

@@ -11,7 +11,9 @@ export const createSupplier = async (
   next: NextFunction,
 ) => {
   try {
-    const newSupplier = await supplierServices.createSupplier(req.body);
+  const { tenantDomain } = req.body;
+    const newSupplier = await supplierServices.createSupplier(tenantDomain,req.body);
+
 
     return sendResponse(res, {
       statusCode: httpStatus.CREATED,
@@ -31,7 +33,13 @@ export const getAllSupplier = async (
   next: NextFunction,
 ) => {
   try {
-    const suppliers = await supplierServices.getAllSupplier(req.query);
+     const tenantDomain =
+    (req.headers['x-tenant-domain'] as string) ||
+    (req.query.tenantDomain as string) ||
+    req.headers.host ||
+    '';
+      //  const tenantDomain = req.headers.host || '';
+    const suppliers = await supplierServices.getAllSupplier(tenantDomain,req.query);
 
     return sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -51,8 +59,9 @@ export const getSingleSupplier = async (
   next: NextFunction,
 ) => {
   try {
+       const tenantDomain = req.query.tenantDomain as string;
     const { id } = req.params;
-    const supplier = await supplierServices.getSingleSupplier(id);
+    const supplier = await supplierServices.getSingleSupplier(tenantDomain,id);
 
     return sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -72,8 +81,9 @@ export const getSupplierProfile = async (
   next: NextFunction,
 ) => {
   try {
+       const tenantDomain = req.query.tenantDomain as string;
     const { id } = req.params;
-    const result = await supplierServices.getSupplierWithBillPayments(id);
+    const result = await supplierServices.getSupplierWithBillPayments(tenantDomain,id);
 
     return sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -92,9 +102,10 @@ export const updateSupplier = async (
   next: NextFunction,
 ) => {
   try {
+       const { tenantDomain } = req.body;
     const { id } = req.params;
 
-    const updatedSupplier = await supplierServices.updateSupplier(id, req.body);
+    const updatedSupplier = await supplierServices.updateSupplier(tenantDomain,id, req.body);
     return sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -113,8 +124,9 @@ export const permanenatlyDeleteSupplier = async (
   next: NextFunction,
 ) => {
   try {
+       const tenantDomain = req.query.tenantDomain as string;
     const { id } = req.params;
-    const result = await supplierServices.permanenatlyDeleteSupplier(id);
+    const result = await supplierServices.permanenatlyDeleteSupplier(tenantDomain,id);
 
     return sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -137,8 +149,9 @@ export const moveToRecycledbinSupplier = async (
   next: NextFunction,
 ) => {
   try {
+       const tenantDomain = req.query.tenantDomain as string;
     const { id } = req.params;
-    const result = await supplierServices.moveToRecycledbinSupplier(id);
+    const result = await supplierServices.moveToRecycledbinSupplier(tenantDomain,id);
 
     return sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -161,8 +174,9 @@ export const restoreFromRecycledSupplier = async (
   next: NextFunction,
 ) => {
   try {
+       const tenantDomain = req.query.tenantDomain as string;
     const { id } = req.params;
-    const result = await supplierServices.restoreFromRecycledSupplier(id);
+    const result = await supplierServices.restoreFromRecycledSupplier(tenantDomain,id);
 
     return sendResponse(res, {
       statusCode: httpStatus.OK,

@@ -5,7 +5,9 @@ import { stockServices } from './stocks.service';
 
 const createStock = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await stockServices.createStock(req.body);
+     const { tenantDomain } = req.body;
+
+    const result = await stockServices.createStock(tenantDomain, req.body);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -17,9 +19,11 @@ const createStock = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-const getAllStocks = async (_req: Request, res: Response, next: NextFunction) => {
+
+const getAllStocks = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await stockServices.getAllStocks();
+     const tenantDomain = req.query.tenantDomain as string;
+    const result = await stockServices.getAllStocks(tenantDomain);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -33,8 +37,9 @@ const getAllStocks = async (_req: Request, res: Response, next: NextFunction) =>
 
 const getSingleStock = async (req: Request, res: Response, next: NextFunction) => {
   try {
+     const tenantDomain = req.query.tenantDomain as string;
     const { id } = req.params;
-    const result = await stockServices.getSingleStock(id);
+    const result = await stockServices.getSingleStock(tenantDomain,id);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -49,7 +54,8 @@ const getSingleStock = async (req: Request, res: Response, next: NextFunction) =
 const updateStock = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const result = await stockServices.updateStock(id, req.body);
+     const tenantDomain = req.query.tenantDomain as string;
+    const result = await stockServices.updateStock(tenantDomain,id, req.body);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -64,7 +70,8 @@ const updateStock = async (req: Request, res: Response, next: NextFunction) => {
 const deleteStock = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const result = await stockServices.deleteStock(id);
+     const tenantDomain = req.query.tenantDomain as string;
+    const result = await stockServices.deleteStock(tenantDomain,id);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -77,8 +84,9 @@ const deleteStock = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 const transferStock = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const result = await stockServices.transferStock(req.body);
+   const {tenantDomain} = req.body
+     try {
+    const result = await stockServices.transferStock(tenantDomain,req.body);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,

@@ -77,6 +77,29 @@ cron.schedule('0 0 * * *', async () => {
   }
 });
 
+// cron.schedule('0 1 * * *', async () => {
+//   const now = new Date();
+
+//   try {
+//     const result = await Subscription.updateMany(
+//       {
+//         endDate: { $lt: now },
+//         isActive: true,
+//       },
+//       {
+//         $set: {
+//           status: 'Expired',
+//           isActive: false,
+//         },
+//       }
+//     );
+
+//     console.log(`✅ Cron Job Done: ${result.modifiedCount} subscription(s) marked as expired`);
+//   } catch (error) {
+//     console.error('❌ Error in subscription expiry cron job:', error);
+//   }
+// });
+
 app.post('/api/v1/restore', async (req: Request, res: Response) => {
   try {
     await restoreMongoDB();

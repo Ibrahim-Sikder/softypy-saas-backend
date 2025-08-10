@@ -4,18 +4,29 @@ import sendResponse from "../../utils/sendResponse"
 import { SalaryServices } from "./salary.service"
 import httpStatus from "http-status"
 import type { TSalaryFilters } from "./salary.interface"
+import AppError from "../../errors/AppError"
 
 const createSalary = catchAsync(async (req, res) => {
-  const result = await SalaryServices.createSalaryIntoDB(req.body)
+  const { tenantDomain, salaries } = req.body;
+
+  if (!Array.isArray(salaries)) {
+    throw new AppError(StatusCodes.BAD_REQUEST, "Salaries must be an array.");
+  }
+
+  const result = await SalaryServices.createSalaryIntoDB(tenantDomain, salaries);
+
   sendResponse(res, {
     statusCode: StatusCodes.CREATED,
     success: true,
     message: "Salary details added successfully!",
     data: result,
-  })
-})
+  });
+});
+
 
 const addPartialPayment = catchAsync(async (req, res) => {
+  const {tenantDomain} = req.body;
+  console.log('for partial paymebnt',tenantDomain)
   const { id: salaryId } = req.params
   const paymentData = {
     ...req.body,
@@ -23,7 +34,7 @@ const addPartialPayment = catchAsync(async (req, res) => {
     created_by: (req as any).user?.id,
   }
 
-  const result = await SalaryServices.addPartialPayment(paymentData)
+  const result = await SalaryServices.addPartialPayment(tenantDomain, paymentData)
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -34,8 +45,9 @@ const addPartialPayment = catchAsync(async (req, res) => {
 })
 
 const getSalariesForCurrentMonth = catchAsync(async (req, res) => {
+  const tenantDomain = req.query.tenantDomain as string;
   const searchTerm = req.query.searchTerm as string
-  const result = await SalaryServices.getSalariesForCurrentMonth(searchTerm)
+  const result = await SalaryServices.getSalariesForCurrentMonth(tenantDomain, searchTerm)
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -45,8 +57,9 @@ const getSalariesForCurrentMonth = catchAsync(async (req, res) => {
 })
 
 const getSingleSalary = catchAsync(async (req, res) => {
+  const tenantDomain = req.query.tenantDomain as string;
   const id = req.query.id as string
-  const result = await SalaryServices.getSingleSalary(id)
+  const result = await SalaryServices.getSingleSalary(tenantDomain, id)
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -57,8 +70,9 @@ const getSingleSalary = catchAsync(async (req, res) => {
 })
 
 const updateSalaryIntoDB = catchAsync(async (req, res) => {
+  const tenantDomain = req.query.tenantDomain as string;
   const { id } = req.params
-  const result = await SalaryServices.updateSalaryIntoDB(id, req.body)
+  const result = await SalaryServices.updateSalaryIntoDB(tenantDomain, id, req.body)
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -69,8 +83,9 @@ const updateSalaryIntoDB = catchAsync(async (req, res) => {
 })
 
 const deleteSalaryFromDB = catchAsync(async (req, res) => {
+  const tenantDomain = req.query.tenantDomain as string;
   const { id } = req.params
-  const result = await SalaryServices.deleteSalaryFromDB(id)
+  const result = await SalaryServices.deleteSalaryFromDB(tenantDomain, id)
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -84,6 +99,7 @@ const allowedPaymentStatuses = ["completed", "pending", "partial"] as const
 type PaymentStatus = (typeof allowedPaymentStatuses)[number]
 
 const getSalariesWithPaymentStatus = catchAsync(async (req, res) => {
+    const tenantDomain = req.query.tenantDomain as string;
   const paymentStatus = req.query.payment_status as string
   const safePaymentStatus = allowedPaymentStatuses.includes(paymentStatus as PaymentStatus)
     ? (paymentStatus as PaymentStatus)
@@ -98,7 +114,7 @@ const getSalariesWithPaymentStatus = catchAsync(async (req, res) => {
     limit: Number.parseInt(req.query.limit as string) || 10,
   }
 
-  const result = await SalaryServices.getSalariesWithPaymentStatus(filters)
+  const result = await SalaryServices.getSalariesWithPaymentStatus(tenantDomain, filters)
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -109,8 +125,9 @@ const getSalariesWithPaymentStatus = catchAsync(async (req, res) => {
 })
 
 const getPaymentHistory = catchAsync(async (req, res) => {
+  const tenantDomain = req.query.tenantDomain as string;
   const { id: salaryId } = req.params
-  const result = await SalaryServices.getSalaryPaymentHistory(salaryId)
+  const result = await SalaryServices.getSalaryPaymentHistory(tenantDomain, salaryId)
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -121,10 +138,11 @@ const getPaymentHistory = catchAsync(async (req, res) => {
 })
 
 const getSalaryStatistics = catchAsync(async (req, res) => {
+  const tenantDomain = req.query.tenantDomain as string;
   const month = req.query.month as string
   const year = req.query.year as string
 
-  const result = await SalaryServices.getSalaryStatistics(month, year)
+  const result = await SalaryServices.getSalaryStatistics(tenantDomain, month, year)
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -135,11 +153,12 @@ const getSalaryStatistics = catchAsync(async (req, res) => {
 })
 
 const getAllSalaries = catchAsync(async (req, res) => {
+  const tenantDomain = req.query.tenantDomain as string;
   const limit = isNaN(Number(req.query.limit)) ? 10 : Number(req.query.limit)
   const page = isNaN(Number(req.query.page)) ? 1 : Number(req.query.page)
   const searchTerm = req.query.searchTerm as string
 
-  const result = await SalaryServices.getAllSalaries(limit, page, searchTerm)
+  const result = await SalaryServices.getAllSalaries(tenantDomain, limit, page, searchTerm)
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -151,7 +170,8 @@ const getAllSalaries = catchAsync(async (req, res) => {
 
 // New endpoint to recalculate all salaries (for admin use)
 const recalculateAllSalaries = catchAsync(async (req, res) => {
-  const result = await SalaryServices.recalculateAllSalaries()
+  const tenantDomain = req.query.tenantDomain as string;
+  const result = await SalaryServices.recalculateAllSalaries(tenantDomain)
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,

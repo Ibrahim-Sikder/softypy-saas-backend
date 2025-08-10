@@ -9,7 +9,8 @@ const createDonation = async (
   next: NextFunction,
 ) => {
   try {
-    const result = await DonationServices.createDonation(req.body);
+     const tenantDomain = req.query.tenantDomain as string
+    const result = await DonationServices.createDonation(tenantDomain, req.body);
     sendResponse(res, {
       statusCode: StatusCodes.OK,
       success: true,
@@ -26,7 +27,8 @@ const getAllDonation = async (
   next: NextFunction,
 ) => {
   try {
-    const result = await DonationServices.getAllDonation();
+     const tenantDomain = req.query.tenantDomain as string
+    const result = await DonationServices.getAllDonation(tenantDomain);
     sendResponse(res, {
       statusCode: StatusCodes.OK,
       success: true,
@@ -44,8 +46,9 @@ const getSingleDonation = async (
   next: NextFunction,
 ) => {
   try {
+     const tenantDomain = req.query.tenantDomain as string
     const { id } = req.params;
-    const result = await DonationServices.getSingleDonation(id);
+    const result = await DonationServices.getSingleDonation(tenantDomain ,id);
     sendResponse(res, {
       statusCode: StatusCodes.OK,
       success: true,
@@ -63,7 +66,8 @@ const deleteDonation = async (
 ) => {
   try {
     const { id } = req.params;
-    const result = await DonationServices.deleteDonation(id);
+     const tenantDomain = req.query.tenantDomain as string
+    const result = await DonationServices.deleteDonation(tenantDomain , id);
     sendResponse(res, {
       statusCode: StatusCodes.OK,
       success: true,
@@ -81,7 +85,8 @@ const updateDonation = async (
 ) => {
   try {
     const { id } = req.params;
-    const result = await DonationServices.updateDonation(id, req.body);
+     const tenantDomain = req.query.tenantDomain as string
+    const result = await DonationServices.updateDonation(tenantDomain, id, req.body);
     sendResponse(res, {
       statusCode: StatusCodes.OK,
       success: true,

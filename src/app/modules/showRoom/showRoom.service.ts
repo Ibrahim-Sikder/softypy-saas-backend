@@ -12,10 +12,7 @@ import { getTenantModel } from '../../utils/getTenantModels';
 
 const createShowRoomDetails = async (
   tenantDomain: string,
-  payload: {
-    showroom: TShowRoom;
-    vehicle: TVehicle;
-  },
+  payload: { showroom: TShowRoom; vehicle: TVehicle },
 ) => {
   const { Model: ShowRoom, connection } = await getTenantModel(
     tenantDomain,
@@ -29,13 +26,10 @@ const createShowRoomDetails = async (
   try {
     const { showroom, vehicle } = payload;
 
-    const showRoomId = await generateShowRoomId();
+     const showRoomId = await generateShowRoomId(ShowRoom);
     const sanitizeShowRoom = sanitizePayload(showroom);
 
-    const showRoomData = new ShowRoom({
-      ...sanitizeShowRoom,
-      showRoomId,
-    });
+    const showRoomData = new ShowRoom({ ...sanitizeShowRoom, showRoomId });
 
     const savedShowRoom = await showRoomData.save({ session });
 
@@ -118,12 +112,8 @@ const getAllShowRoomFromDB = async (
         as: 'vehicles',
       },
     },
-    {
-      $match: searchQuery,
-    },
-    {
-      $sort: { createdAt: -1 },
-    },
+    { $match: searchQuery },
+    { $sort: { createdAt: -1 } },
     ...(page && limit
       ? [{ $skip: (page - 1) * limit }, { $limit: limit }]
       : []),
@@ -135,12 +125,7 @@ const getAllShowRoomFromDB = async (
 
   return {
     showrooms,
-    meta: {
-      totalData,
-      totalPages,
-      currentPage: page,
-      pageNumbers,
-    },
+    meta: { totalData, totalPages, currentPage: page, pageNumbers },
   };
 };
 
@@ -154,18 +139,10 @@ const getSingleShowRoomDetails = async (tenantDomain: string, id: string) => {
 
   const singleShowRoom = await ShowRoom.findById(id)
     .populate('jobCards')
-    .populate({
-      path: 'quotations',
-      populate: { path: 'vehicle' },
-    })
-    .populate({
-      path: 'invoices',
-      populate: { path: 'vehicle' },
-    })
+    .populate({ path: 'quotations', populate: { path: 'vehicle' } })
+    .populate({ path: 'invoices', populate: { path: 'vehicle' } })
     .populate('money_receipts')
-    .populate({
-      path: 'vehicles',
-    })
+    .populate({ path: 'vehicles' })
     .exec();
 
   if (!singleShowRoom) {
@@ -178,10 +155,7 @@ const getSingleShowRoomDetails = async (tenantDomain: string, id: string) => {
 const updatedShowRoom = async (
   tenantDomain: string,
   id: string,
-  payload: {
-    showroom: Partial<TShowRoom>;
-    vehicle: Partial<TVehicle>;
-  },
+  payload: { showroom: Partial<TShowRoom>; vehicle: Partial<TVehicle> },
 ) => {
   const { showroom, vehicle } = payload;
 
@@ -277,7 +251,10 @@ const deleteShowRoom = async (id: string) => {
   }
 };
 const permanantlyDeleteShowRoom = async (tenantDomain: string, id: string) => {
-  const { Model: ShowRoom, connection } = await getTenantModel(tenantDomain, 'ShowRoom');
+  const { Model: ShowRoom, connection } = await getTenantModel(
+    tenantDomain,
+    'ShowRoom',
+  );
   const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
 
   const session = await connection.startSession();
@@ -292,7 +269,9 @@ const permanantlyDeleteShowRoom = async (tenantDomain: string, id: string) => {
       Id: existingShowroom.showRoomId,
     }).session(session);
 
-    const deletedShowroom = await ShowRoom.findByIdAndDelete(existingShowroom._id).session(session);
+    const deletedShowroom = await ShowRoom.findByIdAndDelete(
+      existingShowroom._id,
+    ).session(session);
 
     if (!deletedShowroom || !vehicle) {
       throw new AppError(StatusCodes.NOT_FOUND, 'No showroom available');
@@ -319,14 +298,8 @@ const moveToRecycledbinShowRoom = async (tenantDomain: string, id: string) => {
 
   const deletedShowroom = await ShowRoom.findByIdAndUpdate(
     existingShowroom._id,
-    {
-      isRecycled: true,
-      recycledAt: new Date(),
-    },
-    {
-      new: true,
-      runValidators: true,
-    }
+    { isRecycled: true, recycledAt: new Date() },
+    { new: true, runValidators: true },
   );
 
   if (!deletedShowroom) {
@@ -336,7 +309,10 @@ const moveToRecycledbinShowRoom = async (tenantDomain: string, id: string) => {
   return deletedShowroom;
 };
 
-const restoreFromRecyledbinShowRoom = async (tenantDomain: string, id: string) => {
+const restoreFromRecyledbinShowRoom = async (
+  tenantDomain: string,
+  id: string,
+) => {
   const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
 
   const existingShowroom = await ShowRoom.findById(id);
@@ -346,14 +322,8 @@ const restoreFromRecyledbinShowRoom = async (tenantDomain: string, id: string) =
 
   const restoredShowroom = await ShowRoom.findByIdAndUpdate(
     existingShowroom._id,
-    {
-      isRecycled: false,
-      recycledAt: new Date(),
-    },
-    {
-      new: true,
-      runValidators: true,
-    }
+    { isRecycled: false, recycledAt: new Date() },
+    { new: true, runValidators: true },
   );
 
   if (!restoredShowroom) {
@@ -366,15 +336,8 @@ const restoreFromRecyledbinShowRoom = async (tenantDomain: string, id: string) =
 const moveAllToRecycledBin = async () => {
   const result = await ShowRoom.updateMany(
     {}, // Match all documents
-    {
-      $set: {
-        isRecycled: true,
-        recycledAt: new Date(),
-      },
-    },
-    {
-      runValidators: true,
-    },
+    { $set: { isRecycled: true, recycledAt: new Date() } },
+    { runValidators: true },
   );
 
   return result;
@@ -382,17 +345,8 @@ const moveAllToRecycledBin = async () => {
 const restoreAllFromRecycledBin = async () => {
   const result = await ShowRoom.updateMany(
     { isRecycled: true },
-    {
-      $set: {
-        isRecycled: false,
-      },
-      $unset: {
-        recycledAt: '',
-      },
-    },
-    {
-      runValidators: true,
-    },
+    { $set: { isRecycled: false }, $unset: { recycledAt: '' } },
+    { runValidators: true },
   );
 
   return result;

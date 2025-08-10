@@ -1,23 +1,30 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import QueryBuilder from '../../builder/QueryBuilder';
-import { ImageUpload } from '../../utils/ImageUpload';
-import path from 'path';
-import { Supplier } from './supplier.model';
-import { SearchableFields } from './supplier.const';
 import { TSupplier } from './supplier.interface';
 import { StatusCodes } from 'http-status-codes';
 import AppError from '../../errors/AppError';
+
+import { getTenantModel } from '../../utils/getTenantModels';
 import { generateSupplierId } from './supplier.utils';
-import { BillPay } from '../bill-pay/bill-pay.model';
 
-export const createSupplier = async (
-  payload: any,
-) => {
-
+const createSupplier = async (tenantDomain: string, payload: any) => {
   try {
-    const supplierId = await generateSupplierId();
-    payload.supplierId = supplierId;
+    payload.supplierId = await generateSupplierId();
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] === '') {
+        if (key === 'supplier_status') {
+          payload[key] = 'active';
+        } else {
+          delete payload[key];
+        }
+      }
+    });
+
+    console.log('Final Payload Before Save:', payload);
+
+    const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
     const newSupplier = await Supplier.create(payload);
+
     return newSupplier;
   } catch (error: any) {
     console.error('Error creating supplier:', error.message);
@@ -29,10 +36,15 @@ export const createSupplier = async (
   }
 };
 
-export const getAllSupplier = async (query: Record<string, unknown>) => {
+const getAllSupplier = async (
+  tenantDomain: string,
+  query: Record<string, unknown>,
+) => {
   try {
+    const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+
     const categoryQuery = new QueryBuilder(Supplier.find(), query)
-      .search(SearchableFields)
+      .search(['name'])
       .filter()
       .sort()
       .paginate()
@@ -41,7 +53,12 @@ export const getAllSupplier = async (query: Record<string, unknown>) => {
     const meta = await categoryQuery.countTotal();
     const suppliers = await categoryQuery.modelQuery;
 
-    return { meta, suppliers };
+    return {
+      success: true,
+      message: 'Suppliers retrieved successfully',
+      meta,
+      suppliers,
+    };
   } catch (error: any) {
     throw new AppError(
       StatusCodes.INTERNAL_SERVER_ERROR,
@@ -50,35 +67,50 @@ export const getAllSupplier = async (query: Record<string, unknown>) => {
   }
 };
 
-export const getSingleSupplier = async (id: string) => {
+const getSingleSupplier = async (tenantDomain: string, id: string) => {
+  const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+
   const supplier = await Supplier.findById(id);
   if (!supplier) {
     throw new AppError(StatusCodes.NOT_FOUND, 'Supplier not found');
   }
+
   return supplier;
 };
 
 // In your supplier.service.ts file
-export const getSupplierWithBillPayments = async (id: string) => {
+
+const getSupplierWithBillPayments = async (
+  tenantDomain: string,
+  id: string,
+) => {
+  const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+  const { Model: BillPay } = await getTenantModel(tenantDomain, 'BillPay');
+
   const supplier = await Supplier.findById(id);
-  
   if (!supplier) {
     throw new AppError(StatusCodes.NOT_FOUND, 'Supplier not found');
   }
-  
+
   // Get bill payments for this supplier
-  const billPayments = await BillPay.find({ supplier: id })
-    .sort({ createdAt: -1 });
-  
+  const billPayments = await BillPay.find({ supplier: id }).sort({
+    createdAt: -1,
+  });
+
   // Calculate payment statistics
-  const totalAmount = billPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const totalAmount = billPayments.reduce(
+    (sum, payment) => sum + payment.amount,
+    0,
+  );
   const paidAmount = billPayments
-    .filter(p => p.paymentStatus === 'paid' || p.paymentStatus === 'completed')
+    .filter(
+      (p) => p.paymentStatus === 'paid' || p.paymentStatus === 'completed',
+    )
     .reduce((sum, payment) => sum + payment.amount, 0);
   const pendingAmount = billPayments
-    .filter(p => p.paymentStatus === 'pending')
+    .filter((p) => p.paymentStatus === 'pending')
     .reduce((sum, payment) => sum + payment.amount, 0);
-  
+
   return {
     supplier,
     paymentStats: {
@@ -86,35 +118,48 @@ export const getSupplierWithBillPayments = async (id: string) => {
       totalAmount,
       paidAmount,
       pendingAmount,
-      pendingCount: billPayments.filter(p => p.paymentStatus === 'pending').length,
+      pendingCount: billPayments.filter((p) => p.paymentStatus === 'pending')
+        .length,
     },
-    billPayments
+    billPayments,
   };
 };
-export const updateSupplier = async (
+
+const updateSupplier = async (
+  tenantDomain: string,
   id: string,
   payload: Partial<TSupplier>,
 ) => {
+  const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+
   const updatedSupplier = await Supplier.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
   });
+
   if (!updatedSupplier) {
     throw new AppError(StatusCodes.NOT_FOUND, 'Supplier not found');
   }
+
   return updatedSupplier;
 };
 
-export const permanenatlyDeleteSupplier = async (id: string) => {
+const permanenatlyDeleteSupplier = async (tenantDomain: string, id: string) => {
+  const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+
   const supplier = await Supplier.findById(id);
   if (!supplier) {
     throw new AppError(StatusCodes.NOT_FOUND, 'Supplier not found');
   }
+
   await Supplier.deleteOne({ _id: id });
+
   return { message: 'Supplier permanently deleted' };
 };
 
-export const moveToRecycledbinSupplier = async (id: string) => {
+const moveToRecycledbinSupplier = async (tenantDomain: string, id: string) => {
+  const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+
   const supplier = await Supplier.findById(id);
   if (!supplier) {
     throw new AppError(StatusCodes.NOT_FOUND, 'Supplier not found');
@@ -123,10 +168,16 @@ export const moveToRecycledbinSupplier = async (id: string) => {
   supplier.isRecycled = true;
   supplier.recycledAt = new Date();
   await supplier.save();
+
   return supplier;
 };
 
-export const restoreFromRecycledSupplier = async (id: string) => {
+export const restoreFromRecycledSupplier = async (
+  tenantDomain: string,
+  id: string,
+) => {
+  const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+
   const supplier = await Supplier.findById(id);
   if (!supplier) {
     throw new AppError(StatusCodes.NOT_FOUND, 'Supplier not found');
@@ -134,6 +185,7 @@ export const restoreFromRecycledSupplier = async (id: string) => {
 
   supplier.isRecycled = false;
   await supplier.save();
+
   return supplier;
 };
 export const supplierServices = {
@@ -144,5 +196,5 @@ export const supplierServices = {
   moveToRecycledbinSupplier,
   restoreFromRecycledSupplier,
   permanenatlyDeleteSupplier,
-  getSupplierWithBillPayments
+  getSupplierWithBillPayments,
 };

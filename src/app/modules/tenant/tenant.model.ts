@@ -3,7 +3,7 @@ import mongoose, { Schema } from 'mongoose';
 import { ITenant } from './tenant.interface';
 import { subscriptionSchema } from '../subscription/subscription.model';
 
-const tenantSchema = new Schema<ITenant>({
+export const tenantSchema = new Schema<ITenant>({
   name: { type: String, required: true },
   domain: { type: String, required: true, unique: true },
   businessType: { type: String },

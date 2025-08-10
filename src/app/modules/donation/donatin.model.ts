@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { TDonation } from './donation.interface';
 
-const DonationSchema: Schema = new Schema<TDonation>(
+export const DonationSchema: Schema = new Schema<TDonation>(
   {
     name: { type: String, required: true },
     mobile_number: { type: String, required: true },

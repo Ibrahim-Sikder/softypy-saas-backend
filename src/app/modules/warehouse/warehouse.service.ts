@@ -1,23 +1,40 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import QueryBuilder from '../../builder/QueryBuilder';
+import { getTenantModel } from '../../utils/getTenantModels';
 import { warehouseSearchFields } from './warehouse.constant';
 import { IWarehouse } from './warehouse.interface';
-import Warehouse from './warehouse.model';
+import { generateWarehouseId } from "./warehouse.utils"; 
 
-const createWarehouse = async (payload: IWarehouse) => {
+const createWarehouse = async (tenantDomain: string, payload: IWarehouse) => {
+  console.log("warehouse ", tenantDomain);
+  const { Model: Warehouse } = await getTenantModel(tenantDomain, "Warehouse");
+
   try {
-    const newWarehouse = await Warehouse.create(payload);
+    const warehouseId = await generateWarehouseId(Warehouse);
+    const { warehouseId: _, ...payloadWithoutWarehouseId } = payload;
+    const newWarehouse = await Warehouse.create({
+      warehouseId,
+      ...payloadWithoutWarehouseId,
+    });
+
     return newWarehouse;
   } catch (error: any) {
-    console.error('Error creating warehouse:', error.message);
+    console.error("Error creating warehouse:", error.message);
     throw new Error(
-      error.message || 'An unexpected error occurred while creating the warehouse',
+      error.message ||
+        "An unexpected error occurred while creating the warehouse"
     );
   }
 };
 
-const getAllWarehouses = async (query: Record<string, unknown>) => {
+
+const getAllWarehouses = async (
+  tenantDomain: string,
+  query: Record<string, unknown>,
+) => {
+  const { Model: Warehouse } = await getTenantModel(tenantDomain, 'Warehouse');
+
   const warehouseQuery = new QueryBuilder(Warehouse.find(), query)
     .search(warehouseSearchFields)
     .filter()
@@ -34,15 +51,18 @@ const getAllWarehouses = async (query: Record<string, unknown>) => {
   };
 };
 
-const getSingleWarehouse = async (id: string) => {
+const getSingleWarehouse = async (tenantDomain: string, id: string) => {
+  const { Model: Warehouse } = await getTenantModel(tenantDomain, 'Warehouse');
   const result = await Warehouse.findById(id);
   return result;
 };
 
 const updateWarehouse = async (
+  tenantDomain: string,
   id: string,
   payload: Partial<IWarehouse>,
 ): Promise<IWarehouse | null> => {
+  const { Model: Warehouse } = await getTenantModel(tenantDomain, 'Warehouse');
 
   const updatedWarehouse = await Warehouse.findByIdAndUpdate(id, payload, {
     new: true,
@@ -53,14 +73,14 @@ const updateWarehouse = async (
     throw new Error('Warehouse not found');
   }
 
-  return updatedWarehouse ? updatedWarehouse.toObject() : null;
+  return updatedWarehouse.toObject();
 };
 
-const deleteWarehouse = async (id: string) => {
+const deleteWarehouse = async (tenantDomain: string, id: string) => {
+  const { Model: Warehouse } = await getTenantModel(tenantDomain, 'Warehouse');
   const result = await Warehouse.deleteOne({ _id: id });
   return result;
 };
-
 export const warehouseServices = {
   createWarehouse,
   getAllWarehouses,

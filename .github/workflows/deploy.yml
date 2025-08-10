@@ -1,0 +1,57 @@
+name: Node.js Deployment with NGINX and SSL
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS using SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.PRIVATE_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            # Install system dependencies
+            sudo apt update
+            sudo apt install -y nodejs npm curl unzip google-chrome-stable
+
+            # Set Puppeteer to use system-installed Chrome
+            export PUPPETEER_EXECUTABLE_PATH="/usr/bin/google-chrome"
+            export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
+            # Ensure Puppeteer cache directory exists
+            mkdir -p /root/.cache/puppeteer
+            sudo chown -R $USER:$USER /root/.cache/puppeteer
+
+            # Navigate to the project directory
+            cd /var/www/html/saas/api
+
+            # Fetch the latest code
+            git fetch --all
+            git reset --hard origin/main
+
+            # Ensure environment file exists
+            if [ ! -f .env ]; then
+              cp .env.example .env
+            fi
+
+            # Install dependencies
+            npm ci
+
+            # Force Puppeteer to use system Chrome
+            npm install puppeteer
+
+            # Build the project
+            npm run build
+
+            # Restart PM2
+            pm2 restart saasapi || pm2 start npm --name "saasapi" -- start
+            pm2 save
+
+            # Restart Nginx
+            sudo systemctl restart nginx

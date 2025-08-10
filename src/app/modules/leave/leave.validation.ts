@@ -12,7 +12,7 @@ export const leaveRequestSchema = z.object({
     }),
     noOfDays: z.number().min(1, 'Number of days must be at least 1'),
     remainingLeaves: z.number().min(0, 'Remaining leaves cannot be negative'),
-    reason: z.string().min(5, 'Reason must be at least 5 characters'),
+    reason: z.string().optional(),
     status: z.enum(['Pending', 'Approved', 'Rejected']).optional(),
   }),
 });

@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { ObjectId, Types } from 'mongoose';
 
 export interface TCustomer {
   customerId: string;
@@ -26,4 +26,5 @@ export interface TCustomer {
   reference_name: string;
   isRecycled: boolean;
   recycledAt: Date;
+  note:ObjectId
 }

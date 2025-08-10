@@ -37,7 +37,6 @@ export const addToJobCardSchema: Schema<TJobCard> = new Schema<TJobCard>(
     },
     date: {
       type: String,
-      required: [true, 'Date is required.'],
     },
 
     vehicle_interior_parts: {
@@ -57,7 +56,6 @@ export const addToJobCardSchema: Schema<TJobCard> = new Schema<TJobCard>(
     },
     technician_name: {
       type: String,
-      required: [true, 'Technician name is required.'],
     },
     technician_signature: {
       type: String,
@@ -67,6 +65,9 @@ export const addToJobCardSchema: Schema<TJobCard> = new Schema<TJobCard>(
     },
     vehicle_owner: {
       type: String,
+    },
+    mileage: {
+      type: Number,
     },
     isRecycled: { type: Boolean, default: false },
     recycledAt: { type: Date, default: null },

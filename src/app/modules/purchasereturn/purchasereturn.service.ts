@@ -1,14 +1,24 @@
 import QueryBuilder from '../../builder/QueryBuilder';
-import { PurchaseReturn } from './purchasereturn.model';
 import { TPurchaseReturn } from './purchasereturn.interface';
 import { purchaseReturnSearch } from './purchasereturn.constant';
 import mongoose from 'mongoose';
-import { Stocks } from '../stocks/stocks.model';
-import { StockTransaction } from '../stockTransaction/stockTransaction.model';
+import { getTenantModel } from '../../utils/getTenantModels';
 
-const createPurchaseReturn = async (payload: TPurchaseReturn) => {
-  const session = await mongoose.startSession();
+const createPurchaseReturn = async (
+  tenantDomain: string,
+  payload: TPurchaseReturn,
+) => {
+  const { Model: PurchaseReturn, connection: tenantConnection } =
+    await getTenantModel(tenantDomain, 'PurchaseReturn');
+
+  const session = await tenantConnection.startSession();
   session.startTransaction();
+
+  const { Model: Stocks } = await getTenantModel(tenantDomain, 'Stocks');
+  const { Model: StockTransaction } = await getTenantModel(
+    tenantDomain,
+    'StockTransaction',
+  );
 
   try {
     const newReturn = await PurchaseReturn.create([payload], { session });
@@ -16,7 +26,6 @@ const createPurchaseReturn = async (payload: TPurchaseReturn) => {
     for (const item of payload.items) {
       const stockQuery = {
         product: item.productId,
-        // warehouse: payload.warehouse,
       };
 
       const existingStock = await Stocks.findOne(stockQuery).session(session);
@@ -40,7 +49,9 @@ const createPurchaseReturn = async (payload: TPurchaseReturn) => {
           `Stock quantity for product ${item.productName} cannot be negative`,
         );
       }
+
       await existingStock.save({ session });
+
       const stockTransaction = new StockTransaction({
         product: item.productId,
         warehouse: payload.warehouse,
@@ -66,19 +77,26 @@ const createPurchaseReturn = async (payload: TPurchaseReturn) => {
   }
 };
 
-const getAllPurchaseReturns = async (query: Record<string, unknown>) => {
+const getAllPurchaseReturns = async (
+  tenantDomain: string,
+  query: Record<string, unknown>,
+) => {
+  const { Model: PurchaseReturn } = await getTenantModel(
+    tenantDomain,
+    'PurchaseReturn',
+  );
+  await getTenantModel(tenantDomain, 'Product');
+  console.log('purchase return', tenantDomain);
+
   const builder = new QueryBuilder(PurchaseReturn.find(), query)
     .search(purchaseReturnSearch)
-    .filter()
-    .sort()
+    // .filter()
+    // .sort()
     .paginate()
     .fields();
 
   const meta = await builder.countTotal();
-  const data = await builder.modelQuery.populate([
-    // { path: 'supplier', select: 'full_name' },
-    { path: 'items.productId' },
-  ]);
+  const data = await builder.modelQuery.populate([{ path: 'items.productId' }]);
 
   return {
     meta,
@@ -86,19 +104,50 @@ const getAllPurchaseReturns = async (query: Record<string, unknown>) => {
   };
 };
 
-const getSinglePurchaseReturn = async (id: string) => {
+const getSinglePurchaseReturn = async (tenantDomain: string, id: string) => {
+  const { Model: PurchaseReturn } = await getTenantModel(
+    tenantDomain,
+    'PurchaseReturn',
+  );
+
   const result = await PurchaseReturn.findById(id).populate([
-    // { path: 'supplier', select: 'full_name' },
     { path: 'items.productId' },
   ]);
+
+  return result;
+};
+
+const deletePurchaseReturn = async (tenantDomain: string, id: string) => {
+  const { Model: PurchaseReturn } = await getTenantModel(
+    tenantDomain,
+    'PurchaseReturn',
+  );
+
+  const result = await PurchaseReturn.deleteOne({ _id: id });
   return result;
 };
 
 const updatePurchaseReturn = async (
+  tenantDomain: string,
   id: string,
   payload: Partial<TPurchaseReturn>,
 ) => {
-  const session = await mongoose.startSession();
+  // ✅ Get PurchaseReturn model and tenant connection
+  const {
+    Model: PurchaseReturn,
+    connection: tenantConnection,
+  } = await getTenantModel(tenantDomain, 'PurchaseReturn');
+
+  // ✅ Register other required models
+  await getTenantModel(tenantDomain, 'Product'); // required for populate('product')
+  const { Model: Stocks } = await getTenantModel(tenantDomain, 'Stocks');
+  const { Model: StockTransaction } = await getTenantModel(
+    tenantDomain,
+    'StockTransaction',
+  );
+
+  // ✅ Start session from the tenant's connection
+  const session = await tenantConnection.startSession();
   session.startTransaction();
 
   try {
@@ -122,21 +171,22 @@ const updatePurchaseReturn = async (
 
       const stockQuery = {
         product: newItem.productId,
-
       };
+
       const stock = await Stocks.findOne(stockQuery)
-        .populate('product') 
+        .populate('product') // ✅ now safe
         .session(session);
 
       if (!stock) {
         throw new Error(`Stock not found for product ${newItem.productName}`);
       }
-  
+
       if (diff > 0 && stock.quantity < diff) {
         throw new Error(
           `Insufficient stock for ${newItem.productName}. Available: ${stock.quantity}, Needed: ${diff}`,
         );
       }
+
       stock.quantity -= diff;
       await stock.save({ session });
 
@@ -155,6 +205,7 @@ const updatePurchaseReturn = async (
         { session },
       );
     }
+
     const updatedReturn = await PurchaseReturn.findByIdAndUpdate(id, payload, {
       new: true,
       runValidators: true,
@@ -172,10 +223,6 @@ const updatePurchaseReturn = async (
   }
 };
 
-const deletePurchaseReturn = async (id: string) => {
-  const result = await PurchaseReturn.deleteOne({ _id: id });
-  return result;
-};
 
 export const purchaseReturnServices = {
   createPurchaseReturn,

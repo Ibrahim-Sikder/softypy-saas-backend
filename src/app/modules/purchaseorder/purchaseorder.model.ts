@@ -17,7 +17,7 @@ const purchaseOrderProductSchema = new Schema(
   { _id: false }
 );
 
-const purchaseOrderSchema = new Schema<TPurchaseOrder>(
+export const purchaseOrderSchema = new Schema<TPurchaseOrder>(
   {
     orderDate: { type: String, required: true },
     expectedDeliveryDate: { type: String },

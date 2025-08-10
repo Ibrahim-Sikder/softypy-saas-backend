@@ -1,47 +1,59 @@
-import { z } from 'zod';
+import { z } from "zod";
+
+const preprocessOptionalString = z.preprocess(
+  (val) => (val === "" || val === null ? undefined : val),
+  z.string().optional()
+);
+
+const preprocessOptionalNumber = z.preprocess(
+  (val) => {
+    if (val === "" || val === null || val === undefined) return undefined;
+    const num = Number(val);
+    return isNaN(num) ? undefined : num;
+  },
+  z.number().optional()
+);
+
+const preprocessOptionalDate = z.preprocess(
+  (val) => {
+    if (!val || val === "") return undefined;
+    const date = new Date(val as string);
+    return isNaN(date.getTime()) ? undefined : date.toISOString();
+  },
+  z.string().optional()
+);
 
 const createWarehouse = z.object({
   body: z.object({
-    name: z.string({ required_error: 'Name is required' }),
-    code: z.string({ required_error: 'Code is required' }),
-    type: z.string({ required_error: 'Type is required' }),
-    status: z.enum(['active', 'inactive']).optional(),
-    address: z.string({ required_error: 'Address is required' }),
-    city: z.string({ required_error: 'City is required' }),
-    division: z.string({ required_error: 'Division is required' }),
-    postalCode: z.string({ required_error: 'Postal code is required' }),
-    country: z.string().optional(),
-    latitude: z.string().optional(),
-    longitude: z.string().optional(),
-    manager: z.string({ required_error: 'Manager is required' }),
-    phone: z.string({ required_error: 'Phone is required' }),
-    email: z
-      .string({ required_error: 'Email is required' })
-      .email('Invalid email format'),
-    description: z.string({ required_error: 'Description is required' }),
+    name: z.string({ required_error: "Warehouse Name is required" }),
+    address: preprocessOptionalString,
+    city: preprocessOptionalString,
+    manager: preprocessOptionalString,
+    phone: preprocessOptionalString,
+    type: preprocessOptionalString,
+    capacity: preprocessOptionalNumber,
+    openingDate: preprocessOptionalDate,
+    status: z.enum(["active", "inactive"]).optional(),
+    note: preprocessOptionalString,
   }),
 });
+
 const updateWarehouse = z.object({
-    body: z.object({
-      name: z.string().optional(),
-      code: z.string().optional(),
-      type: z.string().optional(),
-      status: z.enum(['active', 'inactive']).optional(),
-      address: z.string().optional(),
-      city: z.string().optional(),
-      division: z.string().optional(),
-      postalCode: z.string().optional(),
-      country: z.string().optional(),
-      latitude: z.string().optional(),
-      longitude: z.string().optional(),
-      manager: z.string().optional(),
-      phone: z.string().optional(),
-      email: z.string().email('Invalid email format').optional(),
-      description: z.string().optional(),
-    }),
-  });
-  export const WarehouseValidations = {
-    createWarehouse,
-    updateWarehouse,
-  };
-  
+  body: z.object({
+    name: preprocessOptionalString,
+    address: preprocessOptionalString,
+    city: preprocessOptionalString,
+    manager: preprocessOptionalString,
+    phone: preprocessOptionalString,
+    type: preprocessOptionalString,
+    capacity: preprocessOptionalNumber,
+    openingDate: preprocessOptionalDate,
+    status: z.enum(["active", "inactive"]).optional(),
+    note: preprocessOptionalString,
+  }),
+});
+
+export const WarehouseValidations = {
+  createWarehouse,
+  updateWarehouse,
+};

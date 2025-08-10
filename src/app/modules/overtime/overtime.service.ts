@@ -1,29 +1,34 @@
 import { Types } from 'mongoose';
 import QueryBuilder from '../../builder/QueryBuilder';
 import { IEmployeeOvertime } from './overtime.interface';
-import EmployeeOvertime from './overtime.model';
-import { Employee } from '../employee/employee.model';
 import { calculateOvertimeDetails } from './overtime.utils';
+import { getTenantModel } from '../../utils/getTenantModels';
+import AppError from '../../errors/AppError';
+import httpStatus from 'http-status';
 
-const createEmployeeOvertime = async (payload: IEmployeeOvertime) => {
+const createEmployeeOvertime = async (
+  tenantDomain: string,
+  payload: IEmployeeOvertime,
+) => {
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
+  const { Model: EmployeeOvertime } = await getTenantModel(
+    tenantDomain,
+    'EmployeeOvertime',
+  );
+  console.log(tenantDomain, payload )
+
   try {
-    // Validate that the employee exists in the system
     const employee = await Employee.findById(payload.employee);
     if (!employee) {
-      throw new Error('Employee not found');
+      throw new AppError(httpStatus.NOT_FOUND, 'Employee not found');
     }
 
-    // Calculate overtime details
     const { totalHours, estimatedPay } = calculateOvertimeDetails(
       payload.entries,
     );
-
-
-    // Add the calculated values to the payload
     payload.totalHours = totalHours;
     payload.estimatedPay = estimatedPay;
 
-    // Create the new employee overtime record
     const newEmployeeOvertime = await EmployeeOvertime.create(payload);
 
     return newEmployeeOvertime;
@@ -36,15 +41,32 @@ const createEmployeeOvertime = async (payload: IEmployeeOvertime) => {
   }
 };
 
-const getAllEmployeeOvertimes = async (query: Record<string, unknown>) => {
+const getAllEmployeeOvertimes = async (
+  tenantDomain: string,
+  query: Record<string, unknown>,
+) => {
+  const { Model: EmployeeOvertime, connection } = await getTenantModel(
+    tenantDomain,
+    'EmployeeOvertime',
+  );
+
+  const { Model: Employee } = await getTenantModel(
+    tenantDomain,
+    'Employee',
+  );
+
   const overtimeQuery = new QueryBuilder(EmployeeOvertime.find(), query)
     .search(['employee', 'entries', 'totalHours'])
-    .filter()
-    .sort()
+    // .filter()
+    // .sort()
     .paginate()
     .fields();
 
-  overtimeQuery.modelQuery.populate('employee', 'full_name');
+  overtimeQuery.modelQuery.populate({
+    path: 'employee',
+    model: Employee, // ✅ explicitly pass the tenant-specific Employee model
+    select: 'full_name',
+  });
 
   const meta = await overtimeQuery.countTotal();
   const employeeOvertimes = await overtimeQuery.modelQuery;
@@ -55,18 +77,25 @@ const getAllEmployeeOvertimes = async (query: Record<string, unknown>) => {
   };
 };
 
-const getSingleEmployeeOvertime = async (overtimeId: string) => {
 
+const getSingleEmployeeOvertime = async (
+  tenantDomain: string,
+  overtimeId: string,
+) => {
   if (!Types.ObjectId.isValid(overtimeId)) {
     throw new Error('Invalid overtimeId format');
   }
 
-  const result = await EmployeeOvertime.findById(overtimeId).populate([
-    {
-      path: 'employee',
-      select: 'full_name',
-    },
-  ]);
+  const { Model: EmployeeOvertime } = await getTenantModel(
+    tenantDomain,
+    'EmployeeOvertime',
+  );
+
+  const result = await EmployeeOvertime.findById(overtimeId).populate(
+    'employee',
+    'full_name',
+  );
+
   if (!result) {
     throw new Error('Employee overtime not found');
   }
@@ -75,23 +104,25 @@ const getSingleEmployeeOvertime = async (overtimeId: string) => {
 };
 
 const updateEmployeeOvertime = async (
+  tenantDomain: string,
   overtimeId: string,
   payload: Partial<IEmployeeOvertime>,
 ) => {
+  const { Model: EmployeeOvertime } = await getTenantModel(
+    tenantDomain,
+    'EmployeeOvertime',
+  );
 
   try {
-    // Validate the overtimeId (check if it's a valid ObjectId)
     if (!Types.ObjectId.isValid(overtimeId)) {
       throw new Error('Invalid overtimeId format');
     }
 
-    // Check if the overtime exists
     const overtimeExists = await EmployeeOvertime.findById(overtimeId);
     if (!overtimeExists) {
       throw new Error('Employee overtime not found');
     }
 
-    // Update the overtime with the validated data
     const updatedOvertime = await EmployeeOvertime.findByIdAndUpdate(
       overtimeId,
       payload,
@@ -111,20 +142,25 @@ const updateEmployeeOvertime = async (
   }
 };
 
-const deleteEmployeeOvertime = async (overtimeId: string) => {
+const deleteEmployeeOvertime = async (
+  tenantDomain: string,
+  overtimeId: string,
+) => {
+  const { Model: EmployeeOvertime } = await getTenantModel(
+    tenantDomain,
+    'EmployeeOvertime',
+  );
+
   try {
-    // Validate the overtimeId (check if it's a valid ObjectId)
     if (!Types.ObjectId.isValid(overtimeId)) {
       throw new Error('Invalid overtimeId format');
     }
 
-    // Check if the overtime exists
     const overtimeExists = await EmployeeOvertime.findById(overtimeId);
     if (!overtimeExists) {
       throw new Error('Employee overtime not found');
     }
 
-    // Proceed to delete the overtime if it exists
     const result = await EmployeeOvertime.deleteOne({ _id: overtimeId });
 
     return result;

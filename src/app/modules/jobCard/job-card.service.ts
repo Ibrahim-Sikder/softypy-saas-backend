@@ -2,10 +2,8 @@
 import AppError from '../../errors/AppError';
 import { StatusCodes } from 'http-status-codes';
 import sanitizePayload from '../../middlewares/updateDataValidation';
-import { Vehicle } from '../vehicle/vehicle.model';
 import { TVehicle } from '../vehicle/vehicle.interface';
 import { TJobCard } from './job-card.interface';
-import { Customer } from '../customer/customer.model';
 import { TCustomer } from '../customer/customer.interface';
 import { TCompany } from '../company/company.interface';
 import { TShowRoom } from '../showRoom/showRoom.interface';
@@ -13,9 +11,7 @@ import { JobCard } from './job-card.model';
 import { generateCustomerId } from '../customer/customer.utils';
 import { generateJobCardNo } from './job-card.utils';
 import { SearchableFields, usersFields } from './job-card.const';
-import { Company } from '../company/company.model';
 import { generateCompanyId } from '../company/company.utils';
-import { ShowRoom } from '../showRoom/showRoom.model';
 import { generateShowRoomId } from '../showRoom/showRoom.utils';
 import mongoose from 'mongoose';
 import puppeteer from 'puppeteer';
@@ -79,7 +75,7 @@ const createJobCardDetails = async (
           sanitizeCustomerData,
           Customer,
           async () => {
-            const customerId = await generateCustomerId();
+            const customerId = await generateCustomerId(Customer);
             return new Customer({ ...sanitizeCustomerData, customerId });
           },
         );
@@ -91,7 +87,7 @@ const createJobCardDetails = async (
           sanitizeCompanyData,
           Company,
           async () => {
-            const companyId = await generateCompanyId();
+            const companyId = await generateCompanyId(Company);
             return new Company({ ...sanitizeCompanyData, companyId });
           },
         );
@@ -103,7 +99,7 @@ const createJobCardDetails = async (
           sanitizeShowRoomData,
           ShowRoom,
           async () => {
-            const showRoomId = await generateShowRoomId();
+            const showRoomId = await generateShowRoomId(ShowRoom);
             return new ShowRoom({ ...sanitizeShowRoomData, showRoomId });
           },
         );
@@ -162,7 +158,8 @@ const createJobCardDetails = async (
 
     const newJobCard = new JobCard({
       ...jobCard,
-      job_no: await generateJobCardNo(),
+      job_no: await generateJobCardNo(JobCard),
+
       vehicle: vehicleData?._id,
       customer:
         jobCard.user_type === 'customer' ? updateJobCard._id : undefined,
@@ -389,6 +386,8 @@ const getSingleJobCardDetailsWithJobNo = async (
   tenantDomain: string,
   jobNo: string,
 ) => {
+  console.log(tenantDomain);
+  console.log(jobNo);
   const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
   const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
   const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
@@ -443,6 +442,7 @@ const updateJobCardDetails = async (
     vehicle: TVehicle;
   },
 ) => {
+  console.log('tenant domain this  ', payload);
   const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
   const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
   const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
@@ -491,14 +491,18 @@ const updateJobCardDetails = async (
   if (!updateJobCard) {
     throw new AppError(StatusCodes.NOT_ACCEPTABLE, 'Something went wrong!');
   }
+if (vehicle.chassis_no) {
+  const updatedVehicle = await Vehicle.findOneAndUpdate(
+    { chassis_no: vehicle.chassis_no },
+    { $set: sanitizePayload(vehicle) },
+    { new: true, runValidators: true }
+  );
 
-  if (vehicle.chassis_no) {
-    await Vehicle.findOneAndUpdate(
-      { chassis_no: vehicle.chassis_no },
-      { $set: { mileageHistory: vehicle.mileageHistory || [] } },
-      { new: true, runValidators: true },
-    );
+  if (!updatedVehicle) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'Vehicle not found for given chassis_no');
   }
+}
+
 
   const sanitizeJobCard = sanitizePayload(jobCard);
 
@@ -658,7 +662,6 @@ const restorefromRecyclebinJobcard = async (
   return restoredJobCard;
 };
 
-
 const getUserDetailsForJobCard = async (
   tenantDomain: string,
   id: string,
@@ -672,19 +675,25 @@ const getUserDetailsForJobCard = async (
 
   switch (userType) {
     case 'customer':
-      userDetails = await Customer.findOne({ customerId: id }).populate('vehicles');
+      userDetails = await Customer.findOne({ customerId: id }).populate(
+        'vehicles',
+      );
       if (!userDetails) {
         throw new AppError(StatusCodes.NOT_FOUND, 'Customer not found.');
       }
       break;
     case 'company':
-      userDetails = await Company.findOne({ companyId: id }).populate('vehicles');
+      userDetails = await Company.findOne({ companyId: id }).populate(
+        'vehicles',
+      );
       if (!userDetails) {
         throw new AppError(StatusCodes.NOT_FOUND, 'Company not found.');
       }
       break;
     case 'showRoom':
-      userDetails = await ShowRoom.findOne({ showRoomId: id }).populate('vehicles');
+      userDetails = await ShowRoom.findOne({ showRoomId: id }).populate(
+        'vehicles',
+      );
       if (!userDetails) {
         throw new AppError(StatusCodes.NOT_FOUND, 'Showroom not found.');
       }
@@ -696,16 +705,20 @@ const getUserDetailsForJobCard = async (
   return userDetails;
 };
 
-
 export const generateJobCardPdf = async (
+  tenantDomain: string,
   id: string,
   imageUrl: string,
 ): Promise<Buffer> => {
+  const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
+
   const jobcard = await JobCard.findById(id)
     .populate('customer')
     .populate('company')
     .populate('showRoom')
     .populate('vehicle');
+
+  console.log(jobcard);
 
   if (!jobcard) {
     throw new Error('jobcard not found');

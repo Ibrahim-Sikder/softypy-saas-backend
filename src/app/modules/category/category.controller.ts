@@ -4,6 +4,7 @@ import httpStatus from 'http-status';
 
 import sendResponse from '../../utils/sendResponse';
 import { categoryServices } from './category.service';
+import AppError from '../../errors/AppError';
 
 const createCategory = async (
   req: Request,
@@ -11,16 +12,20 @@ const createCategory = async (
   next: NextFunction,
 ) => {
   try {
-    const file = req.file; 
-    const payload = req.body; 
+    const file = req.file;
+    const payload = req.body;
+    const { tenantDomain } = req.body;
 
     if (payload.data) {
-      Object.assign(payload, JSON.parse(payload.data)); 
+      Object.assign(payload, JSON.parse(payload.data));
       delete payload.data;
     }
 
-    const result = await categoryServices.createCategory(payload, file);
-
+    const result = await categoryServices.createCategory(
+      tenantDomain,
+      payload,
+      file,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -29,7 +34,6 @@ const createCategory = async (
       data: result,
     });
   } catch (err: any) {
-
     console.error('Error in controller:', err.message);
     next(err);
   }
@@ -41,18 +45,32 @@ const getAllCategory = async (
   next: NextFunction,
 ) => {
   try {
-    const result = await categoryServices.getAllCategory(req.query);
+    const tenantDomain =
+      (req.headers['x-tenant-domain'] as string) ||
+      (req.query.tenantDomain as string) ||
+      req.headers.host ||
+      '';
+
+    if (!tenantDomain) {
+      throw new AppError(httpStatus.BAD_REQUEST, 'Tenant domain is required');
+    }
+
+    const result = await categoryServices.getAllCategory(
+      tenantDomain,
+      req.query,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
-      message: 'Category are retrieved succesfully',
+      message: 'Categories retrieved successfully',
       data: result,
     });
   } catch (err) {
     next(err);
   }
 };
+
 const getSingleCategory = async (
   req: Request,
   res: Response,
@@ -60,7 +78,9 @@ const getSingleCategory = async (
 ) => {
   try {
     const { id } = req.params;
-    const result = await categoryServices.getSinigleCategory(id);
+    const tenantDomain = req.query.tenantDomain as string;
+  
+    const result = await categoryServices.getSinigleCategory(tenantDomain, id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -79,7 +99,12 @@ const deleteCategory = async (
 ) => {
   try {
     const { id } = req.params;
-    const result = await categoryServices.deleteCategory(id);
+    const tenantDomain =
+      (req.headers['x-tenant-domain'] as string) ||
+      (req.query.tenantDomain as string) ||
+      req.headers.host ||
+      '';
+    const result = await categoryServices.deleteCategory(tenantDomain, id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -97,10 +122,16 @@ const updateCategory = async (
   res: Response,
   next: NextFunction,
 ) => {
-
   try {
     const { id } = req.params;
-    const result = await categoryServices.updateCategory(id, req.body);
+   const { tenantDomain } = req.body;
+
+
+    const result = await categoryServices.updateCategory(
+      tenantDomain,
+      id,
+      req.body,
+    );
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

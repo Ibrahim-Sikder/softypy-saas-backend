@@ -1,11 +1,19 @@
 import { Types } from 'mongoose';
 import QueryBuilder from '../../builder/QueryBuilder';
-import { Employee } from '../employee/employee.model';
 import { ILeaveRequest } from './leave.interface';
-import LeaveRequest from './leave.model';
+import { getTenantModel } from '../../utils/getTenantModels';
 
-const createLeaveRequest = async (payload: ILeaveRequest) => {
+const createLeaveRequest = async (
+  tenantDomain: string,
+  payload: ILeaveRequest,
+) => {
   try {
+    const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
+    const { Model: LeaveRequest } = await getTenantModel(
+      tenantDomain,
+      'LeaveRequest',
+    );
+
     const employeeExists = await Employee.findById(payload.employee);
     if (!employeeExists) {
       throw new Error('Employee not found');
@@ -22,22 +30,24 @@ const createLeaveRequest = async (payload: ILeaveRequest) => {
   }
 };
 
-const getAllLeaveRequests = async (query: Record<string, unknown>) => {
-  const leaveRequestQuery = new QueryBuilder(
-    LeaveRequest.find().populate({
-      path: 'employee',
-      select: 'full_name',
-    }),
-    query,
-  )
+const getAllLeaveRequests = async (
+  tenantDomain: string,
+  query: Record<string, unknown>,
+) => {
+
+  const { Model: LeaveRequest } = await getTenantModel(
+    tenantDomain,
+    'LeaveRequest',
+  );
+  await getTenantModel(tenantDomain, 'Employee');
+
+  const leaveRequestQuery = new QueryBuilder(LeaveRequest.find(), query)
     .search(['status', 'leaveType'])
-    .filter()
-    .sort()
     .paginate()
     .fields();
 
   const meta = await leaveRequestQuery.countTotal();
-  const leaveRequests = await leaveRequestQuery.modelQuery;
+  const leaveRequests = await leaveRequestQuery.modelQuery.populate('employee', 'full_name');
 
   return {
     meta,
@@ -45,31 +55,53 @@ const getAllLeaveRequests = async (query: Record<string, unknown>) => {
   };
 };
 
-const getSingleLeaveRequest = async (leaveRequestsId: string) => {
-  const result = await LeaveRequest.findById(leaveRequestsId);
+const getSingleLeaveRequest = async (
+  tenantDomain: string,
+  leaveRequestId: string,
+) => {
+  const { Model: LeaveRequest } = await getTenantModel(
+    tenantDomain,
+    'LeaveRequest',
+  );
+  const result = await LeaveRequest.findById(leaveRequestId);
+
   return result;
 };
-const employeeLeaveRequest = async (employeeId: string) => {
 
-  const result = await LeaveRequest.find();
-
+const employeeLeaveRequest = async (
+  tenantDomain: string,
+  employeeId: string,
+) => {
+  const { Model: LeaveRequest } = await getTenantModel(
+    tenantDomain,
+    'LeaveRequest',
+  );
+  const result = await LeaveRequest.find({ employee: employeeId });
   return result;
 };
+
 const updateLeaveRequest = async (
+  tenantDomain: string,
   leaveRequestId: string,
   payload: Partial<ILeaveRequest>,
 ) => {
   try {
-    // Validate the leaveRequestId (check if it's a valid ObjectId)
     if (!Types.ObjectId.isValid(leaveRequestId)) {
       throw new Error('Invalid leaveRequestId format');
     }
+    console.log(leaveRequestId, payload)
 
-    // Check if the leave request exists
+    const { Model: LeaveRequest } = await getTenantModel(
+      tenantDomain,
+      'LeaveRequest',
+    );
+    const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
+
     const leaveRequestExists = await LeaveRequest.findById(leaveRequestId);
     if (!leaveRequestExists) {
       throw new Error('Leave request not found');
     }
+
     if (payload.employee) {
       const employeeExists = await Employee.findById(payload.employee);
       if (!employeeExists) {
@@ -77,7 +109,6 @@ const updateLeaveRequest = async (
       }
     }
 
-    // Update the leave request with the validated data
     const updatedLeaveRequest = await LeaveRequest.findByIdAndUpdate(
       leaveRequestId,
       payload,
@@ -97,12 +128,21 @@ const updateLeaveRequest = async (
   }
 };
 
-const deleteLeaveRequest = async (leaveRequestId: string) => {
+const deleteLeaveRequest = async (
+  tenantDomain: string,
+  leaveRequestId: string,
+) => {
   try {
-    // Validate the leaveRequestId (check if it's a valid ObjectId)
+    // Validate ObjectId format
     if (!Types.ObjectId.isValid(leaveRequestId)) {
       throw new Error('Invalid leaveRequestId format');
     }
+
+    // Get tenant-specific LeaveRequest model
+    const { Model: LeaveRequest } = await getTenantModel(
+      tenantDomain,
+      'LeaveRequest',
+    );
 
     // Check if the leave request exists
     const leaveRequestExists = await LeaveRequest.findById(leaveRequestId);
@@ -110,7 +150,7 @@ const deleteLeaveRequest = async (leaveRequestId: string) => {
       throw new Error('Leave request not found');
     }
 
-    // Proceed to delete the leave request if it exists
+    // Delete the leave request
     const result = await LeaveRequest.deleteOne({ _id: leaveRequestId });
 
     return result;

@@ -25,13 +25,9 @@ import puppeteer from 'puppeteer';
 import { join } from 'path';
 import ejs from 'ejs';
 import { amountInWords } from '../../middlewares/taka-in-words';
-import { Stocks } from '../stocks/stocks.model';
-import httpStatus from 'http-status';
-import { StockTransaction } from '../stockTransaction/stockTransaction.model';
-import { Product } from '../product/product.model';
 import { getTenantModel } from '../../utils/getTenantModels';
 
-export const createQuotationDetails = async (
+const createQuotationDetails = async (
   tenantDomain: string,
   payload: {
     customer: TCustomer;
@@ -41,8 +37,11 @@ export const createQuotationDetails = async (
     vehicle: TVehicle;
   },
 ) => {
-  const session = await mongoose.startSession();
+  const { connection } = await getTenantModel(tenantDomain, 'Quotation');
+  const session = await connection.startSession();
   session.startTransaction();
+
+
 
   try {
     const { customer, company, showroom, quotation, vehicle } = payload;
@@ -53,17 +52,17 @@ export const createQuotationDetails = async (
     const ShowRoom = (await getTenantModel(tenantDomain, 'ShowRoom')).Model;
     const Vehicle = (await getTenantModel(tenantDomain, 'Vehicle')).Model;
     const Stocks = (await getTenantModel(tenantDomain, 'Stocks')).Model;
-    const StockTransaction = (await getTenantModel(tenantDomain, 'StockTransaction')).Model;
+    const StockTransaction = (
+      await getTenantModel(tenantDomain, 'StockTransaction')
+    ).Model;
     const Product = (await getTenantModel(tenantDomain, 'Product')).Model;
 
-    // Sanitize input data
     const sanitizeCustomer = sanitizePayload(customer);
     const sanitizeCompany = sanitizePayload(company);
     const sanitizeShowroom = sanitizePayload(showroom);
     const sanitizeQuotation = sanitizePayload(quotation);
     const sanitizeVehicle = sanitizePayload(vehicle);
 
-    // Validate required totals
     if (
       sanitizeQuotation.parts_total === undefined ||
       sanitizeQuotation.service_total === undefined ||
@@ -72,13 +71,11 @@ export const createQuotationDetails = async (
       throw new AppError(400, 'Missing required total values in quotation');
     }
 
-    // Generate quotation number and amount in words
     const quotationNumber = await generateQuotationNo();
     const partsInWords = amountInWords(sanitizeQuotation.parts_total);
     const serviceInWords = amountInWords(sanitizeQuotation.service_total);
     const netTotalInWords = amountInWords(sanitizeQuotation.net_total);
 
-    // Create quotation
     const quotationData = new Quotation({
       ...sanitizeQuotation,
       quotation_no: quotationNumber,
@@ -92,7 +89,7 @@ export const createQuotationDetails = async (
     const { input_data = [], service_input_data = [] } = quotation;
 
     const productItems = input_data.filter(
-      (item) => item.product && item.warehouse && item.quantity
+      (item) => item.product && item.warehouse && item.quantity,
     );
 
     const stockUpdateMap = new Map<
@@ -152,7 +149,7 @@ export const createQuotationDetails = async (
       if (existingStock.quantity < totalQuantity) {
         throw new AppError(
           400,
-          `Insufficient stock for "${product_name}". Available: ${existingStock.quantity}, Required: ${totalQuantity}`
+          `Insufficient stock for "${product_name}". Available: ${existingStock.quantity}, Required: ${totalQuantity}`,
         );
       }
 
@@ -181,7 +178,7 @@ export const createQuotationDetails = async (
       if ((productData.product_quantity ?? 0) < totalQuantity) {
         throw new AppError(
           400,
-          `Insufficient quantity in product "${product_name}". Available: ${productData.product_quantity}, Required: ${totalQuantity}`
+          `Insufficient quantity in product "${product_name}". Available: ${productData.product_quantity}, Required: ${totalQuantity}`,
         );
       }
 
@@ -198,11 +195,8 @@ export const createQuotationDetails = async (
       if (existingCustomer) {
         await Customer.findByIdAndUpdate(
           existingCustomer._id,
-          {
-            $set: sanitizeCustomer,
-            $push: { quotations: quotationData._id },
-          },
-          { new: true, runValidators: true, session }
+          { $set: sanitizeCustomer, $push: { quotations: quotationData._id } },
+          { new: true, runValidators: true, session },
         );
         quotationData.customer = existingCustomer._id;
         await quotationData.save({ session });
@@ -215,11 +209,8 @@ export const createQuotationDetails = async (
       if (existingCompany) {
         await Company.findByIdAndUpdate(
           existingCompany._id,
-          {
-            $set: sanitizeCompany,
-            $push: { quotations: quotationData._id },
-          },
-          { new: true, runValidators: true, session }
+          { $set: sanitizeCompany, $push: { quotations: quotationData._id } },
+          { new: true, runValidators: true, session },
         );
         quotationData.company = existingCompany._id;
         await quotationData.save({ session });
@@ -232,11 +223,8 @@ export const createQuotationDetails = async (
       if (existingShowRoom) {
         await ShowRoom.findByIdAndUpdate(
           existingShowRoom._id,
-          {
-            $set: sanitizeShowroom,
-            $push: { quotations: quotationData._id },
-          },
-          { new: true, runValidators: true, session }
+          { $set: sanitizeShowroom, $push: { quotations: quotationData._id } },
+          { new: true, runValidators: true, session },
         );
         quotationData.showRoom = existingShowRoom._id;
         await quotationData.save({ session });
@@ -247,7 +235,7 @@ export const createQuotationDetails = async (
       const vehicleData = await Vehicle.findOneAndUpdate(
         { chassis_no: vehicle.chassis_no },
         { $set: { mileageHistory: vehicle.mileageHistory || [] } },
-        { new: true, runValidators: true, session }
+        { new: true, runValidators: true, session },
       );
 
       if (vehicleData) {
@@ -266,7 +254,6 @@ export const createQuotationDetails = async (
     throw error;
   }
 };
-
 
 const getAllQuotationsFromDB = async (
   tenantDomain: string,
@@ -294,7 +281,10 @@ const getAllQuotationsFromDB = async (
   }
 
   if (searchTerm) {
-    const escapedFilteringData = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedFilteringData = searchTerm.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      '\\$&',
+    );
 
     const quotationSearchQuery = QuotationSearchableFields.map((field) => ({
       [field]: { $regex: escapedFilteringData, $options: 'i' },
@@ -338,10 +328,14 @@ const getAllQuotationsFromDB = async (
   }
 
   // Use tenant-aware collection names
-  const vehicleCollection = (await getTenantModel(tenantDomain, 'Vehicle')).Model.collection.name;
-  const companyCollection = (await getTenantModel(tenantDomain, 'Company')).Model.collection.name;
-  const customerCollection = (await getTenantModel(tenantDomain, 'Customer')).Model.collection.name;
-  const showRoomCollection = (await getTenantModel(tenantDomain, 'ShowRoom')).Model.collection.name;
+  const vehicleCollection = (await getTenantModel(tenantDomain, 'Vehicle'))
+    .Model.collection.name;
+  const companyCollection = (await getTenantModel(tenantDomain, 'Company'))
+    .Model.collection.name;
+  const customerCollection = (await getTenantModel(tenantDomain, 'Customer'))
+    .Model.collection.name;
+  const showRoomCollection = (await getTenantModel(tenantDomain, 'ShowRoom'))
+    .Model.collection.name;
 
   const buildAggregationPipeline = (): mongoose.PipelineStage[] => {
     const pipeline: mongoose.PipelineStage[] = [
@@ -399,28 +393,19 @@ const getAllQuotationsFromDB = async (
 
   const quotations = await Quotation.aggregate(buildAggregationPipeline());
 
-  const totalDataAggregation = await Quotation.aggregate(
-    [
-      ...buildAggregationPipeline().filter(
-        (stage) => !('$skip' in stage) && !('$limit' in stage)
-      ),
-      { $count: 'totalCount' },
-    ] as any[]
-  );
+  const totalDataAggregation = await Quotation.aggregate([
+    ...buildAggregationPipeline().filter(
+      (stage) => !('$skip' in stage) && !('$limit' in stage),
+    ),
+    { $count: 'totalCount' },
+  ] as any[]);
 
-  const totalData = totalDataAggregation.length > 0 ? totalDataAggregation[0].totalCount : 0;
+  const totalData =
+    totalDataAggregation.length > 0 ? totalDataAggregation[0].totalCount : 0;
   const totalPages = Math.ceil(totalData / limit);
 
-  return {
-    quotations,
-    meta: {
-      totalData,
-      totalPages,
-      currentPage: page,
-    },
-  };
+  return { quotations, meta: { totalData, totalPages, currentPage: page } };
 };
-
 
 const getAllQuotationsFromDBForDashboard = async () => {
   const completedQuotations = await Quotation.find({ isCompleted: true })
@@ -430,12 +415,18 @@ const getAllQuotationsFromDBForDashboard = async () => {
   return completedQuotations;
 };
 
-const getSingleQuotationDetails = async (tenantDomain: string,id: string) => {
+const getSingleQuotationDetails = async (tenantDomain: string, id: string) => {
+  const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
+  const Customer = (await getTenantModel(tenantDomain, 'Customer')).Model;
+  const Company = (await getTenantModel(tenantDomain, 'Company')).Model;
+  const ShowRoom = (await getTenantModel(tenantDomain, 'ShowRoom')).Model;
+  const Vehicle = (await getTenantModel(tenantDomain, 'Vehicle')).Model;
+
   const singleQuotation = await Quotation.findById(id)
-    .populate('customer')
-    .populate('company')
-    .populate('showRoom')
-    .populate('vehicle');
+    .populate({ path: 'customer', model: Customer })
+    .populate({ path: 'company', model: Company })
+    .populate({ path: 'showRoom', model: ShowRoom })
+    .populate({ path: 'vehicle', model: Vehicle });
 
   if (!singleQuotation) {
     throw new AppError(StatusCodes.NOT_FOUND, 'No quotation found');
@@ -444,7 +435,6 @@ const getSingleQuotationDetails = async (tenantDomain: string,id: string) => {
   const formattedInvoice = {
     ...singleQuotation.toObject(),
     net_total: singleQuotation.net_total.toLocaleString('en-IN'),
-
     service_total: singleQuotation.service_total.toLocaleString('en-IN'),
     total_amount: singleQuotation.total_amount.toLocaleString('en-IN'),
     parts_total: singleQuotation.parts_total.toLocaleString('en-IN'),
@@ -464,7 +454,21 @@ const updateQuotationIntoDB = async (
     vehicle: TVehicle;
   },
 ) => {
-  const session = await mongoose.startSession();
+  const { Model: Quotation, connection } = await getTenantModel(
+    tenantDomain,
+    'Quotation',
+  );
+  const Customer = (await getTenantModel(tenantDomain, 'Customer')).Model;
+  const Company = (await getTenantModel(tenantDomain, 'Company')).Model;
+  const ShowRoom = (await getTenantModel(tenantDomain, 'ShowRoom')).Model;
+  const Vehicle = (await getTenantModel(tenantDomain, 'Vehicle')).Model;
+  const Stocks = (await getTenantModel(tenantDomain, 'Stocks')).Model;
+  const StockTransaction = (
+    await getTenantModel(tenantDomain, 'StockTransaction')
+  ).Model;
+  const Product = (await getTenantModel(tenantDomain, 'Product')).Model;
+
+  const session = await connection.startSession();
   session.startTransaction();
 
   try {
@@ -484,39 +488,31 @@ const updateQuotationIntoDB = async (
       sanitizeQuotation.net_total as number,
     );
 
-    // ১. পুরানো Quotation নিয়ে আসো
     const oldQuotation = await Quotation.findById(id).session(session);
-    if (!oldQuotation) {
+    if (!oldQuotation)
       throw new AppError(StatusCodes.NOT_FOUND, 'No quotation found');
-    }
 
-    // ২. পুরানো stockTransaction গুলো নিয়ে আসো এবং stock revert করো (পুরানো কমানো quantity ফেরত দাও)
     const oldStockTransactions = await StockTransaction.find({
       referenceId: id,
       referenceType: 'sale',
     }).session(session);
 
     for (const tx of oldStockTransactions) {
-      const stockQuery: any = {
-        product: tx.product,
-        warehouse: tx.warehouse,
-      };
+      const stockQuery: any = { product: tx.product, warehouse: tx.warehouse };
       if (tx.batchNumber) stockQuery.batchNumber = tx.batchNumber;
 
       const stock = await Stocks.findOne(stockQuery).session(session);
       if (stock) {
-        stock.quantity += tx.quantity; // revert stock quantity
+        stock.quantity += tx.quantity;
         await stock.save({ session });
       }
     }
 
-    // ৩. পুরানো stockTransaction গুলো মুছে ফেলো
     await StockTransaction.deleteMany({
       referenceId: id,
       referenceType: 'sale',
     }).session(session);
 
-    // ৪. পুরানো quotation update করো
     const updateQuotation = await Quotation.findByIdAndUpdate(
       id,
       {
@@ -527,18 +523,12 @@ const updateQuotationIntoDB = async (
           net_total_in_words: netTotalInWords,
         },
       },
-      {
-        new: true,
-        runValidators: true,
-        session,
-      },
+      { new: true, runValidators: true, session },
     );
 
-    if (!updateQuotation) {
+    if (!updateQuotation)
       throw new AppError(StatusCodes.NOT_FOUND, 'No quotation found');
-    }
 
-    // ৫. নতুন input_data এবং service_input_data থেকে stock update করো (create এর মতোই)
     const { input_data = [], service_input_data = [] } = sanitizeQuotation;
     const allItems = [...input_data, ...service_input_data];
 
@@ -564,13 +554,9 @@ const updateQuotationIntoDB = async (
           product_name,
           sellingPrice = 0,
         } = item;
-
-        if (!product || !warehouse) {
-          continue;
-        }
+        if (!product || !warehouse) continue;
 
         const key = `${product}-${warehouse}-${batchNumber || 'no-batch'}`;
-
         if (stockUpdateMap.has(key)) {
           stockUpdateMap.get(key)!.totalQuantity += quantity;
         } else {
@@ -599,23 +585,21 @@ const updateQuotationIntoDB = async (
         const existingStock = await Stocks.findOne(stockQuery).session(session);
         if (!existingStock) {
           throw new AppError(
-            httpStatus.NOT_FOUND,
+            StatusCodes.NOT_FOUND,
             `Stock "${product_name}" not found.`,
           );
         }
 
         if (existingStock.quantity < totalQuantity) {
           throw new AppError(
-            httpStatus.BAD_REQUEST,
+            StatusCodes.BAD_REQUEST,
             `Insufficient stock for "${product_name}". Available: ${existingStock.quantity}, Required: ${totalQuantity}`,
           );
         }
 
-        // stock থেকে quantity কমাও
         existingStock.quantity -= totalQuantity;
         await existingStock.save({ session });
 
-        // নতুন StockTransaction তৈরি করো
         const stockTransaction = new StockTransaction({
           product,
           warehouse,
@@ -632,77 +616,46 @@ const updateQuotationIntoDB = async (
       }
     }
 
-    // ৬. যেভাবে create এ করেছিলে তেমনি customer/company/showRoom update করো + vehicle update করো
-
     if (quotation.user_type === 'customer') {
       const existingCustomer = await Customer.findOne({
         customerId: quotation.Id,
       }).session(session);
-
       if (existingCustomer) {
         await Customer.findByIdAndUpdate(
           existingCustomer._id,
-          {
-            $set: sanitizeCustomer,
-          },
-          {
-            new: true,
-            runValidators: true,
-            session,
-          },
+          { $set: sanitizeCustomer },
+          { new: true, runValidators: true, session },
         );
       }
     } else if (quotation.user_type === 'company') {
       const existingCompany = await Company.findOne({
         companyId: quotation.Id,
       }).session(session);
-
       if (existingCompany) {
         await Company.findByIdAndUpdate(
           existingCompany._id,
-          {
-            $set: sanitizeCompany,
-          },
-          {
-            new: true,
-            runValidators: true,
-            session,
-          },
+          { $set: sanitizeCompany },
+          { new: true, runValidators: true, session },
         );
       }
     } else if (quotation.user_type === 'showRoom') {
       const existingShowRoom = await ShowRoom.findOne({
         showRoomId: quotation.Id,
       }).session(session);
-
       if (existingShowRoom) {
         await ShowRoom.findByIdAndUpdate(
           existingShowRoom._id,
-          {
-            $set: sanitizeShowroom,
-          },
-          {
-            new: true,
-            runValidators: true,
-            session,
-          },
+          { $set: sanitizeShowroom },
+          { new: true, runValidators: true, session },
         );
       }
     }
 
-    if (vehicle && vehicle.chassis_no) {
+    if (vehicle?.chassis_no) {
       await Vehicle.findOneAndUpdate(
-        {
-          chassis_no: vehicle.chassis_no,
-        },
-        {
-          $set: sanitizeVehicle,
-        },
-        {
-          new: true,
-          runValidators: true,
-          session,
-        },
+        { chassis_no: vehicle.chassis_no },
+        { $set: sanitizeVehicle },
+        { new: true, runValidators: true, session },
       );
     }
 
@@ -722,10 +675,12 @@ const removeQuotationFromUpdate = async (
   index: number,
   quotation_name: string,
 ) => {
+  const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
+
   const existingQuotation = await Quotation.findById(id);
 
   if (!existingQuotation) {
-    throw new AppError(StatusCodes.NOT_FOUND, 'No quotation exit.');
+    throw new AppError(StatusCodes.NOT_FOUND, 'No quotation exists.');
   }
 
   let updateQuotation;
@@ -733,19 +688,12 @@ const removeQuotationFromUpdate = async (
   if (quotation_name === 'parts') {
     updateQuotation = await Quotation.findByIdAndUpdate(
       existingQuotation._id,
-
       { $pull: { input_data: { $eq: existingQuotation.input_data[index] } } },
-
-      {
-        new: true,
-        runValidators: true,
-      },
+      { new: true, runValidators: true },
     );
-  }
-  if (quotation_name === 'service') {
+  } else if (quotation_name === 'service') {
     updateQuotation = await Quotation.findByIdAndUpdate(
       existingQuotation._id,
-
       {
         $pull: {
           service_input_data: {
@@ -753,98 +701,90 @@ const removeQuotationFromUpdate = async (
           },
         },
       },
-
-      {
-        new: true,
-        runValidators: true,
-      },
+      { new: true, runValidators: true },
     );
   }
 
   if (!updateQuotation) {
-    throw new AppError(StatusCodes.NOT_FOUND, 'No invoice found');
+    throw new AppError(StatusCodes.NOT_FOUND, 'No quotation found.');
   }
 
   return updateQuotation;
 };
 
+
 const generateQuotationPdf = async (
+  tenantDomain: string,
   id: string,
   imageUrl: string,
 ): Promise<Buffer> => {
+  const { Model: Quotation } = await getTenantModel(tenantDomain, 'Quotation')
+
   const quotation = await Quotation.findById(id)
     .populate('customer')
     .populate('company')
     .populate('showRoom')
-    .populate('vehicle');
+    .populate('vehicle')
 
   if (!quotation) {
-    throw new Error('quotation not found');
+    throw new Error('quotation not found')
   }
 
-  let logoBase64 = '';
+  let logoBase64 = ''
   try {
-    const logoUrl = `${imageUrl}/images/logo.png`;
-    const logoResponse = await fetch(logoUrl);
-    const logoBuffer = await logoResponse.arrayBuffer();
-    logoBase64 = Buffer.from(logoBuffer).toString('base64');
+    const logoUrl = `${imageUrl}/images/logo.png`
+    const logoResponse = await fetch(logoUrl)
+    const logoBuffer = await logoResponse.arrayBuffer()
+    logoBase64 = Buffer.from(logoBuffer).toString('base64')
   } catch (error) {
-    console.warn('Failed to load logo:', error);
+    console.warn('Failed to load logo:', error)
   }
 
-  const filePath = join(__dirname, '../../templates/quotation.ejs');
+  const filePath = join(__dirname, '../../templates/quotation.ejs')
 
   const html = await new Promise<string>((resolve, reject) => {
     ejs.renderFile(
       filePath,
-      {
-        quotation,
-        imageUrl,
-        formatToIndianCurrency,
-        logoBase64,
-      },
+      { quotation, imageUrl, formatToIndianCurrency, logoBase64 },
       (err, str) => {
-        if (err) return reject(err);
-        resolve(str);
+        if (err) return reject(err)
+        resolve(str)
       },
-    );
-  });
+    )
+  })
 
   try {
     const browser = await puppeteer.launch({
       executablePath: '/usr/bin/chromium-browser',
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
       headless: true,
-    });
+    })
 
-    const page = await browser.newPage();
+    const page = await browser.newPage()
 
     await page.setContent(html, {
       waitUntil: ['networkidle0', 'load', 'domcontentloaded'],
       timeout: 60000,
-    });
+    })
 
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px',
-      },
-    });
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
+    })
 
-    await browser.close();
+    await browser.close()
 
-    return Buffer.from(pdfBuffer);
+    return Buffer.from(pdfBuffer)
   } catch (error) {
-    console.error('Error generating PDF:', error);
-    throw new Error('PDF generation failed');
+    console.error('Error generating PDF:', error)
+    throw new Error('PDF generation failed')
   }
-};
+}
+
 
 const deleteQuotation = async (tenantDomain: string, id: string) => {
+  const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -857,25 +797,13 @@ const deleteQuotation = async (tenantDomain: string, id: string) => {
 
     type UserType = 'customer' | 'company' | 'showRoom';
     type UserMap = {
-      [key in UserType]: {
-        model: Model<any>;
-        queryKey: string;
-      };
+      [key in UserType]: { model: Model<any>; queryKey: string };
     };
 
     const userTypeMap: UserMap = {
-      customer: {
-        model: Customer,
-        queryKey: 'customerId',
-      },
-      company: {
-        model: Company,
-        queryKey: 'companyId',
-      },
-      showRoom: {
-        model: ShowRoom,
-        queryKey: 'showRoomId',
-      },
+      customer: { model: Customer, queryKey: 'customerId' },
+      company: { model: Company, queryKey: 'companyId' },
+      showRoom: { model: ShowRoom, queryKey: 'showRoomId' },
     };
 
     const userTypeHandler =
@@ -888,14 +816,8 @@ const deleteQuotation = async (tenantDomain: string, id: string) => {
       if (existingEntity) {
         await model.findByIdAndUpdate(
           existingEntity._id,
-          {
-            $pull: { quotations: id },
-          },
-          {
-            new: true,
-            runValidators: true,
-            session,
-          },
+          { $pull: { quotations: id } },
+          { new: true, runValidators: true, session },
         );
       }
     }
@@ -917,8 +839,15 @@ const deleteQuotation = async (tenantDomain: string, id: string) => {
 
   return null;
 };
-const permanentlyDeleteQuotation = async (tenantDomain: string,id: string) => {
-  const session = await mongoose.startSession();
+
+const permanentlyDeleteQuotation = async (tenantDomain: string, id: string) => {
+  const { Model: Quotation, connection: tenantConnection } =
+    await getTenantModel(tenantDomain, 'Quotation');
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+
+  const session = await tenantConnection.startSession();
   session.startTransaction();
 
   try {
@@ -930,50 +859,34 @@ const permanentlyDeleteQuotation = async (tenantDomain: string,id: string) => {
 
     type UserType = 'customer' | 'company' | 'showRoom';
     type UserMap = {
-      [key in UserType]: {
-        model: Model<any>;
-        queryKey: string;
-      };
+      [key in UserType]: { model: mongoose.Model<any>; queryKey: string };
     };
 
     const userTypeMap: UserMap = {
-      customer: {
-        model: Customer,
-        queryKey: 'customerId',
-      },
-      company: {
-        model: Company,
-        queryKey: 'companyId',
-      },
-      showRoom: {
-        model: ShowRoom,
-        queryKey: 'showRoomId',
-      },
+      customer: { model: Customer, queryKey: 'customerId' },
+      company: { model: Company, queryKey: 'companyId' },
+      showRoom: { model: ShowRoom, queryKey: 'showRoomId' },
     };
 
     const userTypeHandler =
       userTypeMap[existingQuotation.user_type as UserType];
+
     if (userTypeHandler) {
       const { model, queryKey } = userTypeHandler;
+
       const existingEntity = await model
         .findOne({ [queryKey]: existingQuotation.Id })
         .session(session);
+
       if (existingEntity) {
         await model.findByIdAndUpdate(
           existingEntity._id,
-          {
-            $pull: { quotations: id },
-          },
-          {
-            new: true,
-            runValidators: true,
-            session,
-          },
+          { $pull: { quotations: id } },
+          { new: true, runValidators: true, session },
         );
       }
     }
 
-    // Delete the quotation
     const deletedQuotation = await Quotation.findByIdAndDelete(
       existingQuotation._id,
     ).session(session);
@@ -982,11 +895,8 @@ const permanentlyDeleteQuotation = async (tenantDomain: string,id: string) => {
       throw new AppError(StatusCodes.NOT_FOUND, 'No quotation available');
     }
 
-    // Commit the transaction
     await session.commitTransaction();
     session.endSession();
-
-    // Return the deleted quotation
     return deletedQuotation;
   } catch (error) {
     await session.abortTransaction();
@@ -995,80 +905,59 @@ const permanentlyDeleteQuotation = async (tenantDomain: string,id: string) => {
   }
 };
 
-const moveToRecyclebinQuotation = async (tenantDomain: string,id: string) => {
-  try {
-    const existingQuotation = await Quotation.findById(id);
+const moveToRecyclebinQuotation = async (tenantDomain: string, id: string) => {
+  const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
 
-    if (!existingQuotation) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'Quotation not available.');
-    }
-
-    const recycledQuotation = await Quotation.findByIdAndUpdate(
-      existingQuotation._id,
-      {
-        isRecycled: true,
-        recycledAt: new Date(),
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
-
-    if (!recycledQuotation) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No quotation available.');
-    }
-
-    return recycledQuotation;
-  } catch (error) {
-    throw error;
+  const existingQuotation = await Quotation.findById(id);
+  if (!existingQuotation) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'Quotation not available.');
   }
+
+  const recycledQuotation = await Quotation.findByIdAndUpdate(
+    existingQuotation._id,
+    { isRecycled: true, recycledAt: new Date() },
+    { new: true, runValidators: true },
+  );
+
+  if (!recycledQuotation) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No quotation available.');
+  }
+
+  return recycledQuotation;
 };
 
-const restoreFromRecyclebinQuotation = async (tenantDomain: string,id: string) => {
-  try {
-    const existingQuotation = await Quotation.findById(id);
+const restoreFromRecyclebinQuotation = async (
+  tenantDomain: string,
+  id: string,
+) => {
+  const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
 
-    if (!existingQuotation) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'Quotation not available.');
-    }
-
-    const restoredQuotation = await Quotation.findByIdAndUpdate(
-      existingQuotation._id,
-      {
-        isRecycled: false,
-        recycledAt: null,
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
-
-    if (!restoredQuotation) {
-      throw new AppError(
-        StatusCodes.NOT_FOUND,
-        'Failed to restore the quotation.',
-      );
-    }
-
-    return restoredQuotation;
-  } catch (error) {
-    throw error;
+  const existingQuotation = await Quotation.findById(id);
+  if (!existingQuotation) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'Quotation not available.');
   }
+
+  const restoredQuotation = await Quotation.findByIdAndUpdate(
+    existingQuotation._id,
+    { isRecycled: false, recycledAt: null },
+    { new: true, runValidators: true },
+  );
+
+  if (!restoredQuotation) {
+    throw new AppError(
+      StatusCodes.NOT_FOUND,
+      'Failed to restore the quotation.',
+    );
+  }
+
+  return restoredQuotation;
 };
+
 const moveAllToRecycledBin = async () => {
   const result = await Quotation.updateMany(
     {}, // Match all documents
-    {
-      $set: {
-        isRecycled: true,
-        recycledAt: new Date(),
-      },
-    },
-    {
-      runValidators: true,
-    },
+    { $set: { isRecycled: true, recycledAt: new Date() } },
+    { runValidators: true },
   );
 
   return result;
@@ -1076,17 +965,8 @@ const moveAllToRecycledBin = async () => {
 const restoreAllFromRecycledBin = async () => {
   const result = await Quotation.updateMany(
     { isRecycled: true },
-    {
-      $set: {
-        isRecycled: false,
-      },
-      $unset: {
-        recycledAt: '',
-      },
-    },
-    {
-      runValidators: true,
-    },
+    { $set: { isRecycled: false }, $unset: { recycledAt: '' } },
+    { runValidators: true },
   );
 
   return result;

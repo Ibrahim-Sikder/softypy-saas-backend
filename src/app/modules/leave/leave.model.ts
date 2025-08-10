@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ILeaveRequest } from './leave.interface';
 
-const LeaveRequestSchema = new Schema<ILeaveRequest>(
+export const LeaveRequestSchema = new Schema<ILeaveRequest>(
   {
     employee: {
       type: Schema.Types.ObjectId,

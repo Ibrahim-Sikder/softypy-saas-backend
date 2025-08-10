@@ -9,7 +9,7 @@ router
   .post(attendanceController.createAttendance)
   .get(attendanceController.getAllAttendanceByCurrentMonth);
 
-router.route('/remove').put(attendanceController.deleteAttendance);
+router.route('/remove').delete(attendanceController.deleteAttendance);
 
 router.route('/today').get(attendanceController.getTodayAttendance);
 

@@ -3,96 +3,21 @@ import AppError from '../../errors/AppError';
 import sanitizePayload from '../../middlewares/updateDataValidation';
 import { SearchableFields } from './employee.const';
 import { TEmployee } from './employee.interface';
-import { Employee } from './employee.model';
 import { generateEmployeeId } from './employee.utils';
 import mongoose from 'mongoose';
-import { Attendance } from '../attendance/attendance.model';
+import { getTenantModel } from '../../utils/getTenantModels';
 
-const createEmployeeIntoDB = async (payload: TEmployee) => {
-  const sanitizeData = sanitizePayload(payload);
-
-  const employeeId = await generateEmployeeId();
-  const supplierData = new Employee({
-    ...sanitizeData,
-    employeeId,
-  });
-
-  await supplierData.save();
-
-  return null;
-};
-
-// const getAllEmployeesFromDB = async (
-//   limit: number,
-//   page: number,
-//   searchTerm: string,
-// ) => {
-//   let searchQuery = {};
-
-//   if (searchTerm) {
-//     const escapedFilteringData = searchTerm.replace(
-//       /[.*+?^${}()|[\]\\]/g,
-//       '\\$&',
-//     );
-
-//     const employeeSearchQuery = SearchableFields.map((field) => ({
-//       [field]: { $regex: escapedFilteringData, $options: 'i' },
-//     }));
-
-//     searchQuery = {
-//       $or: [...employeeSearchQuery],
-//     };
-//   }
-
-//   const employees = await Employee.aggregate([
-//     {
-//       $lookup: {
-//         from: 'attendances',
-//         localField: 'attendance',
-//         foreignField: '_id',
-//         as: 'attendance',
-//       },
-//     },
-//     {
-//       $lookup: {
-//         from: 'salaries', // Name of the salary collection
-//         localField: 'salary',
-//         foreignField: '_id',
-//         as: 'salary',
-//       },
-//     },
-//     {
-//       $match: searchQuery,
-//     },
-//     {
-//       $sort: { createdAt: -1 },
-//     },
-//     {
-//       $skip: (page - 1) * limit,
-//     },
-//     {
-//       $limit: limit,
-//     },
-//   ]);
-
-//   const totalData = await Employee.countDocuments(searchQuery);
-//   const totalPages = Math.ceil(totalData / limit);
-
-//   return {
-//     employees,
-//     meta: {
-//       totalPages,
-//     },
-//   };
-// };
 const getAllEmployeesFromDB = async (
+  tenantDomain: string,
   limit: number,
   page: number,
   searchTerm: string,
 ) => {
-  // Set default values if limit or page are not provided or invalid
-  limit = Number(limit) > 0 ? Number(limit) : 10; // Default limit is 10
-  page = Number(page) > 0 ? Number(page) : 1; // Default page is 1
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
+
+  // Ensure limit and page have safe defaults
+  limit = Number(limit) > 0 ? Number(limit) : 10;
+  page = Number(page) > 0 ? Number(page) : 1;
 
   let searchQuery = {};
 
@@ -135,7 +60,7 @@ const getAllEmployeesFromDB = async (
       $sort: { createdAt: -1 },
     },
     {
-      $skip: (page - 1) * limit, // Calculated safely
+      $skip: (page - 1) * limit,
     },
     {
       $limit: limit,
@@ -153,7 +78,29 @@ const getAllEmployeesFromDB = async (
   };
 };
 
-const getSingleEmployeeDetails = async (id: string) => {
+const createEmployeeIntoDB = async (
+  tenantDomain: string,
+  payload: TEmployee,
+) => {
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
+  const sanitizeData = sanitizePayload(payload);
+  const employeeId = await generateEmployeeId();
+
+  const employee = new Employee({
+    ...sanitizeData,
+    employeeId,
+  });
+
+  await employee.save();
+  return null;
+};
+
+const getSingleEmployeeDetails = async (tenantDomain: string, id: string) => {
+  await getTenantModel(tenantDomain, 'Attendance');
+  await getTenantModel(tenantDomain, 'Salary');
+
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
+
   const singleEmployee = await Employee.findById(id)
     .populate('attendance')
     .populate('salary');
@@ -164,18 +111,19 @@ const getSingleEmployeeDetails = async (id: string) => {
 
   return singleEmployee;
 };
-const updateEmployeeIntoDB = async (id: string, payload: TEmployee) => {
+
+export const updateEmployeeIntoDB = async (
+  tenantDomain: string,
+  id: string,
+  payload: TEmployee,
+) => {
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
   const sanitizeData = sanitizePayload(payload);
 
   const updateEmployee = await Employee.findByIdAndUpdate(
     id,
-    {
-      $set: sanitizeData,
-    },
-    {
-      new: true,
-      runValidators: true,
-    },
+    { $set: sanitizeData },
+    { new: true, runValidators: true },
   );
 
   if (!updateEmployee) {
@@ -185,9 +133,10 @@ const updateEmployeeIntoDB = async (id: string, payload: TEmployee) => {
   return updateEmployee;
 };
 
-const deleteEmployee = async (id: string) => {
-  const employee = await Employee.findByIdAndDelete(id);
+export const deleteEmployee = async (tenantDomain: string, id: string) => {
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
 
+  const employee = await Employee.findByIdAndDelete(id);
   if (!employee) {
     throw new AppError(StatusCodes.NOT_FOUND, 'No employee available');
   }
@@ -195,12 +144,21 @@ const deleteEmployee = async (id: string) => {
   return null;
 };
 
+export const permanentlyDeleteEmployee = async (
+  tenantDomain: string,
+  id: string,
+) => {
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
+  const { Model: Attendance } = await getTenantModel(
+    tenantDomain,
+    'Attendance',
+  );
 
-const permanentlyDeleteEmployee = async (id: string) => {
   const session = await mongoose.startSession();
 
   try {
     session.startTransaction();
+
     const existingEmployee = await Employee.findById(id).session(session);
     if (!existingEmployee) {
       throw new AppError(StatusCodes.NOT_FOUND, 'No employee exists.');
@@ -208,19 +166,22 @@ const permanentlyDeleteEmployee = async (id: string) => {
 
     const attendanceResult = await Attendance.deleteMany(
       { Id: existingEmployee.employeeId },
-      { session }
+      { session },
     );
 
     const employeeResult = await Employee.findByIdAndDelete(
       existingEmployee._id,
-      { session }
+      { session },
     );
 
     if (!employeeResult || attendanceResult.deletedCount === 0) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No employee or attendance found to delete.');
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        'No employee or attendance found to delete.',
+      );
     }
-    await session.commitTransaction();
 
+    await session.commitTransaction();
     return employeeResult;
   } catch (error) {
     await session.abortTransaction();
@@ -230,69 +191,77 @@ const permanentlyDeleteEmployee = async (id: string) => {
   }
 };
 
-const moveToRecycledEmployee = async (id: string) => {
-  try {
-    const existingEmployee = await Employee.findById(id);
-    if (!existingEmployee) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No employee exist.');
-    }
+export const moveToRecycledEmployee = async (
+  tenantDomain: string,
+  id: string,
+) => {
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
 
-    const customer = await Employee.findByIdAndUpdate(
-      existingEmployee._id,
-      { isRecycled: true, recycledAt: new Date() },
-      { new: true, runValidators: true },
-    );
-
-    if (!customer) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No employee available');
-    }
-
-    return customer;
-  } catch (error) {
-    throw error;
+  const existingEmployee = await Employee.findById(id);
+  if (!existingEmployee) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No employee exist.');
   }
-};
-const restoreFromRecycledEmployee = async (id: string) => {
-  try {
-    const recycledCustomer = await Employee.findById(id);
-    if (!recycledCustomer) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'No employee exist.');
-    }
-    const restoredCustomer = await Employee.findByIdAndUpdate(
-      recycledCustomer._id,
-      { isRecycled: false, recycledAt: null },
-      { new: true, runValidators: true },
-    );
 
-    if (!restoredCustomer) {
-      throw new AppError(
-        StatusCodes.NOT_FOUND,
-        'No employee available for restoration.',
-      );
-    }
+  const customer = await Employee.findByIdAndUpdate(
+    existingEmployee._id,
+    { isRecycled: true, recycledAt: new Date() },
+    { new: true, runValidators: true },
+  );
 
-    return restoredCustomer;
-  } catch (error) {
-    throw error;
+  if (!customer) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No employee available');
   }
+
+  return customer;
 };
-const moveAllToRecycledBin = async () => {
+
+export const restoreFromRecycledEmployee = async (
+  tenantDomain: string,
+  id: string,
+) => {
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
+
+  const recycledCustomer = await Employee.findById(id);
+  if (!recycledCustomer) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No employee exist.');
+  }
+
+  const restoredCustomer = await Employee.findByIdAndUpdate(
+    recycledCustomer._id,
+    { isRecycled: false, recycledAt: null },
+    { new: true, runValidators: true },
+  );
+
+  if (!restoredCustomer) {
+    throw new AppError(
+      StatusCodes.NOT_FOUND,
+      'No employee available for restoration.',
+    );
+  }
+
+  return restoredCustomer;
+};
+
+export const moveAllToRecycledBin = async (tenantDomain: string) => {
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
+
   const result = await Employee.updateMany(
-    {}, // Match all documents
+    {},
     {
       $set: {
         isRecycled: true,
         recycledAt: new Date(),
       },
     },
-    {
-      runValidators: true,
-    }
+    { runValidators: true },
   );
 
   return result;
 };
-const restoreAllFromRecycledBin = async () => {
+
+export const restoreAllFromRecycledBin = async (tenantDomain: string) => {
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
+
   const result = await Employee.updateMany(
     { isRecycled: true },
     {
@@ -303,14 +272,11 @@ const restoreAllFromRecycledBin = async () => {
         recycledAt: '',
       },
     },
-    {
-      runValidators: true,
-    }
+    { runValidators: true },
   );
 
   return result;
 };
-
 export const EmployeeServices = {
   createEmployeeIntoDB,
   getAllEmployeesFromDB,
@@ -321,5 +287,5 @@ export const EmployeeServices = {
   moveToRecycledEmployee,
   restoreFromRecycledEmployee,
   moveAllToRecycledBin,
-  restoreAllFromRecycledBin
+  restoreAllFromRecycledBin,
 };

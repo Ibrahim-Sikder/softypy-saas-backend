@@ -4,10 +4,12 @@ import { employeeOvertimeServices } from './overtime.service';
 import catchAsync from '../../utils/catchAsync';
 
 const createEmployeeOvertime = catchAsync(async (req, res, next) => {
+
   try {
     const payload = req.body;
+    const {tenantDomain} = req.body;
     const result =
-      await employeeOvertimeServices.createEmployeeOvertime(payload);
+      await employeeOvertimeServices.createEmployeeOvertime(tenantDomain, payload);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -22,8 +24,10 @@ const createEmployeeOvertime = catchAsync(async (req, res, next) => {
 });
 
 const getAllEmployeeOvertimes = catchAsync(async (req, res, next) => {
+  const tenantDomain = req.query.tenantDomain as string;
+  //  const tenantDomain = req.headers.host || '';
   try {
-    const result = await employeeOvertimeServices.getAllEmployeeOvertimes(
+    const result = await employeeOvertimeServices.getAllEmployeeOvertimes(tenantDomain,
       req.query,
     );
 
@@ -39,15 +43,11 @@ const getAllEmployeeOvertimes = catchAsync(async (req, res, next) => {
 });
 
 const getSingleEmployeeOvertime = catchAsync(async (req, res, next) => {
+  const tenantDomain = req.query.tenantDomain as string;
   try {
-    // Extract the overtimeId from the route parameter
     const { overtimeId } = req.params;
-
-    // Call the service function with the overtimeId
     const result =
-      await employeeOvertimeServices.getSingleEmployeeOvertime(overtimeId);
-
-    // Send a successful response with the retrieved data
+      await employeeOvertimeServices.getSingleEmployeeOvertime(tenantDomain, overtimeId);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
@@ -60,10 +60,12 @@ const getSingleEmployeeOvertime = catchAsync(async (req, res, next) => {
 });
 
 const updateEmployeeOvertime = catchAsync(async (req, res, next) => {
+  const {tenantDomain} = req.body
 
   try {
     const { overtimeId } = req.params;
     const result = await employeeOvertimeServices.updateEmployeeOvertime(
+      tenantDomain,
       overtimeId,
       req.body,
     );
@@ -80,10 +82,11 @@ const updateEmployeeOvertime = catchAsync(async (req, res, next) => {
 });
 
 const deleteEmployeeOvertime = catchAsync(async (req, res, next) => {
+  const tenantDomain = req.query.tenantDomain as string;
   try {
     const { overtimeId } = req.params;
     const result =
-      await employeeOvertimeServices.deleteEmployeeOvertime(overtimeId);
+      await employeeOvertimeServices.deleteEmployeeOvertime(tenantDomain, overtimeId);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
