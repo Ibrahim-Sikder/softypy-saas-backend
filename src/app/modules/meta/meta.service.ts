@@ -143,6 +143,7 @@ const getAllCustomer = async (
       referenceName: customer.reference_name,
       isRecycled: customer.isRecycled,
       recycledAt: customer.recycledAt,
+      createdAt: customer.createdAt,
       searchableId: customer.customerId,
       searchableName: customer.customer_name,
       searchableContact: `${customer.customer_country_code}${customer.customer_contact}`,
@@ -174,6 +175,7 @@ const getAllCustomer = async (
       isRecycled: company.isRecycled,
       recycledAt: company.recycledAt,
       searchableId: company.companyId,
+      createdAt: company.createdAt,
       searchableName: company.company_name,
       searchableContact: `${company.company_country_code}${company.company_contact}`,
       searchableVehicle: company.vehicles
@@ -205,6 +207,7 @@ const getAllCustomer = async (
       recycledAt: showroom.recycledAt,
       searchableId: showroom.showRoomId,
       searchableName: showroom.showRoom_name,
+      createdAt: showroom.createdAt,
       searchableContact: `${showroom.company_country_code}${showroom.company_contact}`,
       searchableVehicle: showroom.vehicles
         .map((v: any) => v.fullRegNum)
@@ -214,9 +217,21 @@ const getAllCustomer = async (
     })),
   ];
 
+  // const sortedData = unifiedData.sort((a, b) => {
+  //   if (query.sort === 'asc') return a.name.localeCompare(b.name);
+  //   return b.name.localeCompare(a.name);
+  // });
+
+ // Sort by createdAt if available, otherwise fallback to name
   const sortedData = unifiedData.sort((a, b) => {
-    if (query.sort === 'asc') return a.name.localeCompare(b.name);
-    return b.name.localeCompare(a.name);
+    const sortOrder = query.sort === 'asc' ? 1 : -1;
+    if (a.createdAt && b.createdAt) {
+      return (
+        (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) *
+        sortOrder
+      );
+    }
+    return a.name.localeCompare(b.name) * sortOrder;
   });
 
   const paginatedData = sortedData.slice(skip, skip + limit);
@@ -391,7 +406,6 @@ const getAllMetaFromDB = async (
     expense,
   };
 };
-
 
 export const metServices = {
   getAllCustomer,

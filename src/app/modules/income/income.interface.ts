@@ -18,4 +18,5 @@ export interface IIncome extends Document {
   partsIncomeAmount:number;
   totalInvoiceIncome:number;
   totalOtherIncome:number
+  referanceNo:number
 }

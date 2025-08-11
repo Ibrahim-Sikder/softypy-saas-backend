@@ -26,6 +26,7 @@ export const incomeSchema = new Schema<IIncome>(
     partsIncomeAmount: { type: Number },
     totalInvoiceIncome: { type: Number },
     totalOtherIncome: { type: Number },
+    referanceNo: { type: Number },
   },
   { timestamps: true },
 );

@@ -106,6 +106,9 @@ export const customerSchema: Schema<TCustomer> = new Schema<TCustomer>(
     reference_name: {
       type: String,
     },
+    whatsappNumber: {
+      type: Number,
+    },
     isRecycled: { type: Boolean, default: false },
     recycledAt: { type: Date, default: null },
   },

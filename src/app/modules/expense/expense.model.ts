@@ -24,6 +24,7 @@ export const expenseSchema = new Schema<IExpense>(
     note: { type: String },
     totalAmount: { type: Number },
     totalOtherExpense: { type: Number },
+        referanceNo: { type: Number },
   },
   { timestamps: true },
 );
