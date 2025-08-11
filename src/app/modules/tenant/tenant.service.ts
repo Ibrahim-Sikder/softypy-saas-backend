@@ -89,13 +89,7 @@ export const createTenant = async (
       user: newUser._id,
     });
 
-    // Optional: Create a dummy collection to trigger DB creation
-    const DummyModel = connection.model(
-      'Dummy',
-      new mongoose.Schema({ name: String }),
-    );
-    await DummyModel.create({ name: 'trigger' });
-
+  
     return tenant;
   } catch (error: any) {
     throw new AppError(
