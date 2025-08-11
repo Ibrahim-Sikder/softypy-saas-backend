@@ -10,7 +10,6 @@ export const ProductSchema = new Schema<TProduct>(
     product_type: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ProductType',
-      required: true,
     },
     image: {
       type: String,

@@ -8,70 +8,45 @@ import { SearchableFields } from './vehicle.const';
 import { getTenantModel } from '../../utils/getTenantModels';
 
 const createVehicleDetails = async (tenantDomain: string, payload: TVehicle) => {
-  const session = await mongoose.startSession();
-  try {
-    const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
-    const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
-    const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
-    const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
+  const { connection, Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+  const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
+  const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
+  const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
 
+  const session = await connection.startSession(); // ✅ Use tenant's connection
+
+  try {
     const result = await session.withTransaction(async () => {
-      // Fetch existing records for customer, company, and showroom
       const [existingCustomer, existingCompany, existingShowroom] = await Promise.all([
         Customer.findById(payload.Id).session(session),
         Company.findById(payload.Id).session(session),
         ShowRoom.findById(payload.Id).session(session),
       ]);
 
-      // Ensure that at least one of the entities is found
       if (!existingCustomer && !existingCompany && !existingShowroom) {
         throw new AppError(StatusCodes.BAD_REQUEST, 'You are not authorized.');
       }
 
-      // Sanitize the input payload
       const sanitizedData = sanitizePayload(payload);
 
-      // Prepare the vehicle data
       const vehicleData = new Vehicle({
         ...sanitizedData,
         customer: existingCustomer?._id || null,
         company: existingCompany?._id || null,
         showRoom: existingShowroom?._id || null,
-        Id:
-          existingCustomer?.customerId ||
-          existingCompany?.companyId ||
-          existingShowroom?.showRoomId ||
-          null,
-        user_type:
-          existingCustomer?.user_type ||
-          existingCompany?.user_type ||
-          existingShowroom?.user_type ||
-          null,
+        Id: existingCustomer?.customerId || existingCompany?.companyId || existingShowroom?.showRoomId || null,
+        user_type: existingCustomer?.user_type || existingCompany?.user_type || existingShowroom?.user_type || null,
       });
 
-      // Save the vehicle data within the transaction
       const savedVehicle = await vehicleData.save({ session });
 
-      // Associate the saved vehicle with the correct entity based on user_type
       if (savedVehicle) {
         if (savedVehicle.user_type === 'customer' && existingCustomer) {
-          await Customer.findByIdAndUpdate(
-            existingCustomer._id,
-            { $push: { vehicles: savedVehicle._id } },
-            { session },
-          );
+          await Customer.findByIdAndUpdate(existingCustomer._id, { $push: { vehicles: savedVehicle._id } }, { session });
         } else if (savedVehicle.user_type === 'company' && existingCompany) {
-          await Company.findByIdAndUpdate(
-            existingCompany._id,
-            { $push: { vehicles: savedVehicle._id } },
-            { session },
-          );
+          await Company.findByIdAndUpdate(existingCompany._id, { $push: { vehicles: savedVehicle._id } }, { session });
         } else if (savedVehicle.user_type === 'showRoom' && existingShowroom) {
-          await ShowRoom.findByIdAndUpdate(
-            existingShowroom._id,
-            { $push: { vehicles: savedVehicle._id } },
-            { session },
-          );
+          await ShowRoom.findByIdAndUpdate(existingShowroom._id, { $push: { vehicles: savedVehicle._id } }, { session });
         }
       }
 
@@ -79,8 +54,6 @@ const createVehicleDetails = async (tenantDomain: string, payload: TVehicle) => 
     });
 
     return result;
-  } catch (error) {
-    throw error;
   } finally {
     await session.endSession();
   }
@@ -248,14 +221,12 @@ const getAllVehiclesFromDB = async (
   };
 };
 
-
-
-
 const getSingleVehicleDetails = async (tenantDomain: string, id: string) => {
   console.log(tenantDomain, id)
   const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
 
   const singleVehicle = await Vehicle.findById(id);
+  console.log(singleVehicle)
 
   if (!singleVehicle) {
     throw new AppError(StatusCodes.NOT_FOUND, 'No vehicle found');

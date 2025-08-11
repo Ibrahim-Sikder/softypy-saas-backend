@@ -1,6 +1,5 @@
 import QueryBuilder from '../../builder/QueryBuilder';
 import { getTenantModel } from '../../utils/getTenantModels';
-
 import { CompanyType, CustomerType, ShowRoomType } from './meta.interface';
 import { buildSearchQuery } from './meta.search';
 import dayjs from 'dayjs';
@@ -393,7 +392,6 @@ const getAllMetaFromDB = async (
   };
 };
 
-export default getAllMetaFromDB;
 
 export const metServices = {
   getAllCustomer,
