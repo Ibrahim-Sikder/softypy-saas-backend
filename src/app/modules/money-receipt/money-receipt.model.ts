@@ -79,7 +79,6 @@ export const moneyReceiptSchema: Schema<TMoneyReceipt> = new Schema<TMoneyReceip
     account_number: {
       type: String,
     },
-
     payment_date: {
       type: String,
     },
