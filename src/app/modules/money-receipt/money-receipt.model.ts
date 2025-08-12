@@ -100,7 +100,6 @@ export const moneyReceiptSchema: Schema<TMoneyReceipt> = new Schema<TMoneyReceip
     },
     remaining: {
       type: Number,
-      // required: [true, 'Remaining is required'],
     },
     remaining_in_words: {
       type: String,
