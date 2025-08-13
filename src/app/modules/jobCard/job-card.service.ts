@@ -714,7 +714,6 @@ export const generateJobCardPdf = async (
   companyData: string,
 ): Promise<Buffer> => {
   const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
-  console.log('company profile data', companyData);
   const jobcard = await JobCard.findById(id)
     .populate('customer')
     .populate('company')
@@ -722,6 +721,7 @@ export const generateJobCardPdf = async (
     .populate('vehicle');
 
   const companyProfile = JSON.parse(companyData || '{}');
+  console.log('company profile data', companyProfile);
   if (!jobcard) {
     throw new Error('jobcard not found');
   }
