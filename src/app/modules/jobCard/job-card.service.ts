@@ -491,18 +491,20 @@ const updateJobCardDetails = async (
   if (!updateJobCard) {
     throw new AppError(StatusCodes.NOT_ACCEPTABLE, 'Something went wrong!');
   }
-if (vehicle.chassis_no) {
-  const updatedVehicle = await Vehicle.findOneAndUpdate(
-    { chassis_no: vehicle.chassis_no },
-    { $set: sanitizePayload(vehicle) },
-    { new: true, runValidators: true }
-  );
+  if (vehicle.chassis_no) {
+    const updatedVehicle = await Vehicle.findOneAndUpdate(
+      { chassis_no: vehicle.chassis_no },
+      { $set: sanitizePayload(vehicle) },
+      { new: true, runValidators: true },
+    );
 
-  if (!updatedVehicle) {
-    throw new AppError(StatusCodes.NOT_FOUND, 'Vehicle not found for given chassis_no');
+    if (!updatedVehicle) {
+      throw new AppError(
+        StatusCodes.NOT_FOUND,
+        'Vehicle not found for given chassis_no',
+      );
+    }
   }
-}
-
 
   const sanitizeJobCard = sanitizePayload(jobCard);
 
@@ -709,22 +711,15 @@ export const generateJobCardPdf = async (
   tenantDomain: string,
   id: string,
   imageUrl: string,
-   companyData: {
-    name: string;
-    address: string;
-    phone: string;
-    email: string;
-    website: string;
-  }
+  companyData: string,
 ): Promise<Buffer> => {
   const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
-
+  console.log('company profile data', companyData);
   const jobcard = await JobCard.findById(id)
     .populate('customer')
     .populate('company')
     .populate('showRoom')
     .populate('vehicle');
-  console.log(jobcard);
 
   if (!jobcard) {
     throw new Error('jobcard not found');
@@ -755,7 +750,7 @@ export const generateJobCardPdf = async (
         imageUrl,
         logoBase64: imageBase64Array[0],
         carImageBase64: imageBase64Array[1],
-        companyData
+        companyData,
       },
       (err, str) => {
         if (err) return reject(err);
