@@ -11,6 +11,13 @@
         margin: 10px 25px 10px 25px;
     }
 
+    @font-face {
+        font-family: 'Kalpurush';
+        src: url('https://fonts.maateen.me/kalpurush/font.css') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+    }
+
     @page: first {
         margin-top: 0;
     }
@@ -21,14 +28,15 @@
         padding: 0;
     }
 
-.trustAutoTitle {
-    font-family: 'Hind Siliguri', sans-serif;
-    font-size: 65px;
-    font-weight: 900;
-    color: #4671A1;
-    margin: 0;
-    line-height: 1;
-}
+    .trustAutoTitle {
+        font-family: 'Kalpurush', serif;
+        font-size: 55px;
+        font-weight: bold;
+        color: #4671A1;
+        margin: 0;
+        line-height: 1.2;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+    }
 
 
     .imgWrap {
@@ -398,10 +406,12 @@
                 <hr style=" border: 1px solid #110255" />
                 <div style="text-align: center; ">
                     <p>
-                        <b>Office: </b><%= companyData.address || 'Road No.-18, Plot No.-02, Shed No.-06, Block-J, Baridhara, Vatara, Dhaka-1212' %>
+                        <b>Office:
+                        </b><%= companyData.address || 'Road No.-18, Plot No.-02, Shed No.-06, Block-J, Baridhara, Vatara, Dhaka-1212' %>
                     </p>
                     <p>
-                        <b>Mobile:</b> <%= companyData?.phone || '880 1628-090659 , 880 1821-911826' %> <b>Email:</b> <%= companyData?.email || 'worldautosolution@gmail.com' %>
+                        <b>Mobile:</b> <%= companyData?.phone || '880 1628-090659 , 880 1821-911826' %> <b>Email:</b>
+                        <%= companyData?.email || 'worldautosolution@gmail.com' %>
                     </p>
                 </div>
             </div>
