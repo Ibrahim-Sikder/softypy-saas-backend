@@ -152,7 +152,14 @@ const tenantDomain = req.query.tenantDomain as string;
 const generateJobCardPdf: RequestHandler = catchAsync(async (req, res) => {
   const { jobcardId } = req.params;
 const tenantDomain = req.query.tenantDomain as string;
-
+  const companyData = {
+    name: req.query.companyName as string || '',
+    address: req.query.address as string || '',
+    phone: req.query.phone as string || '',
+    email: req.query.email as string || '',
+    website: req.query.website as string || '',
+  };
+console.log(companyData)
   const baseUrl = (
     process.env.NEXT_PUBLIC_IMAGE_BASE_URL ||
     'https://api.trustautosolution.com'
@@ -163,6 +170,7 @@ const tenantDomain = req.query.tenantDomain as string;
       tenantDomain,
       jobcardId,
       baseUrl,
+      companyData 
     );
 
     res.setHeader('Content-Type', 'application/pdf');

@@ -709,6 +709,13 @@ export const generateJobCardPdf = async (
   tenantDomain: string,
   id: string,
   imageUrl: string,
+   companyData: {
+    name: string;
+    address: string;
+    phone: string;
+    email: string;
+    website: string;
+  }
 ): Promise<Buffer> => {
   const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
 
@@ -717,7 +724,6 @@ export const generateJobCardPdf = async (
     .populate('company')
     .populate('showRoom')
     .populate('vehicle');
-
   console.log(jobcard);
 
   if (!jobcard) {
@@ -749,6 +755,7 @@ export const generateJobCardPdf = async (
         imageUrl,
         logoBase64: imageBase64Array[0],
         carImageBase64: imageBase64Array[1],
+        companyData
       },
       (err, str) => {
         if (err) return reject(err);

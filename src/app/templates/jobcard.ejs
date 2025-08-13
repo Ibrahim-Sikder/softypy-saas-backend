@@ -129,15 +129,14 @@
                                 <img style="width: 120px;" src="data:image/png;base64,<%= logoBase64 %>"
                                     alt="SofyPy Garages" />
                                 <% } else { %>
-                                <img style="width: 120px;" src="<%= imageUrl %>/images/logo.png"
-                                    alt="SofyPy Garages"
+                                <img style="width: 120px;" src="<%= imageUrl %>/images/logo.png" alt="SofyPy Garages"
                                     onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';" />
                                 <% } %>
 
                             </div>
 
                         </div>
-                        <h2 class="trustAutoTitle">SofyPy Garage</h2>
+                        <h2 class="trustAutoTitle"><%= companyData.name || 'SofyPy Garage' %></h2>
                     </div>
                 </div>
                 <div
@@ -422,13 +421,12 @@
                 <hr style=" border: 1px solid #110255" />
                 <div style="text-align: center; ">
                     <p>
-                        <b>Office: </b>Ka-93/4/C, Kuril Bishawroad, Dhaka-1229,
-                        www.trustautosolution.com
+                        <b>Office: </b><%= companyData.address || 'Ka-93/4/C, Kuril Bishawroad, Dhaka-1229' %>,
+                        <%= companyData.website || 'www.trustautosolution.com' %>
                     </p>
-                    <p className="text-xs">
-
-                        <b>Mobile:</b>+880 1821-216465, +880 1972-216465 , <b>Email:</b>
-                        trustautosolution@gmail.com
+                    <p>
+                        <b>Mobile:</b> <%= companyData.phone || '+880 1821-216465, +880 1972-216465' %>,
+                        <b>Email:</b> <%= companyData.email || 'trustautosolution@gmail.com' %>
                     </p>
                 </div>
             </div>
