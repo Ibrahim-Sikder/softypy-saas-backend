@@ -81,11 +81,10 @@ const deleteAttendance = catchAsync(async (req, res) => {
   const tenantDomain = req.query.tenantDomain as string;
   const date = req.query.date as string;
 
+
   const result = await AttendanceServices.deleteAttendanceFromDB(tenantDomain, {
     date,
   });
-
-  console.log('From controller:', result);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,

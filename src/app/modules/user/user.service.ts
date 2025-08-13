@@ -82,7 +82,6 @@ const getAllUser = async (tenantDomain: string) => {
   if (tenantDomain) {
     const { Model: User } = await getTenantModel(tenantDomain, 'User');
     const result = await User.find();
-    console.log('with tenant domain ', result)
     return result;
   } else {
     const result = await User.find();

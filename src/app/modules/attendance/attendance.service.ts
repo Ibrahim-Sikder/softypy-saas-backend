@@ -2,14 +2,21 @@ import { StatusCodes } from 'http-status-codes';
 import AppError from '../../errors/AppError';
 import { TAttendance } from './attendance.interface';
 import { getTenantModel } from '../../utils/getTenantModels';
+import dayjs from 'dayjs';
 
 export const createAttendanceIntoDB = async (
   tenantDomain: string,
-  payload: TAttendance[]
+  payload: TAttendance[],
 ) => {
   // Get Employee model and connection from tenant model getter
-  const { Model: Employee, connection } = await getTenantModel(tenantDomain, 'Employee');
-  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+  const { Model: Employee, connection } = await getTenantModel(
+    tenantDomain,
+    'Employee',
+  );
+  const { Model: Attendance } = await getTenantModel(
+    tenantDomain,
+    'Attendance',
+  );
 
   // Start session from tenant-specific connection
   const session = await connection.startSession();
@@ -29,7 +36,7 @@ export const createAttendanceIntoDB = async (
       const checkTodaysAttendance = await Attendance.findOneAndUpdate(
         { employee: id, date: data.date },
         { $set: data },
-        { session, new: true, runValidators: true }
+        { session, new: true, runValidators: true },
       );
 
       if (!checkTodaysAttendance) {
@@ -43,7 +50,7 @@ export const createAttendanceIntoDB = async (
         await Employee.findByIdAndUpdate(
           existingEmployee._id,
           { $push: { attendance: attendance._id } },
-          { new: true, runValidators: true, session }
+          { new: true, runValidators: true, session },
         );
       }
     }
@@ -58,9 +65,11 @@ export const createAttendanceIntoDB = async (
   }
 };
 
-
 export const getTodayAttendanceFromDB = async (tenantDomain: string) => {
-  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+  const { Model: Attendance } = await getTenantModel(
+    tenantDomain,
+    'Attendance',
+  );
 
   const parsedDate = new Date();
   const day = parsedDate.getDate().toString().padStart(2, '0');
@@ -71,20 +80,40 @@ export const getTodayAttendanceFromDB = async (tenantDomain: string) => {
   const todayAttendance = await Attendance.find({ date: formattedDate });
 
   if (!todayAttendance.length) {
-    throw new AppError(StatusCodes.NOT_FOUND, 'No today\'s attendance found');
+    throw new AppError(StatusCodes.NOT_FOUND, "No today's attendance found");
   }
 
-  const presentEntries = todayAttendance.filter(attendance => attendance.present).length;
-  const absentEntries = todayAttendance.filter(attendance => attendance.absent).length;
-  const lateEntries = todayAttendance.filter(attendance => attendance.late_status).length;
+  const presentEntries = todayAttendance.filter(
+    (attendance) => attendance.present,
+  ).length;
+  const absentEntries = todayAttendance.filter(
+    (attendance) => attendance.absent,
+  ).length;
+  const lateEntries = todayAttendance.filter(
+    (attendance) => attendance.late_status,
+  ).length;
 
-  const presentPercentage = ((presentEntries / todayAttendance.length) * 100).toFixed(2);
-  const absentPercentage = ((absentEntries / todayAttendance.length) * 100).toFixed(2);
-  const latePercentage = ((lateEntries / todayAttendance.length) * 100).toFixed(2);
+  const presentPercentage = (
+    (presentEntries / todayAttendance.length) *
+    100
+  ).toFixed(2);
+  const absentPercentage = (
+    (absentEntries / todayAttendance.length) *
+    100
+  ).toFixed(2);
+  const latePercentage = ((lateEntries / todayAttendance.length) * 100).toFixed(
+    2,
+  );
 
-  const finalPresentPercentage = presentPercentage.endsWith('.00') ? parseInt(presentPercentage) : presentPercentage;
-  const finalAbsentPercentage = absentPercentage.endsWith('.00') ? parseInt(absentPercentage) : absentPercentage;
-  const finalLatePercentage = latePercentage.endsWith('.00') ? parseInt(latePercentage) : latePercentage;
+  const finalPresentPercentage = presentPercentage.endsWith('.00')
+    ? parseInt(presentPercentage)
+    : presentPercentage;
+  const finalAbsentPercentage = absentPercentage.endsWith('.00')
+    ? parseInt(absentPercentage)
+    : absentPercentage;
+  const finalLatePercentage = latePercentage.endsWith('.00')
+    ? parseInt(latePercentage)
+    : latePercentage;
 
   return {
     presentPercentage: finalPresentPercentage,
@@ -102,7 +131,10 @@ export const getAllAttendanceByCurrentMonth = async (
   page: number,
   searchTerm: string,
 ) => {
-  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+  const { Model: Attendance } = await getTenantModel(
+    tenantDomain,
+    'Attendance',
+  );
 
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
@@ -138,41 +170,50 @@ export const getAllAttendanceByCurrentMonth = async (
   for (const date of currentMonthDates) {
     const todayAttendance = await Attendance.find({ date });
 
-    const presentEntries = todayAttendance.filter(a => a.present).length;
+    const presentEntries = todayAttendance.filter((a) => a.present).length;
     const presentPercentage = Number(
-      (presentEntries / todayAttendance.length) * 100
+      (presentEntries / todayAttendance.length) * 100,
     ).toFixed(2);
 
-    const absentEntries = todayAttendance.filter(a => a.absent).length;
+    const absentEntries = todayAttendance.filter((a) => a.absent).length;
     const absentPercentage = Number(
-      (absentEntries / todayAttendance.length) * 100
+      (absentEntries / todayAttendance.length) * 100,
     ).toFixed(2);
 
-    const lateEntries = todayAttendance.filter(a => a.late_status).length;
+    const lateEntries = todayAttendance.filter((a) => a.late_status).length;
     const latePercentage = Number(
-      (lateEntries / todayAttendance.length) * 100
+      (lateEntries / todayAttendance.length) * 100,
     ).toFixed(2);
 
     if (!todayAttendance.length) {
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        `No attendance found for date: ${date}`
+        `No attendance found for date: ${date}`,
       );
     }
 
     attendanceResults.push({
       date,
-      presentPercentage: presentPercentage.endsWith('.00') ? parseInt(presentPercentage) : presentPercentage,
+      presentPercentage: presentPercentage.endsWith('.00')
+        ? parseInt(presentPercentage)
+        : presentPercentage,
       presentEntries,
-      absentPercentage: absentPercentage.endsWith('.00') ? parseInt(absentPercentage) : absentPercentage,
+      absentPercentage: absentPercentage.endsWith('.00')
+        ? parseInt(absentPercentage)
+        : absentPercentage,
       absentEntries,
-      latePercentage: latePercentage.endsWith('.00') ? parseInt(latePercentage) : latePercentage,
+      latePercentage: latePercentage.endsWith('.00')
+        ? parseInt(latePercentage)
+        : latePercentage,
       lateEntries,
     });
   }
 
   const startIndex = (page - 1) * limit;
-  const paginatedResults = attendanceResults.slice(startIndex, startIndex + limit);
+  const paginatedResults = attendanceResults.slice(
+    startIndex,
+    startIndex + limit,
+  );
 
   return {
     totalPages: Math.ceil(attendanceResults.length / limit),
@@ -182,8 +223,14 @@ export const getAllAttendanceByCurrentMonth = async (
   };
 };
 
-export const getSingleAttendance = async (tenantDomain: string, employee: string) => {
-  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+export const getSingleAttendance = async (
+  tenantDomain: string,
+  employee: string,
+) => {
+  const { Model: Attendance } = await getTenantModel(
+    tenantDomain,
+    'Attendance',
+  );
 
   const singleAttendance = await Attendance.find({ employee });
 
@@ -194,8 +241,14 @@ export const getSingleAttendance = async (tenantDomain: string, employee: string
   return singleAttendance;
 };
 
-export const getSingleDateAttendance = async (tenantDomain: string, date: string) => {
-  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+export const getSingleDateAttendance = async (
+  tenantDomain: string,
+  date: string,
+) => {
+  const { Model: Attendance } = await getTenantModel(
+    tenantDomain,
+    'Attendance',
+  );
 
   const singleAttendance = await Attendance.find({ date });
 
@@ -212,13 +265,16 @@ export const deleteAttendanceFromDB = async (
 ) => {
   const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
   const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
-  console.log(dateObj)
 
-  // Step 1: Find all attendance records for the given date
+  console.log('date object this ', dateObj);
+
+  // Since date is stored as string in DB, match directly
   const existingAttendance = await Attendance.find({ date: dateObj.date });
 
+  console.log('existing attendance', existingAttendance);
+
   if (existingAttendance.length === 0) {
-    return []; // Nothing to delete
+    return [];
   }
 
   const deletedAttendances: any[] = [];
@@ -226,13 +282,11 @@ export const deleteAttendanceFromDB = async (
   for (const attendance of existingAttendance) {
     const existingEmployee = await Employee.findById(attendance.employee);
 
-    // Step 2: Remove attendance record
     const deleted = await Attendance.findByIdAndDelete(attendance._id);
 
     if (deleted) {
-      deletedAttendances.push(deleted); // Collect deleted data to return
+      deletedAttendances.push(deleted);
 
-      // Step 3: Remove the attendance reference from the employee
       if (existingEmployee) {
         await Employee.findByIdAndUpdate(
           existingEmployee._id,
@@ -245,6 +299,7 @@ export const deleteAttendanceFromDB = async (
 
   return deletedAttendances;
 };
+
 
 export const AttendanceServices = {
   createAttendanceIntoDB,
