@@ -26,7 +26,8 @@
         font-size: 65px;
         font-weight: 900;
         color: #4671A1;
-        margin-top: 15px
+        margin: 0;
+        line-height: 1;
     }
 
     .imgWrap {
@@ -41,7 +42,9 @@
         border-bottom-color: #110255;
         border-bottom: 2px solid #110255;
         height: 110px;
-
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .vehicleCard {
@@ -54,7 +57,6 @@
         width: 10rem;
         text-transform: uppercase;
         margin: 0px;
-
     }
 
     .vehicleField {
@@ -92,7 +94,6 @@
 
     .note {
         height: 50px;
-
     }
 
     .carImgWrap {
@@ -102,7 +103,6 @@
         padding: 5px;
         border-radius: 5px;
         margin-top: 19px;
-
     }
 
     .carImgWrap img {
@@ -121,18 +121,17 @@
         <div style="display: flex; justify-content: space-between;flex-direction: column; height: 100%; ">
             <div>
                 <div class="logoWrap">
-                    <div style="display: flex ; align-items: center ;justify-content: space-between; gap: 5px;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
                         <div class="imgWrap">
-                            <img style="width: 100px;" src="<%= companyData.logo %>"
+                            <img style="width: 100px; height: 100px; object-fit: contain;" src="<%= companyData.logo %>"
                                 alt="<%= companyData.companyName || 'Company Logo' %>">
                         </div>
-                        <div>
+                        <div style="text-align: center;">
                             <h2 class="trustAutoTitle">
                                 <%= companyData?.companyNameBN %>
                             </h2>
-
-                            <h5>
-                                <%= companyData?.companyName %>
+                            <h5 style="margin: 5px 0 0 0; font-size: 16px; color: #333;">
+                                (<%= companyData?.companyName %>)
                             </h5>
                         </div>
                     </div>
@@ -164,7 +163,7 @@
                         <div>
                             <div style="display: flex;align-items: center ;gap: 5px ;margin-top:8px">
                                 <div>
-                                    <label style="display: block; font-size: 12px;">Chassis No </label>
+                                    <label style="display: block; font-size: 12px;">Chassis_no </label>
                                     <small class="vehicleField " style="text-transform: uppercase;">
                                         <%= jobcard && jobcard.vehicle.chassis_no ? jobcard.vehicle.chassis_no : 'N/A' %></small>
                                 </div>
@@ -218,7 +217,7 @@
                         </div>
                     </div>
                     <div>
-                        <h3>Customer Information</h3>
+                        <h3>Company Information</h3>
                         <div>
                             <div style="display: flex;align-items: center ;gap: 5px ;margin-top:8px">
                                 <div>
@@ -234,12 +233,9 @@
                                         N/A
                                         <% } %>
                                     </small>
-
-
                                 </div>
                                 <div>
                                     <label style="display: block; font-size: 12px;">Phone Number </label>
-
                                     <small class="vehicleField">
                                         <% if (jobcard && jobcard.customer && jobcard.customer.customer_contact) { %>
                                         <%= jobcard.customer.customer_country_code + jobcard.customer.customer_contact %>
@@ -251,53 +247,12 @@
                                         N/A
                                         <% } %>
                                     </small>
-
                                 </div>
-
-                            </div>
-                            <div style="display: flex;align-items: center ;gap: 5px ;margin-top:8px">
-                                <div>
-                                    <label style="display: block; font-size: 12px;">Driver Contact No
-                                    </label>
-
-
-                                    <small class="vehicleField">
-                                        <% if (jobcard && jobcard.customer && jobcard.customer.customer_name) { %>
-                                        <%= jobcard.customer.customer_name %>
-                                        <% } else if (jobcard && jobcard.company && jobcard.company.driver_contact) { %>
-                                        <%= jobcard.company.driver_contact %>
-                                        <% } else if (jobcard && jobcard.showRoom && jobcard.showRoom.driver_contact) { %>
-                                        <%= jobcard.showRoom.driver_contact %>
-                                        <% } else { %>
-                                        N/A
-                                        <% } %>
-                                    </small>
-
-                                </div>
-                                <div>
-                                    <label style="display: block; font-size: 12px;">Reference Name </label>
-
-
-                                    <small class="vehicleField">
-                                        <% if (jobcard && jobcard.customer && jobcard.customer.reference_name) { %>
-                                        <%= jobcard.customer.reference_name %>
-                                        <% } else if (jobcard && jobcard.company && jobcard.company.reference_name) { %>
-                                        <%= jobcard.company.reference_name %>
-                                        <% } else if (jobcard && jobcard.showRoom && jobcard.showRoom.reference_name) { %>
-                                        <%= jobcard.showRoom.reference_name %>
-                                        <% } else { %>
-                                        N/A
-                                        <% } %>
-                                    </small>
-                                </div>
-
                             </div>
                             <div style="display: flex;align-items: center ;gap: 5px ;margin-top:8px">
                                 <div>
                                     <label style="display: block; font-size: 12px;">Car Driver Name
-
                                     </label>
-
                                     <small class="vehicleField">
                                         <% if (jobcard && jobcard.customer && jobcard.customer.driver_name) { %>
                                         <%= jobcard.customer.driver_name %>
@@ -311,9 +266,39 @@
                                     </small>
                                 </div>
                                 <div>
-                                    <label style="display: block; font-size: 12px;">Customer Email
+                                    <label style="display: block; font-size: 12px;">Driver Contact No </label>
+                                    <small class="vehicleField">
+                                        <% if (jobcard && jobcard.customer && jobcard.customer.customer_name) { %>
+                                        <%= jobcard.customer.customer_name %>
+                                        <% } else if (jobcard && jobcard.company && jobcard.company.driver_contact) { %>
+                                        <%= jobcard.company.driver_contact %>
+                                        <% } else if (jobcard && jobcard.showRoom && jobcard.showRoom.driver_contact) { %>
+                                        <%= jobcard.showRoom.driver_contact %>
+                                        <% } else { %>
+                                        N/A
+                                        <% } %>
+                                    </small>
+                                </div>
+                            </div>
+                            <div style="display: flex;align-items: center ;gap: 5px ;margin-top:8px">
+                                <div>
+                                    <label style="display: block; font-size: 12px;">Reference Name
                                     </label>
-
+                                    <small class="vehicleField">
+                                        <% if (jobcard && jobcard.customer && jobcard.customer.reference_name) { %>
+                                        <%= jobcard.customer.reference_name %>
+                                        <% } else if (jobcard && jobcard.company && jobcard.company.reference_name) { %>
+                                        <%= jobcard.company.reference_name %>
+                                        <% } else if (jobcard && jobcard.showRoom && jobcard.showRoom.reference_name) { %>
+                                        <%= jobcard.showRoom.reference_name %>
+                                        <% } else { %>
+                                        N/A
+                                        <% } %>
+                                    </small>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 12px;">Company Email
+                                    </label>
                                     <small class="vehicleField">
                                         <% if (jobcard && jobcard.customer && jobcard.customer.customer_email) { %>
                                         <%= jobcard.customer.customer_email %>
@@ -326,7 +311,6 @@
                                         <% } %>
                                     </small>
                                 </div>
-
                             </div>
                         </div>
                     </div>
@@ -340,7 +324,6 @@
                     <small class="vehicleInterior">
                         <%= jobcard && jobcard.vehicle_interior_parts ? jobcard.vehicle_interior_parts.replace(/<\/?[^>]+(>|$)/g, "") : 'N/A' %>
                     </small>
-
                 </div>
                 <div style="display: flex; gap: 5px ; align-items: center ;margin-top: 15px;">
                     <div>
@@ -349,7 +332,6 @@
                             <small class="vehicleInterior">
                                 <%= jobcard && jobcard.vehicle_interior_parts ? jobcard.vehicle_interior_parts.replace(/<\/?[^>]+(>|$)/g, "") : 'N/A' %>
                             </small>
-
                         </div>
                         <div>
                             <label
@@ -358,7 +340,6 @@
                             <small class="reportedInput">
                                 <%= jobcard && jobcard.reported_action ? jobcard.reported_action.replace(/<\/?[^>]+(>|$)/g, "") : 'N/A' %>
                             </small>
-
                         </div>
                         <div>
                             <label
@@ -368,7 +349,6 @@
                             <small class="reportedInput">
                                 <%= jobcard && jobcard.vehicle_body_report ? jobcard.vehicle_body_report.replace(/<\/?[^>]+(>|$)/g, "") : 'N/A' %>
                             </small>
-
                         </div>
                     </div>
                     <div>
@@ -387,7 +367,6 @@
                             </small>
                         </div>
                     </div>
-
                 </div>
                 <div style="margin-top: 10px;">
                     <div style="display: flex;align-items: center ;gap: 5px ;margin-top:8px">
@@ -407,35 +386,26 @@
                                 <%= jobcard && jobcard.technician_date ? jobcard.technician_date : 'N/A' %></small>
                         </div>
                         <div>
-                            <label style="display: block; font-size: 12px;">I explained the car </label>
+                            <label style="display: block; font-size: 12px;">I Explained The Car </label>
                             <small class="vehicleField footerInput"> </small>
                         </div>
                     </div>
                 </div>
             </div>
 
-
-
-
-
-
             <div style="margin-top: 70px; font-size: 12px;">
                 <hr style=" border: 1px solid #110255" />
                 <div style="text-align: center; ">
                     <p>
-                        <b>Office: </b><%= companyData.address || 'Ka-93/4/C, Kuril Bishawroad, Dhaka-1229' %>,
-                        <%= companyData?.website || 'www.trustautosolution.com' %>
+                        <b>Office: </b><%= companyData.address || 'Road No.-18, Plot No.-02, Shed No.-06, Block-J, Baridhara, Vatara, Dhaka-1212' %>
                     </p>
                     <p>
-                        <b>Mobile:</b> <%= companyData?.phone || '+880 1821-216465, +880 1972-216465' %>,
-                        <b>Email:</b> <%= companyData?.email || 'trustautosolution@gmail.com' %>
+                        <b>Mobile:</b> <%= companyData?.phone || '880 1628-090659 , 880 1821-911826' %> <b>Email:</b> <%= companyData?.email || 'worldautosolution@gmail.com' %>
                     </p>
                 </div>
             </div>
         </div>
     </main>
-
-
 </body>
 
 </html>
