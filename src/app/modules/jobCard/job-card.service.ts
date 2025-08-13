@@ -721,6 +721,7 @@ export const generateJobCardPdf = async (
     .populate('showRoom')
     .populate('vehicle');
 
+  const companyProfile = JSON.parse(companyData || '{}');
   if (!jobcard) {
     throw new Error('jobcard not found');
   }
@@ -750,7 +751,7 @@ export const generateJobCardPdf = async (
         imageUrl,
         logoBase64: imageBase64Array[0],
         carImageBase64: imageBase64Array[1],
-        companyData,
+        companyData: companyProfile,
       },
       (err, str) => {
         if (err) return reject(err);
