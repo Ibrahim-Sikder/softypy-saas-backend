@@ -21,14 +21,15 @@
         padding: 0;
     }
 
-    .trustAutoTitle {
-        font-family: 'Merriweather', serif;
-        font-size: 65px;
-        font-weight: 900;
-        color: #4671A1;
-        margin: 0;
-        line-height: 1;
-    }
+.trustAutoTitle {
+    font-family: 'Hind Siliguri', sans-serif;
+    font-size: 65px;
+    font-weight: 900;
+    color: #4671A1;
+    margin: 0;
+    line-height: 1;
+}
+
 
     .imgWrap {
         width: 150px;
@@ -121,13 +122,13 @@
         <div style="display: flex; justify-content: space-between;flex-direction: column; height: 100%; ">
             <div>
                 <div class="logoWrap">
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
                         <div class="imgWrap">
                             <img style="width: 100px; height: 100px; object-fit: contain;" src="<%= companyData.logo %>"
                                 alt="<%= companyData.companyName || 'Company Logo' %>">
                         </div>
                         <div style="text-align: center;">
-                            <h2 class="">
+                            <h2 class="trustAutoTitle">
                                 <%= companyData?.companyNameBN %>
                             </h2>
                             <h5 style="margin: 5px 0 0 0; font-size: 16px; color: #333;">
