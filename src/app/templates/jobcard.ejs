@@ -124,8 +124,7 @@
                     <div style="display: flex ; align-items: center ; gap: 5px;">
                         <div class="imgWrap">
                             <div class="imgWrap">
-                                <div
-                                    style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; ">
                                     <% if (companyData && companyData.logo) { %>
                                     <img style="width: 100px;" src="<%= companyData.logo %>"
                                         alt="<%= companyData.companyName || 'Company Logo' %>" />
@@ -138,13 +137,15 @@
                             </div>
 
                         </div>
-                        <h2 class="trustAutoTitle">
-                            <%= companyData?.companyNameBN || 'Trust Auto Solution' %>
-                        </h2>
-                        <br>
-                        <b >
-                            <%= companyData?.companyName || 'Trust Auto Solution' %>
-                        </b>
+                        <div>
+                            <h2 class="trustAutoTitle">
+                                <%= companyData?.companyNameBN || 'Trust Auto Solution' %>
+                            </h2>
+
+                            <h5>
+                                (<%= companyData?.companyName || 'Trust Auto Solution' %>)
+                            </h5>
+                        </div>
                     </div>
                 </div>
                 <div
