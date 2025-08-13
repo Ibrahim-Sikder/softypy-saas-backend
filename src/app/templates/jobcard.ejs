@@ -127,11 +127,11 @@
                                 <div
                                     style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                                     <% if (companyData && companyData.logo) { %>
-                                    <img style="width: 120px;" src="<%= companyData.logo %>"
+                                    <img style="width: 10 0px;" src="<%= companyData.logo %>"
                                         alt="<%= companyData.companyName || 'Company Logo' %>" />
                                     <% } else { %>
                                     <!-- Fallback if no logo in companyData -->
-                                    <img style="width: 120px;" src="<%= imageUrl %>/images/logo.png" alt="Company Logo"
+                                    <img style="width: 100px;" src="<%= imageUrl %>/images/logo.png" alt="Company Logo"
                                         onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';" />
                                     <% } %>
                                 </div>
@@ -139,8 +139,11 @@
 
                         </div>
                         <h2 class="trustAutoTitle">
-                            <%= companyData?.companyName || 'Trust Auto Solution' %>
+                            <%= companyData?.companyNameBN || 'Trust Auto Solution' %>
                         </h2>
+                        <b >
+                            <%= companyData?.companyName || 'Trust Auto Solution' %>
+                        </b>
                     </div>
                 </div>
                 <div
