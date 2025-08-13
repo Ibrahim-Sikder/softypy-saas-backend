@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jobcard</title>
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;700&display=swap" rel="stylesheet">
 
 </head>
 <style>
@@ -29,7 +29,7 @@
         font-weight: 900;
         color: #4671A1;
         margin: 0;
-    
+
     }
 
 
@@ -124,8 +124,9 @@
         <div style="display: flex; justify-content: space-between;flex-direction: column; height: 100%; ">
             <div>
                 <div class="logoWrap">
-                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100% ;">
-                        <div class="imgWrap">
+                    <div
+                        style="display: flex; align-items: center; justify-content: center; width: 100%; position: relative;">
+                        <div class="imgWrap" style="position: absolute; left: 0;">
                             <img style="width: 100px; height: 100px; object-fit: contain;" src="<%= companyData.logo %>"
                                 alt="<%= companyData.companyName || 'Company Logo' %>">
                         </div>
@@ -140,6 +141,7 @@
                         <div></div>
                     </div>
                 </div>
+
                 <div
                     style="display: flex; font-size: 12px; justify-content: space-between; align-items: center; margin: 8px 0;">
                     <div>
