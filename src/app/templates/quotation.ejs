@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>quotation</title>
+       <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;700&display=swap" rel="stylesheet">
     <style>
         @page {
             margin: 15px 5px 15px 5px;
@@ -99,19 +100,14 @@
 
                     <div
                         style="display: flex; align-items: center; justify-content: space-between;  margin-bottom: 8px;">
-                        <% if (logoBase64) { %>
-                        <img style="width: 120px;" src="data:image/png;base64,<%= logoBase64 %>"
-                            alt="SofyPy Garages" />
-                        <% } else { %>
-                        <img style="width: 120px;" src="<%= imageUrl %>/images/logo.png" alt="SofyPy Garages"
-                            onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';" />
-                        <% } %>
+                        <img style="width: 100px; height: 100px; object-fit: contain;" src="<%= companyData.logo %>"
+                                alt="<%= companyData.companyName || 'Company Logo' %>">
 
                     </div>
 
 
                     <div>
-                        <small style="font-size: 36px; color: #4671A1;display: block;font-weight: 800;">
+                        <small style="font-size: 36px; color: #4671A1;display: block;font-weight: 800; font-family: 'Hind Siliguri', sans-serif ">
                             <%= companyData?.companyNameBN %>
                         </small>
                         <small style="margin-top: -20px;"><%= companyData.address%></small>
