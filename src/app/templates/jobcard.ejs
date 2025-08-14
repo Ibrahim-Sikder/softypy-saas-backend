@@ -129,13 +129,13 @@
                             <img style="width: 100px; height: 100px; object-fit: contain;" src="<%= companyData.logo %>"
                                 alt="<%= companyData.companyName || 'Company Logo' %>">
                         </div>
-                        <div style="text-align: center;">
-                            <h2 class="trustAutoTitle margin-top:10px">
+                        <div style="text-align: center; display: flex; flex-direction: column;justify-content: center; align-items: center;">
+                            <b class="trustAutoTitle">
                                 <%= companyData?.companyNameBN %>
-                            </h2>
-                            <h5 style=" font-size: 18px; color: #333;">
+                            </b>
+                            <b style=" font-size: 18px; color: #333;">
                                 (<%= companyData?.companyName %>)
-                            </h5>
+                            </b>
                         </div>
                         <div></div>
                     </div>
