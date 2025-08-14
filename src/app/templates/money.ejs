@@ -47,9 +47,10 @@
         <span style="font-size: 40px; font-family: 'Hind Siliguri', sans-serif; display: block ;">
          <%= companyData?.companyNameBN %>
         </span>
-       <b style=" font-size: 18px; color: #333;">
+        <b style=" font-size: 18px; color: #333; display: block;">
               (<%= companyData?.companyName %>)
             </b>
+            <small style="margin-top: -20px;"><%= companyData.address%></small>
       </div>
 
 
@@ -67,14 +68,7 @@
 
           <small><%= companyData?.email%></small>
         </div>
-        <div style="display: flex; align-items: center;gap: 5px;">
-
-          <small>
-           <%= companyData.address%>
-
-
-          </small>
-        </div>
+        
 
       </div>
     </div>
