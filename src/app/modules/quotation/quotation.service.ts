@@ -717,6 +717,7 @@ const generateQuotationPdf = async (
   tenantDomain: string,
   id: string,
   imageUrl: string,
+    companyData: string,
 ): Promise<Buffer> => {
   const { Model: Quotation } = await getTenantModel(tenantDomain, 'Quotation')
 
@@ -725,7 +726,7 @@ const generateQuotationPdf = async (
     .populate('company')
     .populate('showRoom')
     .populate('vehicle')
-
+  const companyProfile = JSON.parse(companyData || '{}');
   if (!quotation) {
     throw new Error('quotation not found')
   }
@@ -745,7 +746,7 @@ const generateQuotationPdf = async (
   const html = await new Promise<string>((resolve, reject) => {
     ejs.renderFile(
       filePath,
-      { quotation, imageUrl, formatToIndianCurrency, logoBase64 },
+      { quotation, imageUrl, formatToIndianCurrency, logoBase64, companyData: companyProfile },
       (err, str) => {
         if (err) return reject(err)
         resolve(str)

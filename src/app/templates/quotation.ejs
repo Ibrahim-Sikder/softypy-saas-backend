@@ -111,16 +111,16 @@
 
 
                     <div>
-                        <small style="font-size: 36px; color: #4671A1;display: block;font-weight: 800;">Trust Auto
-                            Solution</small>
-                        <small style="margin-top: -20px;">Office: Ka-93/4/C, Kuril Bishawroad, Dhaka-1229</small>
+                        <small style="font-size: 36px; color: #4671A1;display: block;font-weight: 800;">
+                            <%= companyData?.companyNameBN %>
+                        </small>
+                        <small style="margin-top: -20px;"><%= companyData.address%></small>
                     </div>
                     <div style="text-align: left;">
-                        <small style="display: block;"><small style="font-weight: bold;">Mobile:</small> +88
-                            01821-216465</small>
+                        <small style="display: block;"><small style="font-weight: bold;">Mobile:</small> <%= companyData?.phone %></small>
                         <small style="display: block;"><small style="font-weight: bold;">Email:</small>
-                            trustautosolution@gmail.com</small>
-                        <small style="display: block; font-weight: bold;">www.trustautosolution.com</small>
+                             <%= companyData?.email%></small>
+                        <small style="display: block; font-weight: bold;"><%= companyData?.website %></small>
                     </div>
                 </div>
             </div>

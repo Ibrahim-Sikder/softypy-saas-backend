@@ -721,7 +721,6 @@ export const generateJobCardPdf = async (
     .populate('vehicle');
 
   const companyProfile = JSON.parse(companyData || '{}');
-  console.log('company profile data', companyProfile);
   if (!jobcard) {
     throw new Error('jobcard not found');
   }
