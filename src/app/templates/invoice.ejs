@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Invoice</title>
+   <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;700&display=swap" rel="stylesheet">
   <style>
     @page {
       margin: 15px 5px 15px 5px;
@@ -97,23 +98,25 @@
           style="display: flex; align-items: center; justify-content: space-between; width: 100%; ; margin-bottom: 8px;">
 
           <div style="display: flex; align-items: center; justify-content: space-between;  margin-bottom: 8px;">
-            <% if (logoBase64) { %>
-            <img style="width: 120px;" src="data:image/png;base64,<%= logoBase64 %>" alt="SofyPy Garages" />
-            <% } else { %>
-            <img style="width: 120px;" src="<%= imageUrl %>/images/logo.png" alt="SofyPy Garages"
-              onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';" />
-            <% } %>
+            <img style="width: 100px; height: 100px; object-fit: contain;" src="<%= companyData.logo %>"
+              alt="<%= companyData.companyName || 'Company Logo' %>">
+
 
           </div>
           <div>
-            <small style="font-size: 36px; color: #4671A1;display: block;font-weight: 800;">SofyPy Garage</small>
-            <small style="margin-top: -20px;">Office: Ka-93/4/C, Kuril Bishawroad, Dhaka-1229</small>
+            <small style="font-size: 36px; color: #4671A1;display: block;font-weight: 800;">
+              <%= companyData?.companyNameBN %></small>
+            <b style=" font-size: 18px; color: #333; display: block;">
+              (<%= companyData?.companyName %>)
+            </b>
+            <small style="margin-top: -20px;"><%= companyData.address%></small>
           </div>
           <div style="text-align: left;">
-            <small style="display: block;"><small style="font-weight: bold;">Mobile:</small> +88 01821-216465</small>
+            <small style="display: block;"><small style="font-weight: bold;">Mobile:</small>
+              <%= companyData?.phone %></small>
             <small style="display: block;"><small style="font-weight: bold;">Email:</small>
-              trustautosolution@gmail.com</small>
-            <small style="display: block; font-weight: bold;">www.trustautosolution.com</small>
+              <%= companyData?.email%></small>
+            <small style="display: block; font-weight: bold;"><%= companyData?.website %></small>
           </div>
         </div>
       </div>

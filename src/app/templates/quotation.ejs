@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>quotation</title>
-       <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;700&display=swap" rel="stylesheet">
     <style>
         @page {
             margin: 15px 5px 15px 5px;
@@ -101,24 +101,26 @@
                     <div
                         style="display: flex; align-items: center; justify-content: space-between;  margin-bottom: 8px;">
                         <img style="width: 100px; height: 100px; object-fit: contain;" src="<%= companyData.logo %>"
-                                alt="<%= companyData.companyName || 'Company Logo' %>">
+                            alt="<%= companyData.companyName || 'Company Logo' %>">
 
                     </div>
 
 
                     <div>
-                        <small style="font-size: 40px; color: #4671A1;display: block;font-weight: 800; font-family: 'Hind Siliguri', sans-serif ">
+                        <small
+                            style="font-size: 40px; color: #4671A1;display: block;font-weight: 800; font-family: 'Hind Siliguri', sans-serif ">
                             <%= companyData?.companyNameBN %>
                         </small>
                         <b style=" font-size: 18px; color: #333; display: block;">
-                                (<%= companyData?.companyName %>)
-                            </b>
+                            (<%= companyData?.companyName %>)
+                        </b>
                         <small style="margin-top: -20px;"><%= companyData.address%></small>
                     </div>
                     <div style="text-align: left;">
-                        <small style="display: block;"><small style="font-weight: bold;">Mobile:</small> <%= companyData?.phone %></small>
+                        <small style="display: block;"><small style="font-weight: bold;">Mobile:</small>
+                            <%= companyData?.phone %></small>
                         <small style="display: block;"><small style="font-weight: bold;">Email:</small>
-                             <%= companyData?.email%></small>
+                            <%= companyData?.email%></small>
                         <small style="display: block; font-weight: bold;"><%= companyData?.website %></small>
                     </div>
                 </div>

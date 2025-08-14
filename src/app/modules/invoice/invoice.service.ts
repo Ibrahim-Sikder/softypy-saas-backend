@@ -30,7 +30,6 @@ import { amountInWords } from '../../middlewares/taka-in-words';
 import { formatToIndianCurrency } from '../quotation/quotation.utils';
 import { getTenantModel } from '../../utils/getTenantModels';
 
-
 const createInvoiceDetails = async (
   tenantDomain: string,
   payload: {
@@ -438,8 +437,7 @@ const updateInvoiceIntoDB = async (
     throw error;
   }
 };
-
-export const removeInvoiceFromUpdate = async (
+const removeInvoiceFromUpdate = async (
   tenantDomain: string,
   id: string,
   index: number,
@@ -574,7 +572,7 @@ const permanantlyDeleteInvoice = async (tenantDomain: string, id: string) => {
   // Get tenant-specific models and connection
   const { Model: Invoice, connection: tenantConnection } = await getTenantModel(
     tenantDomain,
-    'Invoice'
+    'Invoice',
   );
   const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
   const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
@@ -613,7 +611,7 @@ const permanantlyDeleteInvoice = async (tenantDomain: string, id: string) => {
         await model.findByIdAndUpdate(
           existingEntity._id,
           { $pull: { invoices: id } },
-          { new: true, runValidators: true, session }
+          { new: true, runValidators: true, session },
         );
       }
     }
@@ -739,13 +737,14 @@ const generateInvoicePDF = async (
   tenantDomain: string,
   id: string,
   imageUrl: string,
+  companyData: string,
 ): Promise<Buffer> => {
   const { Model: Invoice } = await getTenantModel(tenantDomain, 'Invoice');
   const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
   const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
   const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
   const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
-
+  const companyProfile = JSON.parse(companyData || '{}');
   const invoice = await Invoice.findById(id)
     .populate({ path: 'customer', model: Customer })
     .populate({ path: 'company', model: Company })
@@ -771,7 +770,13 @@ const generateInvoicePDF = async (
   const html = await new Promise<string>((resolve, reject) => {
     ejs.renderFile(
       filePath,
-      { invoice, imageUrl, formatToIndianCurrency, logoBase64 },
+      {
+        invoice,
+        imageUrl,
+        formatToIndianCurrency,
+        logoBase64,
+        companyData: companyProfile,
+      },
       (err, str) => {
         if (err) return reject(err);
         resolve(str);
