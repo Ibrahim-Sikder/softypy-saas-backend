@@ -706,8 +706,7 @@ const getUserDetailsForJobCard = async (
 
   return userDetails;
 };
-
-export const generateJobCardPdf = async (
+ const generateJobCardPdf = async (
   tenantDomain: string,
   id: string,
   imageUrl: string,

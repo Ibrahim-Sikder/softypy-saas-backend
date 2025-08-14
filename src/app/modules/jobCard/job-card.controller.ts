@@ -102,7 +102,7 @@ const permanantlyDeleteJobcard = catchAsync(async (req, res) => {
   const { id } = req.params;
 const tenantDomain = req.query.tenantDomain as string;
 
-  const card = await JobCardServices.deleteJobCard(tenantDomain ,id);
+  const card = await JobCardServices.permanatlyDeleteJobCard(tenantDomain ,id);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
