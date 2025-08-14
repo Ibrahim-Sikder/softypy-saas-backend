@@ -719,6 +719,8 @@ const getUserDetailsForJobCard = async (
     .populate('showRoom')
     .populate('vehicle');
 
+    console.log('this is jobcard ',jobcard)
+
   const companyProfile = JSON.parse(companyData || '{}');
   if (!jobcard) {
     throw new Error('jobcard not found');
