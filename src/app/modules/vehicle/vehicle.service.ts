@@ -8,12 +8,13 @@ import { SearchableFields } from './vehicle.const';
 import { getTenantModel } from '../../utils/getTenantModels';
 
 const createVehicleDetails = async (tenantDomain: string, payload: TVehicle) => {
+
   const { connection, Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
   const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
   const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
   const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
 
-  const session = await connection.startSession(); // ✅ Use tenant's connection
+  const session = await connection.startSession();
 
   try {
     const result = await session.withTransaction(async () => {
