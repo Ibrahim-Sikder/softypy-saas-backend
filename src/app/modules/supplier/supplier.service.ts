@@ -20,8 +20,6 @@ const createSupplier = async (tenantDomain: string, payload: any) => {
       }
     });
 
-    console.log('Final Payload Before Save:', payload);
-
     const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
     const newSupplier = await Supplier.create(payload);
 

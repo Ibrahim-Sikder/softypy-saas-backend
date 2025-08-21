@@ -71,9 +71,7 @@ cron.schedule('0 0 * * *', async () => {
   
   try {
     await backupMongoDB();
-    console.log('Automatic backup completed successfully ✅');
   } catch (error: any) {
-    console.error('Automatic backup failed ❌', error.message);
   }
 });
 
@@ -94,9 +92,8 @@ cron.schedule('0 0 * * *', async () => {
 //       }
 //     );
 
-//     console.log(`✅ Cron Job Done: ${result.modifiedCount} subscription(s) marked as expired`);
+//    
 //   } catch (error) {
-//     console.error('❌ Error in subscription expiry cron job:', error);
 //   }
 // });
 

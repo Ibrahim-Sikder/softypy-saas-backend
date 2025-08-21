@@ -8,8 +8,6 @@ import httpStatus from 'http-status';
 import { getTenantModel } from '../../utils/getTenantModels';
 
 export const createPurchase = async (tenantDomain: string, payload: any) => {
-  console.log('tenantDomain:', tenantDomain);
-  console.log('payload:', payload);
 
   const { Model: Purchase, connection: tenantConnection } =
     await getTenantModel(tenantDomain, 'Purchase');
@@ -20,17 +18,13 @@ export const createPurchase = async (tenantDomain: string, payload: any) => {
   session.startTransaction();
 
   try {
-    console.log('Creating Purchase...');
     const newPurchase = await Purchase.create([payload], { session });
-    console.log('Purchase Created:', newPurchase[0]);
 
     const warehouseId = Array.isArray(payload.warehouse)
       ? payload.warehouse[0]
       : payload.warehouse;
 
     for (const item of payload.products) {
-      console.log('Creating Stock for Product:', item.productId);
-
       await Stocks.create(
         [
           {
@@ -124,8 +118,6 @@ export const updatePurchase = async (
   id: string,
   payload: Partial<TPurchase>,
 ) => {
-  console.log(tenantDomain);
-  console.log(payload);
   const { Model: Purchase } = await getTenantModel(tenantDomain, 'Purchase');
 
   const result = await Purchase.findByIdAndUpdate(id, payload, {

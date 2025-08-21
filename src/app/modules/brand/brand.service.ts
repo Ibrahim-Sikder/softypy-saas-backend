@@ -47,7 +47,6 @@ export const getSinigleBrand = async (
   tenantDomain: string,
   id: string,
 ) => {
-  console.log('single brand tenant', tenantDomain)
   const { Model: Brand } = await getTenantModel(
     tenantDomain,
     'Brand',

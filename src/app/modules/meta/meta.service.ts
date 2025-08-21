@@ -84,11 +84,22 @@ const getAllCustomer = async (
     ...vehicleSearchFields,
   ];
 
-  const searchQuery = buildSearchQuery(allSearchFields, searchTerm);
+  let isRecycledFilter: boolean | undefined = undefined;
+  if (query.isRecycled !== undefined) {
+    if (typeof query.isRecycled === 'string') {
+      isRecycledFilter = query.isRecycled === 'true';
+    } else if (typeof query.isRecycled === 'boolean') {
+      isRecycledFilter = query.isRecycled;
+    }
+  }
 
-  // const customerQuery = new QueryBuilder(Customer.find(searchQuery), query).filter();
-  // const companyQuery = new QueryBuilder(Company.find(searchQuery), query).filter();
-  // const showroomQuery = new QueryBuilder(ShowRoom.find(searchQuery), query).filter();
+  let searchQuery = buildSearchQuery(allSearchFields, searchTerm);
+
+  searchQuery = {
+    ...searchQuery,
+    ...(isRecycledFilter !== undefined ? { isRecycled: isRecycledFilter } : {}),
+  };
+
   const customerQuery = new QueryBuilder(Customer.find(searchQuery), query);
   const companyQuery = new QueryBuilder(Company.find(searchQuery), query);
   const showroomQuery = new QueryBuilder(ShowRoom.find(searchQuery), query);
@@ -217,12 +228,6 @@ const getAllCustomer = async (
     })),
   ];
 
-  // const sortedData = unifiedData.sort((a, b) => {
-  //   if (query.sort === 'asc') return a.name.localeCompare(b.name);
-  //   return b.name.localeCompare(a.name);
-  // });
-
- // Sort by createdAt if available, otherwise fallback to name
   const sortedData = unifiedData.sort((a, b) => {
     const sortOrder = query.sort === 'asc' ? 1 : -1;
     if (a.createdAt && b.createdAt) {

@@ -265,13 +265,7 @@ export const deleteAttendanceFromDB = async (
 ) => {
   const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
   const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
-
-  console.log('date object this ', dateObj);
-
-  // Since date is stored as string in DB, match directly
   const existingAttendance = await Attendance.find({ date: dateObj.date });
-
-  console.log('existing attendance', existingAttendance);
 
   if (existingAttendance.length === 0) {
     return [];

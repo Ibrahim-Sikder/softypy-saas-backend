@@ -69,8 +69,6 @@ const getSinglePurchaseOrder = async (tenantDomain: string, id: string) => {
     tenantDomain,
     'PurchaseOrder',
   );
-
-  console.log('single purchase order tenant this ', tenantDomain ,'this is id', id )
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
   const { Model: Warehouse } = await getTenantModel(tenantDomain, 'Warehouse');
 

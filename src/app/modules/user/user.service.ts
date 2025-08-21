@@ -31,6 +31,7 @@ export const createUser = async (payload: TUser) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Tenant not found!');
   }
 
+  
   const newUser = await User.create({
     ...payload,
     tenantId: tenantInfo._id,

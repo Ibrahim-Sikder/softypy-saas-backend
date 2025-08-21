@@ -86,7 +86,6 @@ const getAllPurchaseReturns = async (
     'PurchaseReturn',
   );
   await getTenantModel(tenantDomain, 'Product');
-  console.log('purchase return', tenantDomain);
 
   const builder = new QueryBuilder(PurchaseReturn.find(), query)
     .search(purchaseReturnSearch)

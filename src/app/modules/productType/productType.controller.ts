@@ -48,8 +48,6 @@ const getAllProductType = async (
       (req.query.tenantDomain as string) ||
       req.headers.host ||
       '';
-    //  const tenantDomain = req.headers.host || '';
-    console.log('for get p', tenantDomain);
     const result = await productTypeServices.getAllProductType(
       tenantDomain,
       req.query,

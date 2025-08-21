@@ -204,7 +204,6 @@ const updateSalaryIntoDB = async (
   id: string,
   payload: Partial<TSalary>,
 ) => {
-  console.log('tenant for update salary', tenantDomain);
   const { Model: Salary, connection } = await getTenantModel(
     tenantDomain,
     'Salary',
@@ -355,7 +354,6 @@ const getSalariesForCurrentMonth = async (
 };
 
 const getSingleSalary = async (tenantDomain: string, employeeId?: string) => {
-  console.log('from single salary ', tenantDomain);
   const { Model: Salary } = await getTenantModel(tenantDomain, 'Salary');
 
   let matchQuery: any = {};

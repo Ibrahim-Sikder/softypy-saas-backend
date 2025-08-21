@@ -15,7 +15,6 @@ const createCustomerDetails = async (
   tenantDomain: string,
   payload: { customer: TCustomer; vehicle: TVehicle },
 ) => {
-  console.log(tenantDomain)
   const { Model: Customer, connection: customerConnection } =
     await getTenantModel(tenantDomain, 'Customer');
 
@@ -332,7 +331,6 @@ const deleteCustomer = async (id: string) => {
   }
 };
 const permanantlyDeleteCustomer = async (tenantDomain: string, id: string) => {
-  console.log(tenantDomain, id)
   const { Model: Customer, connection } = await getTenantModel(tenantDomain, 'Customer');
   const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
 

@@ -56,7 +56,6 @@ const updatePurchaseReturn = async (req: Request, res: Response, next: NextFunct
   try {
     const { id } = req.params;
     const { tenantDomain } = req.body;
-    console.log(tenantDomain)
     const result = await purchaseReturnServices.updatePurchaseReturn(tenantDomain,id, req.body);
     sendResponse(res, {
       statusCode: httpStatus.OK,

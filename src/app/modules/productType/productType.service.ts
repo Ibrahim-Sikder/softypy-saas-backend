@@ -7,13 +7,12 @@ export const createProductType = async (
   tenantDomain: string,
   payload: TProductType
 ) => {
-  console.log(tenantDomain)
   const { Model: ProductType } = await getTenantModel(
     tenantDomain,
     'ProductType'
   );
   const result = await ProductType.create(payload);
-  console.log(result)
+
   return result;
 };
 
@@ -22,7 +21,6 @@ export const getAllProductType = async (
   tenantDomain: string,
   query: Record<string, unknown>
 ) => {
-  console.log("Tenant for query:", tenantDomain);
   const { Model: ProductType } = await getTenantModel(tenantDomain, 'ProductType');
 
   const categoryQuery = new QueryBuilder(ProductType.find(), query)
@@ -34,10 +32,6 @@ export const getAllProductType = async (
 
   const meta = await categoryQuery.countTotal();
   const productTypes = await categoryQuery.modelQuery;
-
-  console.log("Total found:", meta.total);
-  console.log("Product types result:", productTypes);
-
   return {
     meta,
     productTypes,

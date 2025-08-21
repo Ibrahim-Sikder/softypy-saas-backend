@@ -567,8 +567,7 @@ const deleteInvoice = async (tenantDomain: string, id: string) => {
 };
 
 const permanantlyDeleteInvoice = async (tenantDomain: string, id: string) => {
-  console.log('permanently delete', tenantDomain);
-
+ 
   // Get tenant-specific models and connection
   const { Model: Invoice, connection: tenantConnection } = await getTenantModel(
     tenantDomain,

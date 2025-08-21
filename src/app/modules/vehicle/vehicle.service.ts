@@ -222,11 +222,8 @@ const getAllVehiclesFromDB = async (
 };
 
 const getSingleVehicleDetails = async (tenantDomain: string, id: string) => {
-  console.log(tenantDomain, id)
   const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
-
   const singleVehicle = await Vehicle.findById(id);
-  console.log(singleVehicle)
 
   if (!singleVehicle) {
     throw new AppError(StatusCodes.NOT_FOUND, 'No vehicle found');
@@ -234,6 +231,7 @@ const getSingleVehicleDetails = async (tenantDomain: string, id: string) => {
 
   return singleVehicle;
 };
+
 
 const deleteVehicle = async (tenantDomain: string, id: string) => {
   const session = await mongoose.startSession();
@@ -290,9 +288,33 @@ const deleteVehicle = async (tenantDomain: string, id: string) => {
   }
 };
 
+const updateVehicleDetails = async (
+  tenantDomain: string,
+  id: string,
+  payload: Partial<TVehicle>,
+) => {
+  const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
+console.log('from payload service',payload)
+  // sanitize fields (avoid unwanted updates like _id etc.)
+  const sanitizedData = sanitizePayload(payload);
+
+  const updatedVehicle = await Vehicle.findByIdAndUpdate(
+    id,
+    { $set: sanitizedData },
+    { new: true, runValidators: true },
+  );
+
+  if (!updatedVehicle) {
+    throw new AppError(StatusCodes.NOT_FOUND, 'No vehicle found to update');
+  }
+
+  return updatedVehicle;
+};
+
 export const VehicleServices = {
   createVehicleDetails,
   getAllVehiclesFromDB,
   getSingleVehicleDetails,
   deleteVehicle,
+  updateVehicleDetails
 };

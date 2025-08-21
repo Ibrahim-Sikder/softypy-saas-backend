@@ -66,7 +66,6 @@ const getAllStocks = async (tenantDomain: string) => {
     'ProductType',
   );
   const { Model: Unit } = await getTenantModel(tenantDomain, 'Unit');
-  console.log('stocks tenant ', tenantDomain);
   const stocks = await Stocks.aggregate([
     {
       $group: {

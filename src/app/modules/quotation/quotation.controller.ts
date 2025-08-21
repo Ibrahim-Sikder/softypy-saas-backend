@@ -130,8 +130,6 @@ const generateQuotationPdf: RequestHandler = catchAsync(async (req, res) => {
   const companyData = req.query.companyProfileData
     ? decodeURIComponent(req.query.companyProfileData as string)
     : '{}';
-
-  console.log('from  controller ', companyData);
   const baseUrl = (
     process.env.NEXT_PUBLIC_IMAGE_BASE_URL ||
     'https://api.trustautosolution.com'

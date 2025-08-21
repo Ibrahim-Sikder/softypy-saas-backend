@@ -386,8 +386,7 @@ const getSingleJobCardDetailsWithJobNo = async (
   tenantDomain: string,
   jobNo: string,
 ) => {
-  console.log(tenantDomain);
-  console.log(jobNo);
+
   const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
   const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
   const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
@@ -442,7 +441,6 @@ const updateJobCardDetails = async (
     vehicle: TVehicle;
   },
 ) => {
-  console.log('tenant domain this  ', payload);
   const { Model: JobCard } = await getTenantModel(tenantDomain, 'JobCard');
   const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
   const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
@@ -718,9 +716,6 @@ const getUserDetailsForJobCard = async (
     .populate('company')
     .populate('showRoom')
     .populate('vehicle');
-
-    console.log('this is jobcard ',jobcard)
-
   const companyProfile = JSON.parse(companyData || '{}');
   if (!jobcard) {
     throw new Error('jobcard not found');

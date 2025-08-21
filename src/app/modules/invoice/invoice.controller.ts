@@ -78,7 +78,6 @@ const getSingleInvoice = catchAsync(async (req, res) => {
 const updateInvoice = catchAsync(async (req, res) => {
   const { id } = req.params;
   const { tenantDomain } = req.body;
-console.log(tenantDomain)
   const invoice = await InvoiceServices.updateInvoiceIntoDB(tenantDomain,id, req.body);
   sendResponse(res, {
     statusCode: StatusCodes.OK,

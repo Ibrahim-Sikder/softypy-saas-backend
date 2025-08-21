@@ -11,7 +11,6 @@ const createWarehouse = async (
   try {
     const payload = req.body;
     const { tenantDomain } = req.body;
-    console.log('warehouse tenant ', tenantDomain);
     const result = await warehouseServices.createWarehouse(
       tenantDomain,
       payload,
@@ -82,7 +81,6 @@ const updateWarehouse = async (
   try {
     const { id } = req.params;
     const { tenantDomain } = req.body;
-    console.log('update wre', tenantDomain)
     const result = await warehouseServices.updateWarehouse(
       tenantDomain,
       id,

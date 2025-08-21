@@ -61,7 +61,6 @@ const tenantDomain = req.query.tenantDomain as string;
 });
 const getSingleJobCardDetailsWithJobNo = catchAsync(async (req, res) => {
   const jobNo = req.query.jobNo as string;
-  console.log('for job',jobNo)
 const tenantDomain = req.query.tenantDomain as string;
   const result = await JobCardServices.getSingleJobCardDetailsWithJobNo(tenantDomain,jobNo);
 

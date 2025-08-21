@@ -44,8 +44,6 @@ const getAllProduct = async (
   query: Record<string, any>,
 ) => {
   const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
-console.log(query)
-console.log('product', tenantDomain)
   const categoryQuery = new QueryBuilder(Product.find(), query)
     .search(productSearch)
     .filter()
@@ -77,9 +75,6 @@ console.log('product', tenantDomain)
       model: (await getTenantModel(tenantDomain, 'Warehouse')).Model,
     },
   ]);
-
-  console.log('products data', products);
-
   return { meta, products };
 };
 

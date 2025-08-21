@@ -183,7 +183,6 @@ const renewTenantSubscription = async (
 ) => {
   const tenant = await Tenant.findById(tenantId);
 
-  console.log(tenantId, plan);
 
   if (!tenant) {
     throw new AppError(httpStatus.NOT_FOUND, 'Tenant not found');

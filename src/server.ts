@@ -22,7 +22,6 @@ export const connectToTenantDatabase = async (
 
   const connection = await mongoose.createConnection(dbUri).asPromise();
   tenantConnections[tenantId] = connection;
-  console.log(`✅ Connected to tenant ${tenantId}`);
   return connection;
 };
 

@@ -26,7 +26,6 @@ const createSalary = catchAsync(async (req, res) => {
 
 const addPartialPayment = catchAsync(async (req, res) => {
   const {tenantDomain} = req.body;
-  console.log('for partial paymebnt',tenantDomain)
   const { id: salaryId } = req.params
   const paymentData = {
     ...req.body,

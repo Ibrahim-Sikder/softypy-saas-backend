@@ -10,7 +10,6 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 
 const createAdjustment = async (payload: any) => {
-  console.log(payload)
   const session = await mongoose.startSession();
   session.startTransaction();
 

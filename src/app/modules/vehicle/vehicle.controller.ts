@@ -14,8 +14,6 @@ const createVehicle = catchAsync(async (req, res) => {
   });
 });
 
-
-
 const getAllVehicles = catchAsync(async (req, res) => {
   const id = req.query.id as string;
   const limit = parseInt(req.query.limit as string) || 10;
@@ -67,9 +65,29 @@ const tenantDomain = req.query.tenantDomain as string;
   });
 });
 
+const updateVehicle = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const tenantDomain = req.query.tenantDomain as string;
+
+  const updated = await VehicleServices.updateVehicleDetails(
+    tenantDomain,
+    id,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Vehicle updated successfully!',
+    data: updated,
+  });
+});
+
+
 export const vehicleController = {
   createVehicle,
   getAllVehicles,
   getSingleVehicle,
   deleteVehicle,
+  updateVehicle
 };

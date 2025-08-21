@@ -52,9 +52,6 @@ export const loginUser = async (payload: TLoginUser) => {
 
   // for this auth check all tenant user 
   const tenant = await Tenant.findOne({ domain: payload.tenantDomain });
-
-  console.log(tenant)
-
   if (!tenant || !tenant.isActive) {
     throw new AppError(httpStatus.NOT_FOUND, 'Tenant not found or inactive');
   }
