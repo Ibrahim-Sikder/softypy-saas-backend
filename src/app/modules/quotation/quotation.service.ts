@@ -71,7 +71,7 @@ const createQuotationDetails = async (
       throw new AppError(400, 'Missing required total values in quotation');
     }
 
-    const quotationNumber = await generateQuotationNo();
+    const quotationNumber = await generateQuotationNo(tenantDomain);
     const partsInWords = amountInWords(sanitizeQuotation.parts_total);
     const serviceInWords = amountInWords(sanitizeQuotation.service_total);
     const netTotalInWords = amountInWords(sanitizeQuotation.net_total);

@@ -58,7 +58,7 @@ const createMoneyReceiptDetails = async (
     } = payload;
 
     const sanitizeData = sanitizePayload(payload);
-    const moneyReceiptId = await generateMoneyReceiptId();
+    const moneyReceiptId = await generateMoneyReceiptId(tenantDomain);
 
     const totalAmountInWords = amountInWords(
       sanitizeData.total_amount as number,

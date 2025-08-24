@@ -7,7 +7,6 @@ import { TJobCard } from './job-card.interface';
 import { TCustomer } from '../customer/customer.interface';
 import { TCompany } from '../company/company.interface';
 import { TShowRoom } from '../showRoom/showRoom.interface';
-import { JobCard } from './job-card.model';
 import { generateCustomerId } from '../customer/customer.utils';
 import { generateJobCardNo } from './job-card.utils';
 import { SearchableFields, usersFields } from './job-card.const';

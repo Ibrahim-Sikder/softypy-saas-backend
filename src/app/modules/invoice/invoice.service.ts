@@ -20,7 +20,6 @@ import { TVehicle } from '../vehicle/vehicle.interface';
 import { Customer, customerSchema } from '../customer/customer.model';
 import { Company, companySchema } from '../company/company.model';
 import { ShowRoom, showRoomSchema } from '../showRoom/showRoom.model';
-import { Vehicle, vehicleSchema } from '../vehicle/vehicle.model';
 import { Model } from 'mongoose';
 import { generateInvoiceNo } from './invoice.utils';
 import puppeteer from 'puppeteer';
@@ -62,7 +61,7 @@ const createInvoiceDetails = async (
     const sanitizeVehicle = sanitizePayload(vehicle);
     const sanitizeInvoice = sanitizePayload(invoice);
 
-    const invoiceNumber = await generateInvoiceNo();
+    const invoiceNumber = await generateInvoiceNo(tenantDomain);
 
     const partsInWords = amountInWords(sanitizeInvoice.parts_total as number);
     const serviceInWords = amountInWords(
