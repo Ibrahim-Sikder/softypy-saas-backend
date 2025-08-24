@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Invoice</title>
-   <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;700&display=swap" rel="stylesheet">
   <style>
     @page {
       margin: 15px 5px 15px 5px;
@@ -104,7 +104,8 @@
 
           </div>
           <div>
-            <small style="font-size: 36px; color: #4671A1;display: block;font-weight: 800; font-family: 'Hind Siliguri', sans-serif">
+            <small
+              style="font-size: 36px; color: #4671A1;display: block;font-weight: 800; font-family: 'Hind Siliguri', sans-serif">
               <%= companyData?.companyNameBN %></small>
             <b style=" font-size: 18px; color: #333; display: block;">
               (<%= companyData?.companyName %>)
@@ -404,6 +405,9 @@
             <% if (invoice && invoice.vat && invoice.vat !== 0) { %>
             <b style="font-size: 12px;">VAT</b>
             <% } %>
+            <% if (invoice && invoice.tax && invoice.tax !== 0) { %>
+            <b style="font-size: 12px;">Tax included (<%= invoice.tax %>%)</b>
+            <% } %>
             <b style="font-size: 12px;">Grand Total</b>
             <% if (invoice.advance !== undefined) { %>
             <% if (invoice && invoice.advance && invoice.advance !== 0) { %>
@@ -413,15 +417,11 @@
             <b style="font-size: 12px;">Advance</b>
             <% } %>
             <% } %>
-
-
             <% } %>
             <% if (invoice && invoice.due && invoice.due !== 0) { %>
-
             <% if (invoice && invoice.advance && invoice.advance !==0) { %>
             <b style="font-size: 12px;">Due</b>
             <% } %>
-
             <% } %>
           </div>
           <div style="display: flex; flex-direction: column;">
@@ -434,7 +434,9 @@
             <% if (invoice && invoice.vat && invoice.vat !== 0) { %>
             <small>: <%= invoice.vat %>%</small>
             <% } %>
-
+            <% if (invoice && invoice.tax && invoice.tax !== 0) { %>
+            <small>: <%= invoice.tax %>%</small>
+            <% } %>
             <small>: <%= invoice.net_total !== undefined ? formatToIndianCurrency(invoice.net_total) : 0 %> tk
             </small>
             <% if (invoice.advance !== undefined) { %>
@@ -447,13 +449,8 @@
             <% if (invoice && invoice.advance && invoice.advance !==0) { %>
             <small>: <%= invoice.due%> tk </small>
             <% } %>
-
-
             <% } %>
-
           </div>
-
-
         </div>
       </div>
 
