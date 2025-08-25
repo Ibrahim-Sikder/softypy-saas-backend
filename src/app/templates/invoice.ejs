@@ -269,6 +269,8 @@
             </div>
             <div style="display: flex; column-gap: 10px; flex-direction: column;  row-gap: 3px;">
               <small style="font-size: 10px;"><span class="dot">:</span>
+
+                <%= invoice.vehicle && invoice.vehicle.carReg_no ? invoice.vehicle.carReg_no : 'N/A' %>
                 <%= invoice.vehicle && invoice.vehicle.car_registration_no ? invoice.vehicle.car_registration_no : 'N/A' %></small>
               <small style="font-size: 10px;"><span class="dot">:</span>
                 <%= invoice.vehicle && invoice.vehicle.chassis_no ? invoice.vehicle.chassis_no : 'N/A' %>

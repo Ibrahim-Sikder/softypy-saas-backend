@@ -96,16 +96,11 @@
                 style="margin-bottom: 8px; margin-left: auto; margin-right: auto; text-align: center; border-bottom: 2px solid #351E98; padding-bottom: 8px;">
                 <div
                     style="display: flex; align-items: center; justify-content: space-between; width: 100%; ; margin-bottom: 8px;">
-
-
                     <div
                         style="display: flex; align-items: center; justify-content: space-between;  margin-bottom: 8px;">
                         <img style="width: 100px; height: 100px; object-fit: contain;" src="<%= companyData.logo %>"
                             alt="<%= companyData.companyName || 'Company Logo' %>">
-
                     </div>
-
-
                     <div>
                         <small
                             style="font-size: 36px; color: #4671A1;display: block;font-weight: 800; font-family: 'Hind Siliguri', sans-serif">
@@ -257,6 +252,7 @@
                         </div>
                         <div style="display: flex; column-gap: 10px; flex-direction: column;  row-gap: 3px;">
                             <small style="font-size: 10px;"><span class="dot">:</span>
+                                <%= quotation.vehicle && quotation.vehicle.carReg_no ? quotation.vehicle.carReg_no : 'N/A' %> 
                                 <%= quotation.vehicle && quotation.vehicle.car_registration_no ? quotation.vehicle.car_registration_no : 'N/A' %></small>
                             <small style="font-size: 10px;"><span class="dot">:</span>
                                 <%= quotation.vehicle && quotation.vehicle.chassis_no ? quotation.vehicle.chassis_no : 'N/A' %>

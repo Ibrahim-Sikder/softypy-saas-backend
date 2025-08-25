@@ -566,7 +566,6 @@ const deleteInvoice = async (tenantDomain: string, id: string) => {
 };
 
 const permanantlyDeleteInvoice = async (tenantDomain: string, id: string) => {
- 
   // Get tenant-specific models and connection
   const { Model: Invoice, connection: tenantConnection } = await getTenantModel(
     tenantDomain,
@@ -762,6 +761,8 @@ const generateInvoicePDF = async (
   } catch (error) {
     console.warn('Failed to load logo:', error);
   }
+
+  console.log(invoice);
 
   const filePath = join(__dirname, '../../templates/invoice.ejs');
 
