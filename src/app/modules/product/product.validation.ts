@@ -16,22 +16,15 @@ export const commonFields = {
   //   .optional(),
   // discount: z.union([z.number(), z.string()]).optional(),
   stock_alert: z.union([z.number(), z.string()]).optional(),
-  tags: z
-    .array(z.string())
-    .default([])
-    .optional(),
+  tags: z.array(z.string()).default([]).optional(),
   initialStock: z.union([z.number(), z.string()]).optional(),
   reorderLevel: z.union([z.number(), z.string()]).optional(),
-  expiryDateType: z
-    .enum(['fixed', 'variable', 'none'])
-    .optional(),
+  expiryDateType: z.enum(['fixed', 'variable', 'none']).optional(),
   expiryDate: z.string().nullable().optional(),
   manufacturingDate: z.string().nullable().optional(),
-
   shelfLife: z.union([z.number(), z.string(), z.null()]).optional(),
-  shelfLifeUnit: z.enum(['days', 'weeks', 'months', 'years']).optional(),
+  shelfLifeUnit: z.union([z.number(), z.string(), z.null()]).optional(),
   expiryAlertDays: z.union([z.number(), z.string(), z.null()]).optional(),
-
   batchNumber: z.string().optional(),
 };
 

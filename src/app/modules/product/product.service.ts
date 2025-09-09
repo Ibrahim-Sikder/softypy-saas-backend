@@ -99,6 +99,10 @@ const getSinigleProduct = async (tenantDomain: string, id: string) => {
       path: 'suppliers',
       model: (await getTenantModel(tenantDomain, 'Supplier')).Model,
     },
+    {
+      path: 'warehouse',
+      model: (await getTenantModel(tenantDomain, 'Warehouse')).Model,
+    },
   ]);
 
   return result;
