@@ -3,28 +3,41 @@ import QueryBuilder from '../../builder/QueryBuilder';
 import { purchaseOrderSearch } from './purchaseorder.constant';
 import { TPurchaseOrder } from './purchaseorder.interface';
 import { getTenantModel } from '../../utils/getTenantModels';
+import AppError from '../../errors/AppError';
+import httpStatus from 'http-status';
 
-const createPurchaseOrder = async (
+export const createPurchaseOrder = async (
   tenantDomain: string,
-  payload: any,
-  file?: Express.Multer.File,
+  payload: any
 ) => {
   const { Model: PurchaseOrder } = await getTenantModel(
     tenantDomain,
-    'PurchaseOrder',
+    'PurchaseOrder'
   );
+  const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
 
   try {
+    // Create PurchaseOrder
     const newOrder = await PurchaseOrder.create(payload);
+
+    // Link order to suppliers
+    if (payload.suppliers && payload.suppliers.length) {
+      await Supplier.updateMany(
+        { _id: { $in: payload.suppliers } },
+        { $push: { orders: newOrder._id } }
+      );
+    }
+
     return newOrder;
   } catch (error: any) {
     console.error('Error creating purchase order:', error.message);
-    throw new Error(
-      error.message ||
-        'An unexpected error occurred while creating the purchase order',
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      error.message || 'An unexpected error occurred while creating the purchase order'
     );
   }
 };
+
 
 const getAllPurchaseOrders = async (
   tenantDomain: string,

@@ -10,11 +10,6 @@ export const commonFields = {
   brand: z.array(z.string()),
   warehouse: z.array(z.string()),
   unit: z.array(z.string()),
-  // expense: z.union([z.number(), z.string()]).optional(),
-  // product_tax: z
-  //   .union([z.number(), z.string()])
-  //   .optional(),
-  // discount: z.union([z.number(), z.string()]).optional(),
   stock_alert: z.union([z.number(), z.string()]).optional(),
   tags: z.array(z.string()).default([]).optional(),
   initialStock: z.union([z.number(), z.string()]).optional(),

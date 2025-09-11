@@ -1,5 +1,5 @@
-import mongoose, { Schema } from "mongoose";
-import type { TSupplier } from "./supplier.interface";
+import mongoose, { Schema } from 'mongoose';
+import type { TSupplier } from './supplier.interface';
 
 export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
   {
@@ -8,13 +8,16 @@ export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
       unique: true,
       index: true,
     },
+    products: [{ type: Schema.Types.ObjectId, ref: 'Product' }],
+    orders: [{ type: Schema.Types.ObjectId, ref: 'PurchaseOrder' }],
+
     full_name: {
       type: String,
-      required: [true, "Supplier name is required"],
+      required: [true, 'Supplier name is required'],
     },
     contact_person_name: {
       type: String,
-      required: [true, "Contact person name is required"],
+      required: [true, 'Contact person name is required'],
     },
     country_code: String,
     phone_number: String,
@@ -40,8 +43,8 @@ export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
     swift_code: String,
     supplier_status: {
       type: String,
-      enum: ["active", "inactive"],
-      default: "active",
+      enum: ['active', 'inactive'],
+      default: 'active',
     },
     notes: String,
 
@@ -55,11 +58,11 @@ export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
       default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // ✅ Auto-generate full phone number before saving
-supplierSchema.pre("save", function (next) {
+supplierSchema.pre('save', function (next) {
   if (this.country_code && this.phone_number) {
     this.full_Phone_number = `${this.country_code}${this.phone_number}`;
   } else {
@@ -69,7 +72,7 @@ supplierSchema.pre("save", function (next) {
 });
 
 // ✅ Auto-update full phone number on update
-supplierSchema.pre("findOneAndUpdate", function (next) {
+supplierSchema.pre('findOneAndUpdate', function (next) {
   const update = this.getUpdate() as {
     country_code?: any;
     phone_number?: any;
@@ -86,7 +89,4 @@ supplierSchema.pre("findOneAndUpdate", function (next) {
   next();
 });
 
-export const Supplier = mongoose.model<TSupplier>(
-  "Supplier",
-  supplierSchema
-);
+export const Supplier = mongoose.model<TSupplier>('Supplier', supplierSchema);

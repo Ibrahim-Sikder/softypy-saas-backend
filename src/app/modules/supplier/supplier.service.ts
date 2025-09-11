@@ -43,13 +43,25 @@ const getAllSupplier = async (
 
     const categoryQuery = new QueryBuilder(Supplier.find(), query)
       .search(['name'])
-      .filter()
-      .sort()
+      // .filter()
+      // .sort()
       .paginate()
       .fields();
 
     const meta = await categoryQuery.countTotal();
-    const suppliers = await categoryQuery.modelQuery;
+    const suppliers = await categoryQuery.modelQuery
+      .populate({
+        path: 'products', // Supplier এর products
+        select: 'name sku price stock',
+      })
+      .populate({
+        path: 'orders',
+        select: 'referenceNo orderDate status grandTotal',
+        populate: {
+          path: 'products.productId',
+          select: 'name price',
+        },
+      });
 
     return {
       success: true,
@@ -68,7 +80,25 @@ const getAllSupplier = async (
 const getSingleSupplier = async (tenantDomain: string, id: string) => {
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
 
-  const supplier = await Supplier.findById(id);
+  const { Model: PurchaseOrder } = await getTenantModel(
+    tenantDomain,
+    'PurchaseOrder',
+  );
+  const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
+  const supplier = await await Supplier.findById(id)
+    .populate({
+      path: 'orders',
+      model: PurchaseOrder,
+      populate: {
+        path: 'products.productId', 
+        model: Product,
+      },
+    })
+    .populate({
+      path: 'products',
+      model: Product
+    });
+
   if (!supplier) {
     throw new AppError(StatusCodes.NOT_FOUND, 'Supplier not found');
   }
