@@ -25,7 +25,6 @@ export const getSingleStock = async (
   ]);
   return stock;
 };
-
 export const updateStock = async (
   tenantDomain: string,
   id: string,
@@ -61,11 +60,9 @@ const getAllStocks = async (tenantDomain: string) => {
   const { Model: Category } = await getTenantModel(tenantDomain, 'Category');
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
   const { Model: Brand } = await getTenantModel(tenantDomain, 'Brand');
-  const { Model: ProductType } = await getTenantModel(
-    tenantDomain,
-    'ProductType',
-  );
+  const { Model: ProductType } = await getTenantModel(tenantDomain, 'ProductType');
   const { Model: Unit } = await getTenantModel(tenantDomain, 'Unit');
+
   const stocks = await Stocks.aggregate([
     {
       $group: {
@@ -91,7 +88,7 @@ const getAllStocks = async (tenantDomain: string) => {
         totalSellingValue: {
           $sum: {
             $cond: [
-              { $eq: ['$type', 'in'] },
+              { $eq: ['$type', 'out'] }, // ✅ corrected
               { $multiply: ['$quantity', '$sellingPrice'] },
               0,
             ],
@@ -106,7 +103,7 @@ const getAllStocks = async (tenantDomain: string) => {
         },
         allSellingPrices: {
           $push: {
-            $cond: [{ $eq: ['$type', 'in'] }, '$sellingPrice', '$$REMOVE'],
+            $cond: [{ $eq: ['$type', 'out'] }, '$sellingPrice', '$$REMOVE'], // ✅ corrected
           },
         },
       },
@@ -130,6 +127,7 @@ const getAllStocks = async (tenantDomain: string) => {
         },
       },
     },
+    // Lookups for product, warehouse, category, etc.
     {
       $lookup: {
         from: Product.collection.name,
@@ -139,7 +137,6 @@ const getAllStocks = async (tenantDomain: string) => {
       },
     },
     { $unwind: '$product' },
-
     {
       $lookup: {
         from: Warehouse.collection.name,
@@ -149,7 +146,6 @@ const getAllStocks = async (tenantDomain: string) => {
       },
     },
     { $unwind: '$warehouse' },
-
     {
       $lookup: {
         from: Category.collection.name,
@@ -161,7 +157,6 @@ const getAllStocks = async (tenantDomain: string) => {
     {
       $unwind: { path: '$product.category', preserveNullAndEmptyArrays: true },
     },
-
     {
       $lookup: {
         from: Supplier.collection.name,
@@ -170,7 +165,6 @@ const getAllStocks = async (tenantDomain: string) => {
         as: 'product.suppliers',
       },
     },
-
     {
       $lookup: {
         from: Brand.collection.name,
@@ -180,7 +174,6 @@ const getAllStocks = async (tenantDomain: string) => {
       },
     },
     { $unwind: { path: '$product.brand', preserveNullAndEmptyArrays: true } },
-
     {
       $lookup: {
         from: ProductType.collection.name,
@@ -190,12 +183,8 @@ const getAllStocks = async (tenantDomain: string) => {
       },
     },
     {
-      $unwind: {
-        path: '$product.product_type',
-        preserveNullAndEmptyArrays: true,
-      },
+      $unwind: { path: '$product.product_type', preserveNullAndEmptyArrays: true },
     },
-
     {
       $lookup: {
         from: Unit.collection.name,

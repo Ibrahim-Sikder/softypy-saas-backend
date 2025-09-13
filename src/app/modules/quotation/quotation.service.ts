@@ -27,7 +27,8 @@ import ejs from 'ejs';
 import { amountInWords } from '../../middlewares/taka-in-words';
 import { getTenantModel } from '../../utils/getTenantModels';
 
-const createQuotationDetails = async (
+
+export const createQuotationDetails = async (
   tenantDomain: string,
   payload: {
     customer: TCustomer;
@@ -41,28 +42,27 @@ const createQuotationDetails = async (
   const session = await connection.startSession();
   session.startTransaction();
 
-
-
   try {
     const { customer, company, showroom, quotation, vehicle } = payload;
 
+    // Models
     const Quotation = (await getTenantModel(tenantDomain, 'Quotation')).Model;
     const Customer = (await getTenantModel(tenantDomain, 'Customer')).Model;
     const Company = (await getTenantModel(tenantDomain, 'Company')).Model;
     const ShowRoom = (await getTenantModel(tenantDomain, 'ShowRoom')).Model;
     const Vehicle = (await getTenantModel(tenantDomain, 'Vehicle')).Model;
     const Stocks = (await getTenantModel(tenantDomain, 'Stocks')).Model;
-    const StockTransaction = (
-      await getTenantModel(tenantDomain, 'StockTransaction')
-    ).Model;
+    const StockTransaction = (await getTenantModel(tenantDomain, 'StockTransaction')).Model;
     const Product = (await getTenantModel(tenantDomain, 'Product')).Model;
 
+    // Sanitize input
     const sanitizeCustomer = sanitizePayload(customer);
     const sanitizeCompany = sanitizePayload(company);
     const sanitizeShowroom = sanitizePayload(showroom);
     const sanitizeQuotation = sanitizePayload(quotation);
     const sanitizeVehicle = sanitizePayload(vehicle);
 
+    // Check required totals
     if (
       sanitizeQuotation.parts_total === undefined ||
       sanitizeQuotation.service_total === undefined ||
@@ -71,15 +71,17 @@ const createQuotationDetails = async (
       throw new AppError(400, 'Missing required total values in quotation');
     }
 
+    // Generate quotation number and amounts in words
     const quotationNumber = await generateQuotationNo(tenantDomain);
     const partsInWords = amountInWords(sanitizeQuotation.parts_total);
     const serviceInWords = amountInWords(sanitizeQuotation.service_total);
     const netTotalInWords = amountInWords(sanitizeQuotation.net_total);
 
+    // Create quotation
     const quotationData = new Quotation({
       ...sanitizeQuotation,
       quotation_no: quotationNumber,
-      parts_total_In_words: partsInWords,
+      parts_total_in_words: partsInWords,
       service_total_in_words: serviceInWords,
       net_total_in_words: netTotalInWords,
     });
@@ -88,6 +90,7 @@ const createQuotationDetails = async (
 
     const { input_data = [], service_input_data = [] } = quotation;
 
+    // Aggregate stock updates
     const productItems = input_data.filter(
       (item) => item.product && item.warehouse && item.quantity,
     );
@@ -105,15 +108,7 @@ const createQuotationDetails = async (
     >();
 
     for (const item of productItems) {
-      const {
-        product,
-        quantity = 0,
-        warehouse,
-        batchNumber,
-        product_name,
-        sellingPrice = 0,
-      } = item;
-
+      const { product, quantity = 0, warehouse, batchNumber, product_name, sellingPrice = 0 } = item;
       const key = `${product}-${warehouse}-${batchNumber || 'no-batch'}`;
 
       if (stockUpdateMap.has(key)) {
@@ -130,21 +125,13 @@ const createQuotationDetails = async (
       }
     }
 
-    for (const {
-      product,
-      warehouse,
-      batchNumber,
-      totalQuantity,
-      product_name,
-      sellingPrice,
-    } of stockUpdateMap.values()) {
+    // Update stock and create transactions
+    for (const { product, warehouse, batchNumber, totalQuantity, product_name, sellingPrice } of stockUpdateMap.values()) {
       const stockQuery: any = { product, warehouse };
       if (batchNumber) stockQuery.batchNumber = batchNumber;
 
       const existingStock = await Stocks.findOne(stockQuery).session(session);
-      if (!existingStock) {
-        throw new AppError(404, `Stock "${product_name}" not found.`);
-      }
+      if (!existingStock) throw new AppError(404, `Stock "${product_name}" not found.`);
 
       if (existingStock.quantity < totalQuantity) {
         throw new AppError(
@@ -153,9 +140,11 @@ const createQuotationDetails = async (
         );
       }
 
+      // Deduct stock
       existingStock.quantity -= totalQuantity;
       await existingStock.save({ session });
 
+      // Record transaction
       const stockTransaction = new StockTransaction({
         product,
         warehouse,
@@ -167,13 +156,11 @@ const createQuotationDetails = async (
         sellingPrice,
         date: new Date(),
       });
-
       await stockTransaction.save({ session });
 
+      // Update product quantity
       const productData = await Product.findById(product).session(session);
-      if (!productData) {
-        throw new AppError(404, `Product not found.`);
-      }
+      if (!productData) throw new AppError(404, `Product not found.`);
 
       if ((productData.product_quantity ?? 0) < totalQuantity) {
         throw new AppError(
@@ -187,11 +174,9 @@ const createQuotationDetails = async (
       await productData.save({ session });
     }
 
+    // Link quotation to user
     if (quotation.user_type === 'customer') {
-      const existingCustomer = await Customer.findOne({
-        customerId: quotation.Id,
-      }).session(session);
-
+      const existingCustomer = await Customer.findOne({ customerId: quotation.Id }).session(session);
       if (existingCustomer) {
         await Customer.findByIdAndUpdate(
           existingCustomer._id,
@@ -202,10 +187,7 @@ const createQuotationDetails = async (
         await quotationData.save({ session });
       }
     } else if (quotation.user_type === 'company') {
-      const existingCompany = await Company.findOne({
-        companyId: quotation.Id,
-      }).session(session);
-
+      const existingCompany = await Company.findOne({ companyId: quotation.Id }).session(session);
       if (existingCompany) {
         await Company.findByIdAndUpdate(
           existingCompany._id,
@@ -216,10 +198,7 @@ const createQuotationDetails = async (
         await quotationData.save({ session });
       }
     } else if (quotation.user_type === 'showRoom') {
-      const existingShowRoom = await ShowRoom.findOne({
-        showRoomId: quotation.Id,
-      }).session(session);
-
+      const existingShowRoom = await ShowRoom.findOne({ showRoomId: quotation.Id }).session(session);
       if (existingShowRoom) {
         await ShowRoom.findByIdAndUpdate(
           existingShowRoom._id,
@@ -231,6 +210,7 @@ const createQuotationDetails = async (
       }
     }
 
+    // Link vehicle if available
     if (vehicle && vehicle.chassis_no) {
       const vehicleData = await Vehicle.findOneAndUpdate(
         { chassis_no: vehicle.chassis_no },
@@ -244,6 +224,7 @@ const createQuotationDetails = async (
       }
     }
 
+    // Commit transaction
     await session.commitTransaction();
     session.endSession();
 
@@ -254,6 +235,7 @@ const createQuotationDetails = async (
     throw error;
   }
 };
+
 
 const getAllQuotationsFromDB = async (
   tenantDomain: string,
