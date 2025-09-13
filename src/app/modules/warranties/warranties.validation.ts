@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 export const createWarrantyValidation = z.object({
-  name: z.string().min(1, 'Warranty name is required'),
+  name: z.string().optional(),
   description: z.string().optional(),
-  duration: z.number().min(1, 'Duration must be at least 1'),
-  durationType: z.enum(['days', 'months', 'years']),
+  duration: z.number().optional(),
+  durationType: z.string().optional(),
   terms: z.string().optional(),
   tenantDomain: z.string().optional(),
 });

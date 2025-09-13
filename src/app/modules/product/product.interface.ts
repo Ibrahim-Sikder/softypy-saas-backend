@@ -25,6 +25,7 @@ export type TProduct = {
   stock_alert: number;
   product_quantity: number;
   suppliers: ObjectId;
+  warranties: ObjectId;
   warehouse: ObjectId;
   productCost: number;
   isDeleted: boolean;

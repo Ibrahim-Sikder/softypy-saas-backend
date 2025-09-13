@@ -42,6 +42,7 @@ import { CompanyProfileRoutes } from '../modules/companyProfile/companyProfile.r
 import { noteRoutes } from '../modules/note/note.route';
 import { contactRoutes } from '../contact/contact.route';
 import { companyBrandRoutes } from '../modules/companyBrand/route';
+import { warrantyRoutes } from '../modules/warranties/warranties.route';
 
 const router = Router();
 
@@ -214,6 +215,10 @@ const moduleRoutes = [
   {
     path: '/company-brand',
     route: companyBrandRoutes,
+  },
+  {
+    path: '/warranties',
+    route: warrantyRoutes,
   },
   {
     path: '/meta',

@@ -4,6 +4,7 @@ export const commonFields = {
   product_name: z.string({ required_error: 'Product name is required' }),
   product_type: z.array(z.string()).optional().or(z.null()),
   suppliers: z.array(z.string()),
+  warranties: z.array(z.string()).optional(),
   category: z.array(z.string()),
   product_code: z.string(),
   shipping: z.union([z.number(), z.string(), z.null()]).optional(),

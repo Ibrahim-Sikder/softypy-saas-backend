@@ -5,8 +5,6 @@ export const warrantySchema: Schema<TWarranty> = new Schema<TWarranty>(
   {
     name: {
       type: String,
-      required: [true, 'Warranty name is required'],
-      trim: true,
     },
     description: {
       type: String,
@@ -14,17 +12,12 @@ export const warrantySchema: Schema<TWarranty> = new Schema<TWarranty>(
     },
     duration: {
       type: Number,
-      required: [true, 'Duration is required'],
-      min: [1, 'Duration must be at least 1'],
     },
     durationType: {
       type: String,
-      enum: ['days', 'months', 'years'],
-      required: [true, 'Duration type is required'],
     },
     terms: {
       type: String,
-      default: '',
     },
   },
   { timestamps: true },

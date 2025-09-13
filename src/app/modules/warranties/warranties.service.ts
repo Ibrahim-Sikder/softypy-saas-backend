@@ -3,11 +3,9 @@ import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { getTenantModel } from '../../utils/getTenantModels';
 import { TWarranty } from './warranties.interface';
-const createWarranty = async (payload: TWarranty) => {
-  const { Model: Warranty } = await getTenantModel(
-    payload.tenantDomain as string,
-    'Warranty',
-  );
+
+const createWarranty = async (payload: TWarranty, tenantDomain: string) => {
+  const { Model: Warranty } = await getTenantModel(tenantDomain, 'Warranty');
 
   const newWarranty = await Warranty.create(payload);
   return newWarranty;

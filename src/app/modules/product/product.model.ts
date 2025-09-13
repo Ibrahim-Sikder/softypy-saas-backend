@@ -25,6 +25,10 @@ export const ProductSchema = new Schema<TProduct>(
       ref: 'Supplier',
       required: true,
     },
+    warranties: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Warranty',
+    },
     product_code: {
       type: String,
     },
