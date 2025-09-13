@@ -36,32 +36,26 @@ const createSupplier = async (tenantDomain: string, payload: any) => {
 
 const getAllSupplier = async (
   tenantDomain: string,
-  query: Record<string, unknown>,
+  query: Record<string, unknown>
 ) => {
   try {
+    // Get the Supplier model for the tenant
     const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
 
-    const categoryQuery = new QueryBuilder(Supplier.find(), query)
+    // Build the query using QueryBuilder
+    const supplierQuery = new QueryBuilder(Supplier.find(), query)
       .search(['name'])
-      // .filter()
-      // .sort()
+      .filter()
+      .sort()
       .paginate()
       .fields();
 
-    const meta = await categoryQuery.countTotal();
-    const suppliers = await categoryQuery.modelQuery
-      .populate({
-        path: 'products', // Supplier এর products
-        select: 'name sku price stock',
-      })
-      .populate({
-        path: 'orders',
-        select: 'referenceNo orderDate status grandTotal',
-        populate: {
-          path: 'products.productId',
-          select: 'name price',
-        },
-      });
+    // Get total count for pagination metadata
+    const meta = await supplierQuery.countTotal();
+
+    // Execute the query and populate related fields
+    const suppliers = await supplierQuery.modelQuery
+      
 
     return {
       success: true,
@@ -72,10 +66,11 @@ const getAllSupplier = async (
   } catch (error: any) {
     throw new AppError(
       StatusCodes.INTERNAL_SERVER_ERROR,
-      'Error fetching suppliers',
+      'Error fetching suppliers'
     );
   }
 };
+
 
 const getSingleSupplier = async (tenantDomain: string, id: string) => {
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
@@ -90,13 +85,13 @@ const getSingleSupplier = async (tenantDomain: string, id: string) => {
       path: 'orders',
       model: PurchaseOrder,
       populate: {
-        path: 'products.productId', 
+        path: 'products.productId',
         model: Product,
       },
     })
     .populate({
       path: 'products',
-      model: Product
+      model: Product,
     });
 
   if (!supplier) {
