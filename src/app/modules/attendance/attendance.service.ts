@@ -261,38 +261,158 @@ export const getSingleDateAttendance = async (
 
 export const deleteAttendanceFromDB = async (
   tenantDomain: string,
-  dateObj: { date: string },
+  attendanceId: string,
 ) => {
-  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+  const { Model: Attendance } = await getTenantModel(
+    tenantDomain,
+    'Attendance',
+  );
   const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
-  const existingAttendance = await Attendance.find({ date: dateObj.date });
 
-  if (existingAttendance.length === 0) {
-    return [];
+  const existingAttendance = await Attendance.findById(attendanceId);
+
+  if (!existingAttendance) {
+    return null;
   }
 
-  const deletedAttendances: any[] = [];
+  const deleted = await Attendance.findByIdAndDelete(attendanceId);
 
-  for (const attendance of existingAttendance) {
-    const existingEmployee = await Employee.findById(attendance.employee);
+  if (deleted) {
+    const existingEmployee = await Employee.findById(deleted.employee);
 
-    const deleted = await Attendance.findByIdAndDelete(attendance._id);
-
-    if (deleted) {
-      deletedAttendances.push(deleted);
-
-      if (existingEmployee) {
-        await Employee.findByIdAndUpdate(
-          existingEmployee._id,
-          { $pull: { attendance: attendance._id } },
-          { new: true, runValidators: true },
-        );
-      }
+    if (existingEmployee) {
+      await Employee.findByIdAndUpdate(
+        existingEmployee._id,
+        { $pull: { attendance: attendanceId } },
+        { new: true, runValidators: true },
+      );
     }
   }
 
-  return deletedAttendances;
+  return deleted;
 };
+
+export const getAllAttendance = async (
+  tenantDomain: string,
+  limit: number,
+  page: number,
+  searchTerm?: string,
+  startDate?: string,
+  endDate?: string,
+  month?: string,
+  year?: string,
+  status?: string
+) => {
+  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
+
+  const aggregationPipeline: any[] = [];
+
+  // Lookup employee
+  aggregationPipeline.push({
+    $lookup: {
+      from: Employee.collection.name,
+      localField: 'employee',
+      foreignField: '_id',
+      as: 'employee',
+    },
+  });
+
+  aggregationPipeline.push({ $unwind: '$employee' });
+
+  // Convert date field safely and normalize to ignore time
+  aggregationPipeline.push({
+    $addFields: {
+      dateObj: {
+        $cond: [
+          { $eq: [{ $type: '$date' }, 'string'] },
+          {
+            $dateFromString: {
+              dateString: '$date',
+              timezone: 'UTC',
+            },
+          },
+          '$date',
+        ],
+      },
+    },
+  });
+
+  // Normalize date to remove time (keep only year, month, day)
+  aggregationPipeline.push({
+    $addFields: {
+      dateNormalized: {
+        $dateFromParts: {
+          year: { $year: '$dateObj' },
+          month: { $month: '$dateObj' },
+          day: { $dayOfMonth: '$dateObj' },
+        },
+      },
+    },
+  });
+
+  const matchStage: any = {};
+
+  // Date filters (normalized)
+  if (startDate && endDate) {
+    const start = new Date(`${startDate}T00:00:00.000Z`);
+    const end = new Date(`${endDate}T23:59:59.999Z`);
+    matchStage.dateNormalized = { $gte: start, $lte: end };
+  } else if (month) {
+    const [y, m] = month.split('-');
+    const start = new Date(Number(y), Number(m) - 1, 1, 0, 0, 0, 0);
+    const end = new Date(Number(y), Number(m), 0, 23, 59, 59, 999);
+    matchStage.dateNormalized = { $gte: start, $lte: end };
+  } else if (year) {
+    const start = new Date(Number(year), 0, 1, 0, 0, 0, 0);
+    const end = new Date(Number(year), 11, 31, 23, 59, 59, 999);
+    matchStage.dateNormalized = { $gte: start, $lte: end };
+  }
+
+  // Status filter
+  if (status && status !== '') {
+    if (status === 'present') matchStage.present = true;
+    if (status === 'absent') matchStage.absent = true;
+    if (status === 'late') matchStage.late_status = true;
+  }
+
+  // Search filter
+  if (searchTerm && searchTerm.trim() !== '') {
+    matchStage.$or = [
+      { 'employee.full_name': new RegExp(searchTerm, 'i') },
+      { 'employee.employeeId': new RegExp(searchTerm, 'i') },
+    ];
+  }
+
+  // Apply match stage
+  if (Object.keys(matchStage).length > 0) {
+    aggregationPipeline.push({ $match: matchStage });
+  }
+
+  // Sort by normalized date descending
+  aggregationPipeline.push({ $sort: { dateNormalized: -1 } });
+
+  // Pagination
+  aggregationPipeline.push({
+    $facet: {
+      metadata: [{ $count: 'totalRecords' }],
+      data: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+    },
+  });
+
+  const result = await Attendance.aggregate(aggregationPipeline);
+
+  const totalRecords = result[0]?.metadata[0]?.totalRecords || 0;
+  const attendances = result[0]?.data || [];
+
+  return {
+    totalRecords,
+    totalPages: Math.ceil(totalRecords / limit),
+    currentPage: page,
+    attendances,
+  };
+};
+
 
 
 export const AttendanceServices = {
@@ -302,4 +422,5 @@ export const AttendanceServices = {
   getSingleDateAttendance,
   deleteAttendanceFromDB,
   getSingleAttendance,
+  getAllAttendance,
 };

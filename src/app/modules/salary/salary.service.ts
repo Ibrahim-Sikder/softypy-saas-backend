@@ -11,6 +11,21 @@ import mongoose from 'mongoose';
 import { getMonthName } from './salary.const';
 import { getTenantModel } from '../../utils/getTenantModels';
 
+const allMonths = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
 const createSalaryIntoDB = async (tenantDomain: string, payload: TSalary[]) => {
   // Get tenant-specific models and DB connection
   const { Model: Employee, connection } = await getTenantModel(
@@ -199,88 +214,8 @@ const addPartialPayment = async (
   }
 };
 
-const updateSalaryIntoDB = async (
-  tenantDomain: string,
-  id: string,
-  payload: Partial<TSalary>,
-) => {
-  const { Model: Salary, connection } = await getTenantModel(
-    tenantDomain,
-    'Salary',
-  );
 
-  const session = await connection.startSession();
-  session.startTransaction();
 
-  try {
-    // Fetch the existing salary record
-    const existingSalary = await Salary.findById(id).session(session);
-
-    if (!existingSalary) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'Salary record not found.');
-    }
-
-    // Fields that should not be updated
-    const excludedFields = [
-      'payment_history',
-      'paid_amount',
-      'due_amount',
-      'payment_status',
-      '_id',
-      'createdAt',
-      'updatedAt',
-      '__v',
-    ];
-
-    // Apply updates only to allowed fields
-    Object.keys(payload).forEach((key) => {
-      if (!excludedFields.includes(key)) {
-        (existingSalary as any)[key] = (payload as any)[key];
-      }
-    });
-
-    // Recalculate total payment if relevant fields changed
-    const salaryComponentsChanged = [
-      'bonus',
-      'overtime_amount',
-      'salary_amount',
-      'previous_due',
-      'cut_salary',
-    ].some((field) => payload[field as keyof TSalary] !== undefined);
-
-    if (salaryComponentsChanged) {
-      const bonus = Number(existingSalary.bonus) || 0;
-      const overtimeAmount = Number(existingSalary.overtime_amount) || 0;
-      const salaryAmount = Number(existingSalary.salary_amount) || 0;
-      const previousDue = Number(existingSalary.previous_due) || 0;
-      const cutSalary = Number(existingSalary.cut_salary) || 0;
-
-      const newTotalPayment = Math.max(
-        0,
-        bonus + overtimeAmount + salaryAmount + previousDue - cutSalary,
-      );
-      existingSalary.total_payment = newTotalPayment;
-    }
-
-    existingSalary.markModified('total_payment');
-
-    if (existingSalary.payment_history) {
-      existingSalary.markModified('payment_history');
-    }
-
-    await existingSalary.save({ session });
-
-    await session.commitTransaction();
-    session.endSession();
-
-    return existingSalary;
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    console.error('❌ Error updating salary:', error);
-    throw error;
-  }
-};
 
 const deleteSalaryFromDB = async (tenantDomain: string, id: string) => {
   const { Model: Salary, connection } = await getTenantModel(
@@ -353,93 +288,79 @@ const getSalariesForCurrentMonth = async (
   };
 };
 
-const getSingleSalary = async (tenantDomain: string, employeeId?: string) => {
-  const { Model: Salary } = await getTenantModel(tenantDomain, 'Salary');
 
-  let matchQuery: any = {};
-
-  if (employeeId) {
-    matchQuery = {
-      employee: new mongoose.Types.ObjectId(employeeId),
-    };
-  }
-
-  const salaries = await Salary.aggregate([
-    { $match: matchQuery },
-    {
-      $lookup: {
-        from: 'employees',
-        localField: 'employee',
-        foreignField: '_id',
-        as: 'employee',
-      },
-    },
-    { $unwind: '$employee' },
-    {
-      $lookup: {
-        from: 'users',
-        localField: 'payment_history.created_by',
-        foreignField: '_id',
-        as: 'payment_user_docs',
-      },
-    },
-    {
-      $addFields: {
-        payment_history: {
-          $map: {
-            input: '$payment_history',
-            as: 'ph',
-            in: {
-              $mergeObjects: [
-                '$$ph',
-                {
-                  created_by: {
-                    $arrayElemAt: [
-                      {
-                        $filter: {
-                          input: '$payment_user_docs',
-                          as: 'user',
-                          cond: { $eq: ['$$user._id', '$$ph.created_by'] },
-                        },
-                      },
-                      0,
-                    ],
-                  },
-                },
-              ],
-            },
-          },
-        },
-      },
-    },
-    { $unset: 'payment_user_docs' },
-    { $sort: { createdAt: -1 } },
-  ]);
-
-  return {
-    salaries,
-  };
-};
-
-const getAllSalaries = async (
+export const getAllSalaries = async (
   tenantDomain: string,
-  limit: number,
-  page: number,
+  limit: number = 10,
+  page: number = 1,
   searchTerm?: string,
+  month?: string,
+  year?: string,
+  day?: number,
 ) => {
   const { Model: Salary } = await getTenantModel(tenantDomain, 'Salary');
 
   const matchStage: any = {};
 
-  if (searchTerm && searchTerm.trim() !== '') {
+  // ===== Month filter =====
+  if (month && month.trim() !== '') {
+    const monthTrim = month.trim();
+    const numeric = Number(monthTrim);
+    let monthName = monthTrim;
+
+    if (!Number.isNaN(numeric) && numeric >= 1 && numeric <= 12) {
+      monthName = allMonths[numeric - 1];
+    } else {
+      const idx = allMonths.findIndex(
+        (m) => m.toLowerCase() === monthTrim.toLowerCase(),
+      );
+      if (idx !== -1) monthName = allMonths[idx];
+    }
+
+    matchStage.month_of_salary = monthName;
+  }
+
+  // ===== Year filter =====
+  if (year && year.trim() !== '') {
+    matchStage.year_of_salary = year.trim();
+  }
+
+  // ===== Day filter (payment_history.date or createdAt) =====
+  if (typeof day === 'number' && !Number.isNaN(day)) {
+    const yearVal = year ? Number(year) : new Date().getFullYear();
+    const monthVal =
+      month && allMonths.includes(matchStage.month_of_salary)
+        ? allMonths.indexOf(matchStage.month_of_salary)
+        : new Date().getMonth();
+
+    const startDate = new Date(yearVal, monthVal, day, 0, 0, 0);
+    const endDate = new Date(yearVal, monthVal, day + 1, 0, 0, 0);
+
     matchStage.$or = [
-      { month_of_salary: { $regex: new RegExp(searchTerm, 'i') } },
-      { full_name: { $regex: new RegExp(searchTerm, 'i') } },
-      { employeeId: { $regex: new RegExp(searchTerm, 'i') } },
+      { 'payment_history.date': { $gte: startDate, $lt: endDate } },
+      { createdAt: { $gte: startDate, $lt: endDate } },
     ];
   }
 
-  const salaries = await Salary.aggregate([
+  // ===== Search filter =====
+  if (searchTerm && searchTerm.trim() !== '') {
+    const term = searchTerm.trim();
+    const searchConditions = [
+      { month_of_salary: { $regex: term, $options: 'i' } },
+      { full_name: { $regex: term, $options: 'i' } },
+      { employeeId: { $regex: term, $options: 'i' } },
+    ];
+
+    if (matchStage.$or) {
+      matchStage.$and = [{ $or: matchStage.$or }, { $or: searchConditions }];
+      delete matchStage.$or;
+    } else {
+      matchStage.$or = searchConditions;
+    }
+  }
+
+  // ===== Aggregation pipeline =====
+  const pipeline: any[] = [
     ...(Object.keys(matchStage).length > 0 ? [{ $match: matchStage }] : []),
     {
       $lookup: {
@@ -449,7 +370,7 @@ const getAllSalaries = async (
         as: 'employee',
       },
     },
-    { $unwind: '$employee' },
+    { $unwind: { path: '$employee', preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
         from: 'users',
@@ -462,7 +383,7 @@ const getAllSalaries = async (
       $addFields: {
         payment_history: {
           $map: {
-            input: '$payment_history',
+            input: { $ifNull: ['$payment_history', []] },
             as: 'ph',
             in: {
               $mergeObjects: [
@@ -491,13 +412,17 @@ const getAllSalaries = async (
     { $sort: { createdAt: -1 } },
     { $skip: (page - 1) * limit },
     { $limit: limit },
-  ]);
+  ];
 
-  const totalDataAggregation = await Salary.aggregate([
+  const salaries = await Salary.aggregate(pipeline);
+
+  // ===== Total count for pagination =====
+  const countPipeline = [
     ...(Object.keys(matchStage).length > 0 ? [{ $match: matchStage }] : []),
     { $count: 'totalCount' },
-  ]);
+  ];
 
+  const totalDataAggregation = await Salary.aggregate(countPipeline);
   const totalData =
     totalDataAggregation.length > 0 ? totalDataAggregation[0].totalCount : 0;
 
@@ -690,6 +615,289 @@ const calculateTotalPaymentManually = (
   );
 };
 
+
+export const getSingleSalary = async (
+  tenantDomain: string,
+  employeeId?: string,
+  month?: string,
+  year?: string,
+  day?: number,
+  
+) => {
+  const { Model: Salary } = await getTenantModel(tenantDomain, 'Salary');
+
+  const matchQuery: any = {};
+
+  if (employeeId) {
+    matchQuery.employee = new mongoose.Types.ObjectId(employeeId);
+  }
+
+  // ===== Month filter =====
+  if (month && month.trim() !== '') {
+    const monthTrim = month.trim();
+    const numeric = Number(monthTrim);
+    let monthName = monthTrim;
+
+    if (!Number.isNaN(numeric) && numeric >= 1 && numeric <= 12) {
+      monthName = allMonths[numeric - 1];
+    } else {
+      const idx = allMonths.findIndex(
+        (m) => m.toLowerCase() === monthTrim.toLowerCase(),
+      );
+      if (idx !== -1) monthName = allMonths[idx];
+    }
+
+    matchQuery.month_of_salary = monthName;
+  }
+
+  // ===== Year filter =====
+  if (year && year.trim() !== '') {
+    matchQuery.year_of_salary = year.trim();
+  }
+
+  // ===== Day filter (payment_history.date or createdAt) =====
+  if (typeof day === 'number' && !Number.isNaN(day)) {
+    const yearVal = year ? Number(year) : new Date().getFullYear();
+    const monthVal =
+      month && allMonths.includes(matchQuery.month_of_salary)
+        ? allMonths.indexOf(matchQuery.month_of_salary)
+        : new Date().getMonth();
+
+    const startDate = new Date(yearVal, monthVal, day, 0, 0, 0);
+    const endDate = new Date(yearVal, monthVal, day + 1, 0, 0, 0);
+
+    matchQuery.$or = [
+      { 'payment_history.date': { $gte: startDate, $lt: endDate } },
+      { createdAt: { $gte: startDate, $lt: endDate } },
+    ];
+  }
+
+  // ===== Aggregation pipeline =====
+  const salaries = await Salary.aggregate([
+    { $match: matchQuery },
+    {
+      $lookup: {
+        from: 'employees',
+        localField: 'employee',
+        foreignField: '_id',
+        as: 'employee',
+      },
+    },
+    { $unwind: '$employee' },
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'payment_history.created_by',
+        foreignField: '_id',
+        as: 'payment_user_docs',
+      },
+    },
+    {
+      $addFields: {
+        payment_history: {
+          $map: {
+            input: { $ifNull: ['$payment_history', []] },
+            as: 'ph',
+            in: {
+              $mergeObjects: [
+                '$$ph',
+                {
+                  created_by: {
+                    $arrayElemAt: [
+                      {
+                        $filter: {
+                          input: '$payment_user_docs',
+                          as: 'user',
+                          cond: { $eq: ['$$user._id', '$$ph.created_by'] },
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    },
+    { $unset: 'payment_user_docs' },
+    { $sort: { createdAt: -1 } },
+  ]);
+
+  return { salaries };
+};
+
+export const getSalariesByMonth = async (tenantDomain: string, month: string) => {
+  const { Model: Salary } = await getTenantModel(tenantDomain, 'Salary');
+
+  const matchQuery: any = {};
+  console.log('from salary', month);
+
+  // ===== Month filter =====
+  if (month && month.trim() !== '') {
+    const monthTrim = month.trim();
+    const numeric = Number(monthTrim);
+    let monthName = monthTrim;
+
+    if (!Number.isNaN(numeric) && numeric >= 1 && numeric <= 12) {
+      monthName = allMonths[numeric - 1];
+    } else {
+      const idx = allMonths.findIndex(
+        (m) => m.toLowerCase() === monthTrim.toLowerCase(),
+      );
+      if (idx !== -1) monthName = allMonths[idx];
+    }
+
+    matchQuery.month_of_salary = monthName;
+  }
+
+  // ===== Aggregation pipeline =====
+  const salaries = await Salary.aggregate([
+    { $match: matchQuery },
+    {
+      $lookup: {
+        from: 'employees',
+        localField: 'employee',
+        foreignField: '_id',
+        as: 'employee',
+      },
+    },
+    { $unwind: '$employee' },
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'payment_history.created_by',
+        foreignField: '_id',
+        as: 'payment_user_docs',
+      },
+    },
+    {
+      $addFields: {
+        payment_history: {
+          $map: {
+            input: { $ifNull: ['$payment_history', []] },
+            as: 'ph',
+            in: {
+              $mergeObjects: [
+                '$$ph',
+                {
+                  created_by: {
+                    $arrayElemAt: [
+                      {
+                        $filter: {
+                          input: '$payment_user_docs',
+                          as: 'user',
+                          cond: { $eq: ['$$user._id', '$$ph.created_by'] },
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    },
+    { $unset: 'payment_user_docs' },
+    { $sort: { createdAt: -1 } }, // keep sorting if needed
+    // { $limit: 1 }, // ❌ REMOVE THIS TO RETURN ALL
+  ]);
+
+  return salaries; // returns array of salaries
+};
+
+const updateSalaryIntoDB = async (
+  tenantDomain: string,
+  id: string,
+  payload: Partial<TSalary>,
+) => {
+  const { Model: Salary, connection } = await getTenantModel(
+    tenantDomain,
+    'Salary',
+  );
+
+  const session = await connection.startSession();
+  session.startTransaction();
+
+  try {
+    // Fetch the existing salary record with payment_history
+    const existingSalary = await Salary.findById(id).session(session);
+
+    if (!existingSalary) {
+      throw new AppError(StatusCodes.NOT_FOUND, 'Salary record not found.');
+    }
+
+    // Fields that should not be overwritten directly
+    const excludedFields = [
+      'payment_history',
+      'paid_amount',
+      'due_amount',
+      'payment_status',
+      '_id',
+      'createdAt',
+      'updatedAt',
+      '__v',
+    ];
+
+    // Apply updates only to allowed fields
+    Object.keys(payload).forEach((key) => {
+      if (!excludedFields.includes(key)) {
+        (existingSalary as any)[key] = (payload as any)[key];
+      }
+    });
+
+    // Handle payment updates by adding to payment_history
+    if (payload.advance !== undefined || payload.pay !== undefined) {
+      const currentAdvance = Number(payload.advance) || 0;
+      const currentPay = Number(payload.pay) || 0;
+      
+      // Calculate the difference from existing values
+      const advanceDiff = currentAdvance - existingSalary.advance;
+      const payDiff = currentPay - existingSalary.pay;
+      
+      // Update payment history with new payments
+      if (advanceDiff > 0) {
+        existingSalary.payment_history.push({
+          amount: advanceDiff,
+          date: new Date(),
+          note: 'Additional advance payment',
+          payment_method: 'cash',
+        });
+      }
+      
+      if (payDiff > 0) {
+        existingSalary.payment_history.push({
+          amount: payDiff,
+          date: new Date(),
+          note: 'Additional salary payment',
+          payment_method: 'cash',
+        });
+      }
+      
+      // Update the legacy fields
+      existingSalary.advance = currentAdvance;
+      existingSalary.pay = currentPay;
+    }
+
+    existingSalary.recalculatePayments();
+
+    await existingSalary.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return existingSalary;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('❌ Error updating salary:', error);
+    throw error;
+  }
+};
+
 export const SalaryServices = {
   createSalaryIntoDB,
   getSalariesForCurrentMonth,
@@ -703,4 +911,5 @@ export const SalaryServices = {
   getSalaryStatistics,
   recalculateAllSalaries,
   calculateTotalPaymentManually,
+  getSalariesByMonth
 };

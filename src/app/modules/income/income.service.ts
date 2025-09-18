@@ -2,11 +2,27 @@
 import QueryBuilder from '../../builder/QueryBuilder';
 import { IIncome } from './income.interface';
 import { getTenantModel } from '../../utils/getTenantModels';
+import mongoose from 'mongoose';
 
 const createIncome = async (tenantDomain: string, payload: any) => {
   const { Model: Income } = await getTenantModel(tenantDomain, 'Income');
 
   try {
+    // validate income id
+    if (payload.invoice_id) {
+      const exists = await Income.findOne({ invoice_id: payload.invoice_id });
+      if (exists) {
+        throw new Error('This invoice id already create  to another expense');
+      }
+    }
+
+    // Remove invoice_id if not provided or invalid
+    if (!payload.invoice_id) {
+      delete payload.invoice_id;
+    } else if (!mongoose.Types.ObjectId.isValid(payload.invoice_id)) {
+      throw new Error('Invalid invoice_id');
+    }
+
     // Filter only valid income items
     const validIncomeItems = Array.isArray(payload?.income_items)
       ? payload.income_items.filter(

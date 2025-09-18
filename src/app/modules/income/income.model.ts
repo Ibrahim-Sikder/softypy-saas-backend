@@ -1,10 +1,10 @@
-import mongoose, { Schema, model } from "mongoose";
-import { IIncome } from "./income.interface";
+import mongoose, { Schema, model } from 'mongoose';
+import { IIncome } from './income.interface';
 
 export const incomeItemSchema = new Schema(
   {
     name: { type: String },
-    amount: { type: Number,  },
+    amount: { type: Number },
   },
   { _id: false },
 );
@@ -14,7 +14,9 @@ export const incomeSchema = new Schema<IIncome>(
     date: { type: String },
     invoice_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Invoice",
+      ref: 'Invoice',
+      unique: true,
+      sparse: true,
     },
     income_items: { type: [incomeItemSchema] },
     payment_method: { type: String },
@@ -31,4 +33,4 @@ export const incomeSchema = new Schema<IIncome>(
   { timestamps: true },
 );
 
-export const Income = model<IIncome>("Income", incomeSchema);
+export const Income = model<IIncome>('Income', incomeSchema);
