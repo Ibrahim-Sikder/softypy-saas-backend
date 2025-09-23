@@ -6,7 +6,6 @@ import AppError from '../../errors/AppError';
 
 import { getTenantModel } from '../../utils/getTenantModels';
 import { generateSupplierId } from './supplier.utils';
-import httpStatus from 'http-status';
 
 const createSupplier = async (tenantDomain: string, payload: any) => {
   try {

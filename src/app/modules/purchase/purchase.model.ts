@@ -4,7 +4,7 @@ import { TPurchase } from './purchase.interface';
 export const purchaseSchema: Schema<TPurchase> = new Schema<TPurchase>(
   {
     date: {
-      type: String,
+      type: Date,
     },
     referenceNo: {
       type: String,
