@@ -68,7 +68,7 @@ const getSingleProduct = async (
   try {
     const { id } = req.params;
      const tenantDomain = req.query.tenantDomain as string;
-    const result = await productServices.getSinigleProduct(tenantDomain,id);
+    const result = await productServices.getSingleProduct(tenantDomain,id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,

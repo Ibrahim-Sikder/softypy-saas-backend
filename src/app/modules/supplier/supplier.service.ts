@@ -6,6 +6,7 @@ import AppError from '../../errors/AppError';
 
 import { getTenantModel } from '../../utils/getTenantModels';
 import { generateSupplierId } from './supplier.utils';
+import httpStatus from 'http-status';
 
 const createSupplier = async (tenantDomain: string, payload: any) => {
   try {
@@ -36,26 +37,19 @@ const createSupplier = async (tenantDomain: string, payload: any) => {
 
 const getAllSupplier = async (
   tenantDomain: string,
-  query: Record<string, unknown>
+  query: Record<string, unknown>,
 ) => {
   try {
-    // Get the Supplier model for the tenant
     const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
 
-    // Build the query using QueryBuilder
     const supplierQuery = new QueryBuilder(Supplier.find(), query)
       .search(['name'])
       .filter()
       .sort()
       .paginate()
       .fields();
-
-    // Get total count for pagination metadata
     const meta = await supplierQuery.countTotal();
-
-    // Execute the query and populate related fields
-    const suppliers = await supplierQuery.modelQuery
-      
+    const suppliers = await supplierQuery.modelQuery;
 
     return {
       success: true,
@@ -66,21 +60,21 @@ const getAllSupplier = async (
   } catch (error: any) {
     throw new AppError(
       StatusCodes.INTERNAL_SERVER_ERROR,
-      'Error fetching suppliers'
+      'Error fetching suppliers',
     );
   }
 };
 
-
 const getSingleSupplier = async (tenantDomain: string, id: string) => {
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
-
   const { Model: PurchaseOrder } = await getTenantModel(
     tenantDomain,
     'PurchaseOrder',
   );
+  const { Model: Purchase } = await getTenantModel(tenantDomain, 'Purchase');
   const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
-  const supplier = await await Supplier.findById(id)
+
+  const supplier = await Supplier.findById(id)
     .populate({
       path: 'orders',
       model: PurchaseOrder,
@@ -92,16 +86,30 @@ const getSingleSupplier = async (tenantDomain: string, id: string) => {
     .populate({
       path: 'products',
       model: Product,
+    })
+    .populate({
+      path: 'purchases',
+      model: Purchase,
     });
 
   if (!supplier) {
     throw new AppError(StatusCodes.NOT_FOUND, 'Supplier not found');
   }
 
-  return supplier;
+  // 🔥 Calculate order status summary
+  const orderStatusSummary: Record<string, number> = {};
+  supplier.orders.forEach((order: any) => {
+    const status = order.status || 'Unknown';
+    orderStatusSummary[status] = (orderStatusSummary[status] || 0) + 1;
+  });
+
+  // Return supplier with status summary
+  return {
+    ...supplier.toObject(),
+    orderStatusSummary,
+  };
 };
 
-// In your supplier.service.ts file
 
 const getSupplierWithBillPayments = async (
   tenantDomain: string,
@@ -211,6 +219,78 @@ export const restoreFromRecycledSupplier = async (
 
   return supplier;
 };
+
+export const recordSupplierPayment = async (
+  tenantDomain: string,
+  payload: any,
+) => {
+  const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+
+  const supplier = await Supplier.findById(payload.supplierId);
+  if (!supplier) throw new Error('Supplier not found');
+
+  if (payload.amount <= 0) throw new Error('Payment amount must be > 0');
+  if (payload.amount > supplier.balance) throw new Error('Amount > balance');
+
+  const paymentData: any = {
+    amount: payload.amount,
+    method: payload.method,
+    transactionId: payload.transactionId,
+    accountNumber: payload.accountNumber,
+    note: payload.note,
+    isPartial: payload.amount < supplier.balance,
+    date: new Date(),
+  };
+
+  // Method-specific fields
+  switch (payload.method) {
+    case 'Card':
+      paymentData.cardNumber = payload.cardNumber;
+      paymentData.cardHolder = payload.cardHolder;
+      paymentData.expiryDate = payload.expiryDate;
+      paymentData.cvv = payload.cvv;
+      break;
+    case 'Check':
+      paymentData.checkNumber = payload.checkNumber;
+      paymentData.bankName = payload.bankName;
+      break;
+    case 'Bkash':
+    case 'Nagad':
+    case 'Rocket':
+      paymentData.mobileNumber = payload.mobileNumber;
+      if (!payload.transactionId)
+        throw new Error('Transaction ID required for mobile payments');
+      break;
+  }
+
+  // Save payment
+  supplier.payments.push(paymentData);
+
+  // Update financials
+  supplier.totalPaid += payload.amount;
+  supplier.balance = supplier.totalDue - supplier.totalPaid;
+  supplier.totalDue = supplier.totalDue - payload.amount;
+
+  await supplier.save();
+
+  return supplier;
+};
+
+
+export const getSupplierPayments = async (
+  tenantDomain: string,
+  supplierId: string,
+) => {
+  const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+  const supplier = await Supplier.findById(supplierId);
+
+  if (!supplier) throw new Error('Supplier not found');
+
+  return supplier.payments.sort(
+    (a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
+};
+
 export const supplierServices = {
   createSupplier,
   getAllSupplier,
@@ -220,4 +300,6 @@ export const supplierServices = {
   restoreFromRecycledSupplier,
   permanenatlyDeleteSupplier,
   getSupplierWithBillPayments,
+  recordSupplierPayment,
+  getSupplierPayments,
 };

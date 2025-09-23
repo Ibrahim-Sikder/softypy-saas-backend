@@ -5,6 +5,7 @@ import { getTenantModel } from '../../utils/getTenantModels';
 import { TWarranty } from './warranties.interface';
 
 const createWarranty = async (payload: TWarranty, tenantDomain: string) => {
+  console.log('from warranty', tenantDomain)
   const { Model: Warranty } = await getTenantModel(tenantDomain, 'Warranty');
 
   const newWarranty = await Warranty.create(payload);

@@ -65,6 +65,9 @@ const getAllStocks = async (tenantDomain: string) => {
 
   const stocks = await Stocks.aggregate([
     {
+      $sort: { date: 1 }, // ✅ last purchase/selling ঠিকভাবে পেতে sort করা লাগবে
+    },
+    {
       $group: {
         _id: {
           product: '$product',
@@ -88,14 +91,18 @@ const getAllStocks = async (tenantDomain: string) => {
         totalSellingValue: {
           $sum: {
             $cond: [
-              { $eq: ['$type', 'out'] }, // ✅ corrected
+              { $eq: ['$type', 'out'] },
               { $multiply: ['$quantity', '$sellingPrice'] },
               0,
             ],
           },
         },
-        lastPurchasePrice: { $last: '$purchasePrice' },
-        lastSellingPrice: { $last: '$sellingPrice' },
+        lastPurchasePrice: {
+          $last: { $cond: [{ $eq: ['$type', 'in'] }, '$purchasePrice', null] },
+        },
+        lastSellingPrice: {
+          $last: { $cond: [{ $eq: ['$type', 'out'] }, '$sellingPrice', null] },
+        },
         allPurchasePrices: {
           $push: {
             $cond: [{ $eq: ['$type', 'in'] }, '$purchasePrice', '$$REMOVE'],
@@ -103,7 +110,7 @@ const getAllStocks = async (tenantDomain: string) => {
         },
         allSellingPrices: {
           $push: {
-            $cond: [{ $eq: ['$type', 'out'] }, '$sellingPrice', '$$REMOVE'], // ✅ corrected
+            $cond: [{ $eq: ['$type', 'out'] }, '$sellingPrice', '$$REMOVE'],
           },
         },
       },
@@ -127,7 +134,7 @@ const getAllStocks = async (tenantDomain: string) => {
         },
       },
     },
-    // Lookups for product, warehouse, category, etc.
+    // Product Join
     {
       $lookup: {
         from: Product.collection.name,
@@ -137,6 +144,23 @@ const getAllStocks = async (tenantDomain: string) => {
       },
     },
     { $unwind: '$product' },
+
+    // ✅ Calculate minimumSalePrice correctly
+    {
+      $addFields: {
+        minimumSalePrice: {
+          $cond: [
+            { $ifNull: ['$product.minimumSalePrice', false] },
+            '$product.minimumSalePrice',
+            { $add: ['$product.purchasePrice', { $ifNull: ['$product.expense', 0] }] },
+          ],
+        },
+        productPurchasePrice: '$product.purchasePrice',
+        productSellingPrice: '$product.sellingPrice',
+      },
+    },
+
+    // Warehouse join
     {
       $lookup: {
         from: Warehouse.collection.name,
@@ -146,6 +170,8 @@ const getAllStocks = async (tenantDomain: string) => {
       },
     },
     { $unwind: '$warehouse' },
+
+    // Category join
     {
       $lookup: {
         from: Category.collection.name,
@@ -157,6 +183,8 @@ const getAllStocks = async (tenantDomain: string) => {
     {
       $unwind: { path: '$product.category', preserveNullAndEmptyArrays: true },
     },
+
+    // Supplier join
     {
       $lookup: {
         from: Supplier.collection.name,
@@ -165,6 +193,8 @@ const getAllStocks = async (tenantDomain: string) => {
         as: 'product.suppliers',
       },
     },
+
+    // Brand join
     {
       $lookup: {
         from: Brand.collection.name,
@@ -174,6 +204,8 @@ const getAllStocks = async (tenantDomain: string) => {
       },
     },
     { $unwind: { path: '$product.brand', preserveNullAndEmptyArrays: true } },
+
+    // ProductType join
     {
       $lookup: {
         from: ProductType.collection.name,
@@ -185,6 +217,8 @@ const getAllStocks = async (tenantDomain: string) => {
     {
       $unwind: { path: '$product.product_type', preserveNullAndEmptyArrays: true },
     },
+
+    // Unit join
     {
       $lookup: {
         from: Unit.collection.name,
@@ -198,6 +232,7 @@ const getAllStocks = async (tenantDomain: string) => {
 
   return stocks;
 };
+
 
 export const transferStock = async (
   tenantDomain: string,

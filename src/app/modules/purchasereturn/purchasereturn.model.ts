@@ -7,20 +7,21 @@ export const purchaseReturnSchema = new Schema<TPurchaseReturn>(
       type: String,
       required: true,
     },
-    // purchaseId: {
-    //   type: Types.ObjectId,
-    //   ref: 'Purchase',
-    //   required: true,
-    // },
+
     referenceNo: {
       type: String,
       required: true,
     },
-    // supplier: {
-    //   type: Types.ObjectId,
-    //   ref: 'Supplier',
-    //   required: true,
-    // },
+
+    supplier: { type: Types.ObjectId, ref: 'Supplier', required: true },
+    purchase: { type: Types.ObjectId, ref: 'Purchase', required: true },
+    products: [
+      { productId: Types.ObjectId, quantity: Number, refundAmount: Number },
+    ],
+    totalRefund: { type: Number, default: 0 },
+    date: { type: Date, default: Date.now },
+    note: String,
+
     supplierName: {
       type: String,
     },
@@ -90,9 +91,13 @@ export const purchaseReturnSchema = new Schema<TPurchaseReturn>(
 purchaseReturnSchema.pre('save', function (next) {
   this.totalReturnAmount = this.items.reduce(
     (sum, item) => sum + item.totalAmount,
-    0
+    0,
   );
   next();
 });
 
-export const PurchaseReturn = model<TPurchaseReturn>('PurchaseReturn', purchaseReturnSchema);
+
+export const PurchaseReturn = model<TPurchaseReturn>(
+  'PurchaseReturn',
+  purchaseReturnSchema,
+);

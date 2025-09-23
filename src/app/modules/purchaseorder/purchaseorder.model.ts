@@ -21,8 +21,10 @@ export const purchaseOrderSchema = new Schema<TPurchaseOrder>(
   {
     orderDate: { type: String, required: true },
     expectedDeliveryDate: { type: String },
+    receiveDate: { type: String },
     referenceNo: { type: Number, required: true },
-    suppliers: { type: Schema.Types.ObjectId, ref: 'Supplier', required: true },
+   suppliers: [{ type: Schema.Types.ObjectId, ref: 'Supplier', required: true }],
+
     warehouse: { type: Schema.Types.ObjectId, ref: 'Warehouse', required: true },
     status: {
       type: String,

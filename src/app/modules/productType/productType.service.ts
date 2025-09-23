@@ -3,13 +3,15 @@ import QueryBuilder from '../../builder/QueryBuilder';
 import { productTypeSearch } from './productType.constant';
 import { TProductType } from './productType.interface';
 import { getTenantModel } from '../../utils/getTenantModels';
+
 export const createProductType = async (
   tenantDomain: string,
-  payload: TProductType
+  payload: TProductType,
 ) => {
+  console.log('from product type', tenantDomain);
   const { Model: ProductType } = await getTenantModel(
     tenantDomain,
-    'ProductType'
+    'ProductType',
   );
   const result = await ProductType.create(payload);
 
@@ -19,9 +21,12 @@ export const createProductType = async (
 // 2. Get All Product Types
 export const getAllProductType = async (
   tenantDomain: string,
-  query: Record<string, unknown>
+  query: Record<string, unknown>,
 ) => {
-  const { Model: ProductType } = await getTenantModel(tenantDomain, 'ProductType');
+  const { Model: ProductType } = await getTenantModel(
+    tenantDomain,
+    'ProductType',
+  );
 
   const categoryQuery = new QueryBuilder(ProductType.find(), query)
     .search(productTypeSearch)
@@ -41,12 +46,11 @@ export const getAllProductType = async (
 // 3. Get Single Product Type
 export const getSinigleProductType = async (
   tenantDomain: string,
-  id: string
+  id: string,
 ) => {
   const { Model: ProductType } = await getTenantModel(
     tenantDomain,
-    'ProductType'
-  
+    'ProductType',
   );
   const result = await ProductType.findById(id);
   return result;
@@ -56,12 +60,11 @@ export const getSinigleProductType = async (
 export const updateProductType = async (
   tenantDomain: string,
   id: string,
-  payload: Partial<TProductType>
+  payload: Partial<TProductType>,
 ) => {
   const { Model: ProductType } = await getTenantModel(
     tenantDomain,
-    'ProductType'
-
+    'ProductType',
   );
   const result = await ProductType.findByIdAndUpdate(id, payload, {
     new: true,
@@ -71,14 +74,10 @@ export const updateProductType = async (
 };
 
 // 5. Delete Product Type
-export const deleteProductType = async (
-  tenantDomain: string,
-  id: string
-) => {
+export const deleteProductType = async (tenantDomain: string, id: string) => {
   const { Model: ProductType } = await getTenantModel(
     tenantDomain,
-    'ProductType'
-
+    'ProductType',
   );
   const result = await ProductType.deleteOne({ _id: id });
   return result;

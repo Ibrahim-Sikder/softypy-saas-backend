@@ -33,5 +33,13 @@ router
 router
   .route('/delete-permenantly/:id')
   .delete(supplierController.permanenatlyDeleteSupplier);
+router.post(
+  '/payments',                            
+  supplierController.recordSupplierPayment
+);
 
-export const SupplierRoutes = router;
+router.get(
+  '/:supplierId/payments',supplierController.getSupplierPayments
+  
+);
+export const SupplierRoutes = router;  

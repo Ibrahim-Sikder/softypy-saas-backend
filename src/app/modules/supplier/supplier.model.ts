@@ -1,4 +1,4 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema, Types } from 'mongoose';
 import type { TSupplier } from './supplier.interface';
 
 export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
@@ -10,6 +10,10 @@ export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
     },
     products: [{ type: Schema.Types.ObjectId, ref: 'Product' }],
     orders: [{ type: Schema.Types.ObjectId, ref: 'PurchaseOrder' }],
+    purchases: [{ type: Schema.Types.ObjectId, ref: 'Purchase' }],
+    totalDue: { type: Number, default: 0 },
+    totalPaid: { type: Number, default: 0 },
+    balance: { type: Number, default: 0 },
 
     full_name: {
       type: String,
@@ -29,7 +33,6 @@ export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
     },
 
     // Business & Address Information
-    vendor: String,
     tax_id: String,
     street_address: String,
     country: String,
@@ -46,9 +49,30 @@ export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
       enum: ['active', 'inactive'],
       default: 'active',
     },
-    notes: String,
+    note: String,
+    payments: [
+      {
+         amount: { type: Number, required: true },
+        date: { type: Date, default: Date.now },
+        method: { 
+          type: String, 
+          enum: ['Cash', 'Bkash', 'Nagad', 'Rocket', 'Check', 'Card', 'Bank Transfer', 'Other'],
+          required: true 
+        },
+        transactionId: { type: String },
+        accountNumber: { type: String },
+        cardNumber: { type: String },
+        cardHolder: { type: String },
+        expiryDate: { type: String },
+        cvv: { type: String },
+        checkNumber: { type: String },
+        bankName: { type: String },
+        mobileNumber: { type: String },
+        note: { type: String },
+        isPartial: { type: Boolean, default: false },
+      },
+    ],
 
-    // System Fields
     isRecycled: {
       type: Boolean,
       default: false,
@@ -61,7 +85,7 @@ export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
   { timestamps: true },
 );
 
-// ✅ Auto-generate full phone number before saving
+// Auto-generate full phone number before saving
 supplierSchema.pre('save', function (next) {
   if (this.country_code && this.phone_number) {
     this.full_Phone_number = `${this.country_code}${this.phone_number}`;
@@ -71,21 +95,12 @@ supplierSchema.pre('save', function (next) {
   next();
 });
 
-// ✅ Auto-update full phone number on update
+// Auto-update full phone number on update
 supplierSchema.pre('findOneAndUpdate', function (next) {
-  const update = this.getUpdate() as {
-    country_code?: any;
-    phone_number?: any;
-    full_Phone_number?: string;
-    $set?: Partial<TSupplier>;
-  };
-
+  const update = this.getUpdate() as any;
   if (update.$set && update.$set.country_code && update.$set.phone_number) {
     update.$set.full_Phone_number = `${update.$set.country_code}${update.$set.phone_number}`;
-  } else if (update.country_code && update.phone_number) {
-    update.full_Phone_number = `${update.country_code}${update.phone_number}`;
   }
-
   next();
 });
 
