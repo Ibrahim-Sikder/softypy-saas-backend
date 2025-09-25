@@ -1,3 +1,5 @@
+import { ObjectId } from "mongoose";
+
 export type TWarranty = {
   _id?: string;
   name: string;
@@ -6,4 +8,5 @@ export type TWarranty = {
   durationType: 'days' | 'months' | 'years';
   terms?: string;
   tenantDomain?: string;
+    products: ObjectId;
 };

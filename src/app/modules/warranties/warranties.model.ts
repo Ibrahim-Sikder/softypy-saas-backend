@@ -6,6 +6,7 @@ export const warrantySchema: Schema<TWarranty> = new Schema<TWarranty>(
     name: {
       type: String,
     },
+    products: [{ type: Schema.Types.ObjectId, ref: 'Product' }],
     description: {
       type: String,
       default: '',

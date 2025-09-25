@@ -3,20 +3,49 @@ import httpStatus from 'http-status';
 import AppError from '../../errors/AppError';
 import { getTenantModel } from '../../utils/getTenantModels';
 import { TWarranty } from './warranties.interface';
+import QueryBuilder from '../../builder/QueryBuilder';
 
 const createWarranty = async (payload: TWarranty, tenantDomain: string) => {
-  console.log('from warranty', tenantDomain)
   const { Model: Warranty } = await getTenantModel(tenantDomain, 'Warranty');
 
   const newWarranty = await Warranty.create(payload);
   return newWarranty;
 };
 
-const getAllWarranty = async (tenantDomain: string) => {
+export const getAllWarranty = async (tenantDomain: string, query: Record<string, unknown>) => {
   const { Model: Warranty } = await getTenantModel(tenantDomain, 'Warranty');
-  const result = await Warranty.find();
-  return result;
+  const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
+
+  const qb = new QueryBuilder(
+    Warranty.find().populate({ 
+      path: 'products', 
+      model: Product, 
+      select: 'product_name' // only return product_name
+    }),
+    query
+  )
+    .search(['name', 'description'])
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
+
+  const warranties = await qb.modelQuery;
+  const total = await qb.countTotal();
+
+  // Map to include totalProducts count and only product names
+  const formatted = warranties.map((warranty: any) => ({
+    ...warranty.toObject(),
+    totalProducts: warranty.products.length,
+    products: warranty.products.map((p: any) => p.product_name),
+  }));
+
+  return {
+    data: formatted,
+    ...total,
+  };
 };
+
 
 const getSingleWarranty = async (tenantDomain: string, id: string) => {
   const { Model: Warranty } = await getTenantModel(tenantDomain, 'Warranty');

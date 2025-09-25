@@ -8,16 +8,22 @@ import { getTenantModel } from '../../utils/getTenantModels';
 import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 
- const createProduct = async (
+export const createProduct = async (
   tenantDomain: string,
   payload: any,
   file?: Express.Multer.File
 ) => {
   const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
- 
+  const { Model: ProductType } = await getTenantModel(tenantDomain, 'ProductType');
+  const { Model: Category } = await getTenantModel(tenantDomain, 'Category');
+  const { Model: Warranty } = await getTenantModel(tenantDomain, 'Warranty');
+  const { Model: Brand } = await getTenantModel(tenantDomain, 'Brand');
+  const { Model: Unit } = await getTenantModel(tenantDomain, 'Unit');
+  const { Model: Warehouse } = await getTenantModel(tenantDomain, 'Warehouse');
+
   try {
-    // Handle file upload
+    //  Handle file upload
     if (file) {
       const imageName = file.filename;
       const imagePath = path.join(process.cwd(), 'uploads', file.filename);
@@ -30,15 +36,47 @@ import httpStatus from 'http-status';
       throw new Error('Invalid image URL format');
     }
 
-    // Create Product
+    //  Create Product
     const newProduct = await Product.create(payload);
 
-    // Link product to suppliers
+    //  Link product to suppliers
     if (payload.suppliers && payload.suppliers.length) {
       await Supplier.updateMany(
         { _id: { $in: payload.suppliers } },
         { $push: { products: newProduct._id } }
       );
+    }
+
+    //  Link product to other related models (optional, if needed)
+    if (payload.product_type) {
+      await ProductType.findByIdAndUpdate(payload.product_type, {
+        $addToSet: { products: newProduct._id },
+      });
+    }
+    if (payload.category) {
+      await Category.findByIdAndUpdate(payload.category, {
+        $addToSet: { products: newProduct._id },
+      });
+    }
+    if (payload.warranties) {
+      await Warranty.findByIdAndUpdate(payload.warranties, {
+        $addToSet: { products: newProduct._id },
+      });
+    }
+    if (payload.brand) {
+      await Brand.findByIdAndUpdate(payload.brand, {
+        $addToSet: { products: newProduct._id },
+      });
+    }
+    if (payload.unit) {
+      await Unit.findByIdAndUpdate(payload.unit, {
+        $addToSet: { products: newProduct._id },
+      });
+    }
+    if (payload.warehouse) {
+      await Warehouse.findByIdAndUpdate(payload.warehouse, {
+        $addToSet: { products: newProduct._id },
+      });
     }
 
     return newProduct;
@@ -50,6 +88,7 @@ import httpStatus from 'http-status';
     );
   }
 };
+
 
 
 const getAllProduct = async (
@@ -125,7 +164,7 @@ const getSingleProduct = async (tenantDomain: string, id: string) => {
   return result;
 };
 
-const updateProduct = async (
+export const updateProduct = async (
   tenantDomain: string,
   id: string,
   payload: Partial<TProduct>,
@@ -133,9 +172,15 @@ const updateProduct = async (
 ) => {
   const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+  const { Model: ProductType } = await getTenantModel(tenantDomain, 'ProductType');
+  const { Model: Category } = await getTenantModel(tenantDomain, 'Category');
+  const { Model: Warranty } = await getTenantModel(tenantDomain, 'Warranty');
+  const { Model: Brand } = await getTenantModel(tenantDomain, 'Brand');
+  const { Model: Unit } = await getTenantModel(tenantDomain, 'Unit');
+  const { Model: Warehouse } = await getTenantModel(tenantDomain, 'Warehouse');
 
   try {
-    // Handle file upload (same as in createProduct)
+    // Handle file upload
     if (file) {
       const imageName = file.filename;
       const imagePath = path.join(process.cwd(), 'uploads', file.filename);
@@ -148,32 +193,40 @@ const updateProduct = async (
       throw new Error('Invalid image URL format');
     }
 
-    // Find the existing product first (to track old suppliers)
+    // Find the existing product first
     const existingProduct = await Product.findById(id);
     if (!existingProduct) {
       throw new AppError(httpStatus.NOT_FOUND, 'Product not found');
     }
 
-    //  Update the product
+    // Update the product
     const updatedProduct = await Product.findByIdAndUpdate(id, payload, {
       new: true,
       runValidators: true,
     });
 
-    //  Update suppliers
-    if (payload.suppliers) {
-      // Remove product reference from old suppliers
-      await Supplier.updateMany(
-        { _id: { $in: existingProduct.suppliers } },
-        { $pull: { products: existingProduct._id } }
-      );
+    // Helper function to update relations
+    const updateRelation = async (
+      Model: any,
+      newId: string | undefined,
+      oldId: string | undefined
+    ) => {
+      if (oldId && oldId !== newId) {
+        await Model.findByIdAndUpdate(oldId, { $pull: { products: id } });
+      }
+      if (newId) {
+        await Model.findByIdAndUpdate(newId, { $addToSet: { products: id } });
+      }
+    };
 
-      // Add product reference to new suppliers
-      await Supplier.updateMany(
-        { _id: { $in: payload.suppliers } },
-        { $addToSet: { products: updatedProduct._id } }
-      );
-    }
+    // Update all relations
+    await updateRelation(Supplier, payload.suppliers?.toString(), existingProduct.suppliers?.toString());
+    await updateRelation(ProductType, payload.product_type?.toString(), existingProduct.product_type?.toString());
+    await updateRelation(Category, payload.category?.toString(), existingProduct.category?.toString());
+    await updateRelation(Warranty, payload.warranties?.toString(), existingProduct.warranties?.toString());
+    await updateRelation(Brand, payload.brand?.toString(), existingProduct.brand?.toString());
+    await updateRelation(Unit, payload.unit?.toString(), existingProduct.unit?.toString());
+    await updateRelation(Warehouse, payload.warehouse?.toString(), existingProduct.warehouse?.toString());
 
     return updatedProduct;
   } catch (error: any) {
@@ -186,8 +239,32 @@ const updateProduct = async (
 };
 
 
-const deleteProduct = async (tenantDomain: string, id: string) => {
+
+export const deleteProduct = async (tenantDomain: string, id: string) => {
   const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
+  const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+  const { Model: ProductType } = await getTenantModel(tenantDomain, 'ProductType');
+  const { Model: Category } = await getTenantModel(tenantDomain, 'Category');
+  const { Model: Warranty } = await getTenantModel(tenantDomain, 'Warranty');
+  const { Model: Brand } = await getTenantModel(tenantDomain, 'Brand');
+  const { Model: Unit } = await getTenantModel(tenantDomain, 'Unit');
+  const { Model: Warehouse } = await getTenantModel(tenantDomain, 'Warehouse');
+
+  // Remove product references from related models
+  const removeFromRelation = async (Model: any) => {
+    await Model.updateMany({}, { $pull: { products: id } });
+  };
+
+  await Promise.all([
+    removeFromRelation(Supplier),
+    removeFromRelation(ProductType),
+    removeFromRelation(Category),
+    removeFromRelation(Warranty),
+    removeFromRelation(Brand),
+    removeFromRelation(Unit),
+    removeFromRelation(Warehouse),
+  ]);
+
   const result = await Product.deleteOne({ _id: id });
   return result;
 };

@@ -14,6 +14,7 @@ export const purchaseSchema: Schema<TPurchase> = new Schema<TPurchase>(
       ref: 'Warehouse',
       required: true,
     },
+    
     attachDocument: {
       type: String,
       required: false,

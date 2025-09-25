@@ -12,8 +12,7 @@ const createStockTransaction = async (
 
 const getAllStockTransactions = async (): Promise<IStockTransaction[]> => {
   const transactions = await StockTransaction.find()
-    .populate(['product', 'warehouse'])
-    .sort({ date: -1 });
+
   return transactions;
 };
 

@@ -62,7 +62,7 @@ export const createPurchase = async (tenantDomain: string, payload: any) => {
             type: 'in',
             quantity,
             referenceType: 'purchase',
-            referenceId: newPurchase._id, // ✅ important
+            referenceId: newPurchase._id, 
             purchasePrice: Number(item.productPrice) || 0,
             batchNumber: item.batchNumber || undefined,
             expiryDate: item.expiryDate || undefined,
@@ -97,7 +97,6 @@ export const createPurchase = async (tenantDomain: string, payload: any) => {
     throw err;
   }
 };
-
 
 const updatePurchase = async (
   tenantDomain: string,
