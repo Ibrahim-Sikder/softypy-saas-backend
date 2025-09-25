@@ -266,6 +266,10 @@ export const transferStock = async (
     tenantDomain,
     'StockTransfer',
   );
+  const { Model: StockTransaction } = await getTenantModel(
+    tenantDomain,
+    'StockTransaction',
+  );
 
   // 🚨 Start session from the tenantConnection, not from mongoose
   const session = await tenantConnection.startSession();
@@ -285,6 +289,7 @@ export const transferStock = async (
 
     const transferId = new mongoose.Types.ObjectId().toString();
 
+    // Create stock records for the transfer
     await Stocks.create(
       [
         {
@@ -319,6 +324,7 @@ export const transferStock = async (
       },
     );
 
+    // Create StockTransfer record
     const transferRecord = await StockTransfer.create(
       [
         {
@@ -330,6 +336,35 @@ export const transferStock = async (
           batchNumber,
           expiryDate,
           note,
+        },
+      ],
+      { session },
+    );
+
+    // Create StockTransaction records for the transfer
+    await StockTransaction.create(
+      [
+        {
+          product,
+          warehouse: fromWarehouse,
+          quantity,
+          type: 'out',
+          referenceType: 'transfer',
+          referenceId: transferRecord[0]._id,
+          batchNumber,
+          expiryDate,
+          date: new Date(),
+        },
+        {
+          product,
+          warehouse: toWarehouse,
+          quantity,
+          type: 'in',
+          referenceType: 'transfer',
+          referenceId: transferRecord[0]._id,
+          batchNumber,
+          expiryDate,
+          date: new Date(),
         },
       ],
       { session },
@@ -369,6 +404,7 @@ export const transferStock = async (
     session.endSession();
   }
 };
+
 
 export const calculateCurrentStock = async (
   tenantDomain: string,
@@ -418,3 +454,4 @@ export const stockServices = {
   deleteStock,
   transferStock,
 };
+

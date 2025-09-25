@@ -26,7 +26,7 @@ export const createPurchaseReturn = async (
   try {
     const [newReturn] = await PurchaseReturn.create([payload], { session });
 
-    //  Link suppliers
+    // 🔹 Link suppliers
     if (payload.suppliers) {
       await Supplier.updateMany(
         { _id: { $in: payload.suppliers } },
@@ -34,7 +34,7 @@ export const createPurchaseReturn = async (
         { session },
       );
 
-      //  Recalculate totals for affected suppliers
+      // 🔹 Recalculate totals for affected suppliers
       const supplierIds = Array.isArray(payload.suppliers)
         ? payload.suppliers
         : [payload.suppliers];
@@ -44,7 +44,7 @@ export const createPurchaseReturn = async (
       }
     }
 
-    //  Handle stock + stock transactions
+    // 🔹 Handle stock + stock transactions
     for (const item of payload.items) {
       const stockQuery = {
         product: item.productId,
@@ -67,6 +67,7 @@ export const createPurchaseReturn = async (
       existingStock.quantity -= item.quantity;
       await existingStock.save({ session });
 
+      // ✅ StockTransaction OUT
       await StockTransaction.create(
         [
           {
@@ -76,7 +77,7 @@ export const createPurchaseReturn = async (
             type: 'out',
             referenceType: 'purchase-return',
             referenceId: newReturn._id,
-            purchasePrice: item.unitPrice,
+            sellingPrice: item.unitPrice,
             date: new Date(),
           },
         ],
@@ -100,6 +101,7 @@ export const createPurchaseReturn = async (
     throw err;
   }
 };
+
 export const updatePurchaseReturn = async (
   tenantDomain: string,
   id: string,
@@ -124,7 +126,7 @@ export const updatePurchaseReturn = async (
     const existingReturn = await PurchaseReturn.findById(id).session(session);
     if (!existingReturn) throw new Error('Purchase return not found');
 
-    //  Supplier re-link
+    // 🔹 Supplier re-link
     if (payload.suppliers) {
       // Remove old links
       if (existingReturn.suppliers?.length) {
@@ -152,7 +154,7 @@ export const updatePurchaseReturn = async (
       }
     }
 
-    // Build map of old items
+    // 🔹 Build map of old items
     const oldItemsMap = new Map<string, any>();
     existingReturn.items.forEach((item: any) =>
       oldItemsMap.set(item.productId.toString(), item),
@@ -167,7 +169,7 @@ export const updatePurchaseReturn = async (
       const warehouse = payload.warehouse || existingReturn.warehouse;
 
       if (!oldItem) {
-        // New item added
+        // ➕ New item added
         const stock = await Stocks.findOne({
           product: newItem.productId,
           warehouse,
@@ -184,6 +186,7 @@ export const updatePurchaseReturn = async (
         stock.quantity -= newItem.quantity;
         await stock.save({ session });
 
+        // ✅ StockTransaction OUT
         await StockTransaction.create(
           [
             {
@@ -193,7 +196,7 @@ export const updatePurchaseReturn = async (
               type: 'out',
               referenceType: 'purchase-return',
               referenceId: existingReturn._id,
-              purchasePrice: newItem.unitPrice,
+              sellingPrice: newItem.unitPrice,
               date: new Date(),
             },
           ],
@@ -206,7 +209,7 @@ export const updatePurchaseReturn = async (
           { session },
         );
       } else {
-        // Existing item updated
+        // ✏️ Existing item updated
         const diff = newItem.quantity - oldItem.quantity;
         if (diff !== 0) {
           const stock = await Stocks.findOne({
@@ -225,6 +228,7 @@ export const updatePurchaseReturn = async (
           stock.quantity -= diff;
           await stock.save({ session });
 
+          // ✅ StockTransaction OUT / IN
           await StockTransaction.create(
             [
               {
@@ -234,7 +238,7 @@ export const updatePurchaseReturn = async (
                 type: diff > 0 ? 'out' : 'in',
                 referenceType: 'purchase-return',
                 referenceId: existingReturn._id,
-                purchasePrice: newItem.unitPrice,
+                sellingPrice: newItem.unitPrice,
                 date: new Date(),
               },
             ],
@@ -250,7 +254,7 @@ export const updatePurchaseReturn = async (
       }
     }
 
-    //  Finally update purchase return
+    // 🔹 Finally update purchase return
     const updatedReturn = await PurchaseReturn.findByIdAndUpdate(id, payload, {
       new: true,
       runValidators: true,
@@ -290,7 +294,7 @@ const deletePurchaseReturn = async (tenantDomain: string, id: string) => {
       throw new Error('Purchase return not found');
     }
 
-    //  Reverse stock changes
+    // 🔹 Reverse stock changes
     for (const item of purchaseReturn.items) {
       const stockQuery = {
         product: item.productId,
@@ -302,6 +306,7 @@ const deletePurchaseReturn = async (tenantDomain: string, id: string) => {
         stock.quantity += item.quantity;
         await stock.save({ session });
 
+        // ✅ StockTransaction IN (reversal)
         await StockTransaction.create(
           [
             {
@@ -311,7 +316,7 @@ const deletePurchaseReturn = async (tenantDomain: string, id: string) => {
               type: 'in',
               referenceType: 'purchase-return-reversal',
               referenceId: purchaseReturn._id,
-              purchasePrice: item.unitPrice,
+              sellingPrice: item.unitPrice,
               date: new Date(),
               note: 'Reversal of purchase return delete',
             },
@@ -327,10 +332,10 @@ const deletePurchaseReturn = async (tenantDomain: string, id: string) => {
       }
     }
 
-    //  Delete the purchase return itself
+    // 🔹 Delete the purchase return itself
     await PurchaseReturn.deleteOne({ _id: id }, { session });
 
-    //  Recalculate all suppliers totals
+    // 🔹 Recalculate all suppliers totals
     if (purchaseReturn.suppliers?.length) {
       for (const supplierId of purchaseReturn.suppliers) {
         await reCalcSupplierTotals(tenantDomain, supplierId);
@@ -367,9 +372,9 @@ const getAllPurchaseReturns = async (
 
   const meta = await builder.countTotal();
   const data = await builder.modelQuery.populate([
-    { path: 'items.productId', model: 'Product' }, // ✅ সঠিক
-    { path: 'suppliers', model: 'Supplier' }, // ✅ plural
-    { path: 'warehouse', model: 'Warehouse' }, // ✅ যদি warehouse দেখাতে চান
+    { path: 'items.productId', model: 'Product' },
+    { path: 'suppliers', model: 'Supplier' },
+    { path: 'warehouse', model: 'Warehouse' },
   ]);
 
   return {

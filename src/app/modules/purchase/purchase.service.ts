@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import QueryBuilder from '../../builder/QueryBuilder';
-import { purchaseSearch } from './purchase.const';
 import { TPurchase } from './purchase.interface';
 import { getTenantModel } from '../../utils/getTenantModels';
 import { reCalcSupplierTotals } from '../supplier/supplier.service';
 
-export const createPurchase = async (tenantDomain: string, payload: any) => {
+ const createPurchase = async (tenantDomain: string, payload: any) => {
   const { Model: Purchase, connection } = await getTenantModel(
     tenantDomain,
     'Purchase',
@@ -13,6 +12,10 @@ export const createPurchase = async (tenantDomain: string, payload: any) => {
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
   const { Model: Stocks } = await getTenantModel(tenantDomain, 'Stocks');
   const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
+  const { Model: StockTransaction } = await getTenantModel(
+    tenantDomain,
+    'StockTransaction',
+  );
 
   const session = await connection.startSession();
   session.startTransaction();
@@ -37,7 +40,7 @@ export const createPurchase = async (tenantDomain: string, payload: any) => {
       }
     }
 
-    // 🔹 Update stock and product quantities
+    // 🔹 Update stock + create StockTransaction
     if (payload.products?.length) {
       for (const item of payload.products) {
         const productId = item.productId;
@@ -51,25 +54,21 @@ export const createPurchase = async (tenantDomain: string, payload: any) => {
         const existingStock = await Stocks.findOne(query).session(session);
 
         if (existingStock) {
-          // update existing stock
           existingStock.quantity += quantity;
           await existingStock.save({ session });
         } else {
-          // create new stock
-          const stockData = {
-            product: productId,
-            warehouse,
-            type: 'in',
-            quantity,
-            referenceType: 'purchase',
-            referenceId: newPurchase._id, 
-            purchasePrice: Number(item.productPrice) || 0,
-            batchNumber: item.batchNumber || undefined,
-            expiryDate: item.expiryDate || undefined,
-            date: new Date(),
-          };
-
-          await Stocks.create([stockData], { session });
+          await Stocks.create(
+            [
+              {
+                product: productId,
+                warehouse,
+                quantity,
+                batchNumber: item.batchNumber || undefined,
+                expiryDate: item.expiryDate || undefined,
+              },
+            ],
+            { session },
+          );
         }
 
         // 🔹 Update product stock quantity
@@ -78,13 +77,31 @@ export const createPurchase = async (tenantDomain: string, payload: any) => {
           { $inc: { stock: quantity } },
           { new: true, session },
         );
+
+        // 🔹 Create StockTransaction log
+        await StockTransaction.create(
+          [
+            {
+              product: productId,
+              warehouse,
+              quantity,
+              batchNumber: item.batchNumber || undefined,
+              type: 'in',
+              referenceType: 'purchase',
+              referenceId: newPurchase._id,
+              sellingPrice: Number(item.productPrice) || 0,
+              date: new Date(),
+            },
+          ],
+          { session },
+        );
       }
     }
 
     await session.commitTransaction();
     session.endSession();
 
-    // 🔹 Recalculate supplier totals after transaction
+    // 🔹 Recalculate supplier totals
     for (const supplierId of affectedSuppliers) {
       await reCalcSupplierTotals(tenantDomain, supplierId);
     }
@@ -126,14 +143,12 @@ const updatePurchase = async (
         const supplier = await Supplier.findById(supplierId).session(session);
         if (!supplier) continue;
 
-        // Add purchase to supplier's purchases array if not already there
         if (!supplier.purchases.includes(updated._id)) {
           supplier.purchases.push(updated._id);
         }
 
         await supplier.save({ session });
 
-        // Recalculate supplier totals
         await reCalcSupplierTotals(tenantDomain, supplierId);
       }
     }
@@ -147,11 +162,17 @@ const updatePurchase = async (
     throw err;
   }
 };
-export const deletePurchase = async (tenantDomain: string, id: string) => {
+
+
+ const deletePurchase = async (tenantDomain: string, id: string) => {
   const { Model: Purchase } = await getTenantModel(tenantDomain, 'Purchase');
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
-  const { Model: Stocks } = await getTenantModel(tenantDomain, 'Stock');
+  const { Model: Stocks } = await getTenantModel(tenantDomain, 'Stocks');
   const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
+  const { Model: StockTransaction } = await getTenantModel(
+    tenantDomain,
+    'StockTransaction',
+  );
   const { Model: connection } = await getTenantModel(tenantDomain, 'Purchase');
 
   const session = await connection.startSession();
@@ -172,14 +193,13 @@ export const deletePurchase = async (tenantDomain: string, id: string) => {
       { session },
     );
 
-    // 🔥 নতুন যোগ: স্টক থেকে পণ্যের পরিমাণ বাদ দেওয়া
+    // 🔹 স্টক আপডেট এবং StockTransaction log
     if (purchase.products && purchase.products.length) {
       for (const item of purchase.products) {
         const productId = item.productId;
         const quantity = item.quantity || 0;
         const warehouse = purchase.warehouse;
 
-        // স্টক রেকর্ড খুঁজে বের করা
         const existingStock = await Stocks.findOne({
           product: productId,
           warehouse: warehouse,
@@ -187,7 +207,6 @@ export const deletePurchase = async (tenantDomain: string, id: string) => {
         }).session(session);
 
         if (existingStock) {
-          // যদি স্টকে পর্যাপ্ত পরিমাণ পণ্য থাকে
           if (existingStock.quantity >= quantity) {
             existingStock.quantity -= quantity;
             await existingStock.save({ session });
@@ -200,22 +219,36 @@ export const deletePurchase = async (tenantDomain: string, id: string) => {
           throw new Error(`এই পণ্যের জন্য কোনো স্টক রেকর্ড পাওয়া যায়নি`);
         }
 
-        // প্রোডাক্ট ডকুমেন্ট থেকে পণ্যের পরিমাণ বাদ দেওয়া
         await Product.findByIdAndUpdate(
           productId,
           { $inc: { stock: -quantity } },
           { session },
         );
+
+        // 🔹 Add StockTransaction log (out)
+        await StockTransaction.create(
+          [
+            {
+              product: productId,
+              warehouse,
+              quantity,
+              batchNumber: item.batchNumber || undefined,
+              type: 'out',
+              referenceType: 'purchase_delete',
+              referenceId: purchase._id,
+              date: new Date(),
+            },
+          ],
+          { session },
+        );
       }
     }
 
-    // পার্চেস ডিলিট করা
     await Purchase.deleteOne({ _id: id }, { session });
 
     await session.commitTransaction();
     session.endSession();
 
-    // সাপ্লায়ারের টোটাল আবার হিসাব করা
     for (const supplierId of supplierIds) {
       await reCalcSupplierTotals(tenantDomain, supplierId);
     }
@@ -232,7 +265,7 @@ export const deletePurchase = async (tenantDomain: string, id: string) => {
   }
 };
 
-export const getAllPurchase = async (
+ const getAllPurchase = async (
   tenantDomain: string,
   query: Record<string, unknown>,
 ) => {
@@ -241,27 +274,17 @@ export const getAllPurchase = async (
   const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
 
   const purchaseQuery = new QueryBuilder(Purchase.find(), query)
-    .search(purchaseSearch)
-    // .filter()
-    // .sort()
+    .search(['invoiceNumber', 'notes'])
     .paginate()
     .fields();
 
   const meta = await purchaseQuery.countTotal();
 
   const purchases = await purchaseQuery.modelQuery.populate([
-    {
-      path: 'suppliers',
-      model: Supplier,
-      select: 'full_name',
-    },
-    {
-      path: 'products.productId',
-      model: Product,
-    },
+    { path: 'suppliers', model: Supplier, select: 'full_name' },
+    { path: 'products.productId', model: Product },
   ]);
 
-  // 🔥 calculate totals across all purchases
   const purchaseSummary = purchases.reduce(
     (acc, p) => {
       acc.paidAmount += p.paidAmount || 0;
@@ -293,23 +316,14 @@ export const getAllPurchase = async (
   };
 };
 
-export const getSinglePurchase = async (tenantDomain: string, id: string) => {
+ const getSinglePurchase = async (tenantDomain: string, id: string) => {
   const { Model: Purchase } = await getTenantModel(tenantDomain, 'Purchase');
-
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
   const { Model: Warehouse } = await getTenantModel(tenantDomain, 'Warehouse');
 
   const result = await Purchase.findById(id).populate([
-    {
-      path: 'suppliers',
-      model: Supplier,
-      select: 'full_name',
-    },
-    {
-      path: 'warehouse',
-      model: Warehouse,
-      select:'name'
-    },
+    { path: 'suppliers', model: Supplier, select: 'full_name' },
+    { path: 'warehouse', model: Warehouse, select: 'name' },
   ]);
   return result;
 };

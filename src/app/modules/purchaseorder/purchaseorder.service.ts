@@ -44,11 +44,18 @@ export const updatePurchaseOrder = async (
 ): Promise<TPurchaseOrder | null> => {
   const isMarkingReceived = payload.status === 'Received';
 
-  const { Model: PurchaseOrder, connection } = await getTenantModel(tenantDomain, 'PurchaseOrder');
+  const { Model: PurchaseOrder, connection } = await getTenantModel(
+    tenantDomain,
+    'PurchaseOrder',
+  );
   const { Model: Purchase } = await getTenantModel(tenantDomain, 'Purchase');
   const { Model: Stocks } = await getTenantModel(tenantDomain, 'Stock');
   const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+  const { Model: StockTransaction } = await getTenantModel(
+    tenantDomain,
+    'StockTransaction',
+  );
 
   // Start transaction
   const session = await connection.startSession();
@@ -68,7 +75,10 @@ export const updatePurchaseOrder = async (
       session,
     });
     if (!updatedOrder) {
-      throw new AppError(httpStatus.NOT_FOUND, 'Purchase Order not found after update');
+      throw new AppError(
+        httpStatus.NOT_FOUND,
+        'Purchase Order not found after update',
+      );
     }
 
     // Update suppliers if changed
@@ -88,7 +98,7 @@ export const updatePurchaseOrder = async (
       );
     }
 
-    // If marking as Received → Create Purchase + update Supplier + Stock
+    // If marking as Received → Create Purchase + update Supplier + Stock + StockTransaction
     if (isMarkingReceived) {
       const purchasePayload: Partial<TPurchase> = {
         date: new Date(),
@@ -120,9 +130,11 @@ export const updatePurchaseOrder = async (
           const supplier = await Supplier.findById(supplierId).session(session);
           if (!supplier) continue;
 
-          const due = (newPurchase[0].grandTotal || 0) - (newPurchase[0].paidAmount || 0);
+          const due =
+            (newPurchase[0].grandTotal || 0) - (newPurchase[0].paidAmount || 0);
           supplier.totalDue = (supplier.totalDue || 0) + due;
-          supplier.balance = (supplier.totalDue || 0) - (supplier.totalPaid || 0);
+          supplier.balance =
+            (supplier.totalDue || 0) - (supplier.totalPaid || 0);
 
           if (!supplier.purchases.includes(newPurchase[0]._id)) {
             supplier.purchases.push(newPurchase[0]._id);
@@ -132,7 +144,7 @@ export const updatePurchaseOrder = async (
         }
       }
 
-      // Update stock + product quantities
+      // Update stock + product quantities + create StockTransaction
       for (const item of updatedOrder.products) {
         const existingStock = await Stocks.findOne({
           product: item.productId,
@@ -159,6 +171,19 @@ export const updatePurchaseOrder = async (
           await Stocks.create([stockData], { session });
         }
 
+        // Create StockTransaction record
+        const transactionData = {
+          product: item.productId,
+          warehouse: updatedOrder.warehouse.toString(),
+          quantity: item.quantity,
+          type: 'in',
+          referenceType: 'purchase',
+          referenceId: newPurchase[0]._id,
+          batchNumber: item.batchNumber || null,
+          date: new Date(),
+        };
+        await StockTransaction.create([transactionData], { session });
+
         await Product.findByIdAndUpdate(
           item.productId,
           { $inc: { stock: item.quantity } },
@@ -176,11 +201,69 @@ export const updatePurchaseOrder = async (
     session.endSession();
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      error.message || 'An unexpected error occurred while updating the purchase order',
+      error.message ||
+        'An unexpected error occurred while updating the purchase order',
     );
   }
 };
 
+const deletePurchaseOrder = async (tenantDomain: string, id: string) => {
+  const { Model: PurchaseOrder, connection } = await getTenantModel(
+    tenantDomain,
+    'PurchaseOrder',
+  );
+  const { Model: Purchase } = await getTenantModel(tenantDomain, 'Purchase');
+  const { Model: StockTransaction } = await getTenantModel(
+    tenantDomain,
+    'StockTransaction',
+  );
+
+  const session = await connection.startSession();
+  session.startTransaction();
+
+  try {
+    // Find the purchase order to get its reference number
+    const purchaseOrder = await PurchaseOrder.findById(id).session(session);
+    if (!purchaseOrder) {
+      throw new AppError(httpStatus.NOT_FOUND, 'Purchase Order not found');
+    }
+
+    // Find any purchases created from this order (using referenceNo)
+    const purchases = await Purchase.find({
+      referenceNo: purchaseOrder.referenceNo,
+    }).session(session);
+
+    // Delete associated StockTransactions for each purchase
+    for (const purchase of purchases) {
+      await StockTransaction.deleteMany(
+        { referenceType: 'purchase', referenceId: purchase._id },
+        { session },
+      );
+    }
+
+    // Delete the purchases
+    await Purchase.deleteMany(
+      { referenceNo: purchaseOrder.referenceNo },
+      { session },
+    );
+
+    // Finally delete the purchase order
+    const result = await PurchaseOrder.deleteOne({ _id: id }, { session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return result;
+  } catch (error: any) {
+    await session.abortTransaction();
+    session.endSession();
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      error.message ||
+        'An unexpected error occurred while deleting the purchase order',
+    );
+  }
+};
 const getAllPurchaseOrders = async (
   tenantDomain: string,
   query: Record<string, unknown>,
@@ -242,19 +325,6 @@ const getSinglePurchaseOrder = async (tenantDomain: string, id: string) => {
 
   return result;
 };
-
-const deletePurchaseOrder = async (tenantDomain: string, id: string) => {
-  const { Model: PurchaseOrder } = await getTenantModel(
-    tenantDomain,
-    'PurchaseOrder',
-  );
-
-  const result = await PurchaseOrder.deleteOne({ _id: id });
-  return result;
-};
-
-
-
 
 export const purchaseOrderServices = {
   createPurchaseOrder,
