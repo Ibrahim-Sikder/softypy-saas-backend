@@ -23,6 +23,7 @@ export interface TSupplier {
   products: ObjectId;
   orders: ObjectId;
   purchases: ObjectId;
+  purchaseReturn: ObjectId;
   totalDue: number;
   totalPaid: number;
   balance: number;

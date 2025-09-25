@@ -181,8 +181,6 @@ export const updatePurchaseOrder = async (
   }
 };
 
-
-
 const getAllPurchaseOrders = async (
   tenantDomain: string,
   query: Record<string, unknown>,

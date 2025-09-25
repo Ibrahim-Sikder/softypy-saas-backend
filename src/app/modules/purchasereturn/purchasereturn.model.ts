@@ -4,47 +4,39 @@ import { TPurchaseReturn } from './purchasereturn.interface';
 export const purchaseReturnSchema = new Schema<TPurchaseReturn>(
   {
     returnDate: {
-      type: String,
+      type: Date,
       required: true,
     },
 
     referenceNo: {
       type: String,
-      required: true,
     },
 
-    supplier: { type: Types.ObjectId, ref: 'Supplier', required: true },
-    purchase: { type: Types.ObjectId, ref: 'Purchase', required: true },
-    products: [
-      { productId: Types.ObjectId, quantity: Number, refundAmount: Number },
+    suppliers: [
+      { type: Schema.Types.ObjectId, ref: 'Supplier', required: true },
     ],
-    totalRefund: { type: Number, default: 0 },
-    date: { type: Date, default: Date.now },
-    note: String,
 
-    supplierName: {
-      type: String,
-    },
     warehouse: {
-      type: String,
-      required: true,
+      type: Types.ObjectId,
+      ref: 'Warehouse',
     },
     returnReason: {
       type: String,
-      required: true,
     },
     returnNote: {
       type: String,
     },
-    purchaseInvoiceNo: {
+    status: {
       type: String,
+      enum: ['pending', 'completed', 'cancelled'],
+      default: 'pending',
     },
     items: [
       {
         productId: {
           type: Types.ObjectId,
           ref: 'Product',
-          required: true,
+
         },
         productCode: {
           type: String,
@@ -79,10 +71,12 @@ export const purchaseReturnSchema = new Schema<TPurchaseReturn>(
       type: Number,
       required: true,
     },
-    status: {
-      type: String,
-      enum: ['pending', 'completed', 'cancelled'],
-      default: 'pending',
+    approvedBy: {
+      type: Types.ObjectId,
+      ref: 'User',
+    },
+    approvedDate: {
+      type: Date,
     },
   },
   { timestamps: true },
@@ -95,7 +89,6 @@ purchaseReturnSchema.pre('save', function (next) {
   );
   next();
 });
-
 
 export const PurchaseReturn = model<TPurchaseReturn>(
   'PurchaseReturn',

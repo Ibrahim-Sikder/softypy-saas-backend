@@ -132,7 +132,7 @@ export const updateSupplier = async (
   }
 };
 
-export const permanenatlyDeleteSupplier = async (
+export const permanentlyDeleteSupplier = async (
   req: Request,
   res: Response,
   next: NextFunction,
@@ -140,7 +140,7 @@ export const permanenatlyDeleteSupplier = async (
   try {
     const tenantDomain = req.query.tenantDomain as string;
     const { id } = req.params;
-    const result = await supplierServices.permanenatlyDeleteSupplier(
+    const result = await supplierServices.permanentlyDeleteSupplier(
       tenantDomain,
       id,
     );
@@ -153,7 +153,7 @@ export const permanenatlyDeleteSupplier = async (
     });
   } catch (error: any) {
     console.error(
-      'Error in permanenatlyDeleteSupplier controller:',
+      'Error in permanentDeleteSupplier controller:',
       error.message,
     );
     next(error);
@@ -259,17 +259,32 @@ export const getSupplierPayments = catchAsync(async (req, res, next) => {
   }
 });
 
+export const recalcSupplierTotals = catchAsync(async (req, res, next) => {
+  const tenantDomain = req.query.tenantDomain as string;
+  const supplierId = req.params.supplierId;
+
+  const result = await supplierServices.reCalcSupplierTotals(tenantDomain, supplierId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Supplier totals recalculated successfully',
+    data: result,
+  });
+});
 
 
+  
 export const supplierController = {
   getAllSupplier,
   getSingleSupplier,
   updateSupplier,
   createSupplier,
-  permanenatlyDeleteSupplier,
+  permanentlyDeleteSupplier,
   moveToRecycledbinSupplier,
   restoreFromRecycledSupplier,
   getSupplierProfile,
   recordSupplierPayment,
-  getSupplierPayments
+  getSupplierPayments,
+  recalcSupplierTotals
 };

@@ -1,36 +1,25 @@
-import mongoose, { Schema, Types } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 import type { TSupplier } from './supplier.interface';
 
 export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
   {
-    supplierId: {
-      type: String,
-      unique: true,
-      index: true,
-    },
+    supplierId: { type: String, unique: true, index: true },
     products: [{ type: Schema.Types.ObjectId, ref: 'Product' }],
     orders: [{ type: Schema.Types.ObjectId, ref: 'PurchaseOrder' }],
     purchases: [{ type: Schema.Types.ObjectId, ref: 'Purchase' }],
+    purchaseReturn: [{ type: Schema.Types.ObjectId, ref: 'PurchaseReturn' }],
+
     totalDue: { type: Number, default: 0 },
     totalPaid: { type: Number, default: 0 },
     balance: { type: Number, default: 0 },
 
-    full_name: {
-      type: String,
-      required: [true, 'Supplier name is required'],
-    },
-    contact_person_name: {
-      type: String,
-      required: [true, 'Contact person name is required'],
-    },
+    full_name: { type: String, required: [true, 'Supplier name is required'] },
+    contact_person_name: { type: String, required: [true, 'Contact person name is required'] },
+
     country_code: String,
     phone_number: String,
     full_Phone_number: String,
-    email: {
-      type: String,
-      lowercase: true,
-      trim: true,
-    },
+    email: { type: String, lowercase: true, trim: true },
 
     // Business & Address Information
     tax_id: String,
@@ -50,14 +39,15 @@ export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
       default: 'active',
     },
     note: String,
+
     payments: [
       {
-         amount: { type: Number, required: true },
+        amount: { type: Number, required: true },
         date: { type: Date, default: Date.now },
-        method: { 
-          type: String, 
+        method: {
+          type: String,
           enum: ['Cash', 'Bkash', 'Nagad', 'Rocket', 'Check', 'Card', 'Bank Transfer', 'Other'],
-          required: true 
+          required: true,
         },
         transactionId: { type: String },
         accountNumber: { type: String },
@@ -73,14 +63,8 @@ export const supplierSchema: Schema<TSupplier> = new Schema<TSupplier>(
       },
     ],
 
-    isRecycled: {
-      type: Boolean,
-      default: false,
-    },
-    recycledAt: {
-      type: Date,
-      default: null,
-    },
+    isRecycled: { type: Boolean, default: false },
+    recycledAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

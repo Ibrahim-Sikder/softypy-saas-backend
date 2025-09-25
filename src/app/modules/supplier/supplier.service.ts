@@ -6,6 +6,7 @@ import AppError from '../../errors/AppError';
 
 import { getTenantModel } from '../../utils/getTenantModels';
 import { generateSupplierId } from './supplier.utils';
+import { Types } from 'mongoose';
 
 const createSupplier = async (tenantDomain: string, payload: any) => {
   try {
@@ -72,6 +73,7 @@ const getSingleSupplier = async (tenantDomain: string, id: string) => {
   );
   const { Model: Purchase } = await getTenantModel(tenantDomain, 'Purchase');
   const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
+  const { Model: PurchaseReturn } = await getTenantModel(tenantDomain, 'PurchaseReturn');
 
   const supplier = await Supplier.findById(id)
     .populate({
@@ -89,6 +91,10 @@ const getSingleSupplier = async (tenantDomain: string, id: string) => {
     .populate({
       path: 'purchases',
       model: Purchase,
+    })
+    .populate({
+      path: 'purchaseReturn',
+      model: PurchaseReturn,
     });
 
   if (!supplier) {
@@ -102,10 +108,36 @@ const getSingleSupplier = async (tenantDomain: string, id: string) => {
     orderStatusSummary[status] = (orderStatusSummary[status] || 0) + 1;
   });
 
-  // Return supplier with status summary
+  // 🔥 Calculate purchases summary
+  const purchasesSummary = supplier.purchases.reduce(
+    (acc: any, purchase: any) => {
+      acc.totalAmount += purchase.totalAmount || 0;
+      acc.totalDiscount += purchase.totalDiscount || 0;
+      acc.totalTax += purchase.totalTax || 0;
+      acc.totalShipping += purchase.totalShipping || 0;
+      acc.grandTotal += purchase.grandTotal || 0;
+      acc.paidAmount += purchase.paidAmount || 0;
+      acc.dueAmount += purchase.dueAmount || 0;
+      acc.shipping += purchase.shipping || 0;
+      return acc;
+    },
+    {
+      totalAmount: 0,
+      totalDiscount: 0,
+      totalTax: 0,
+      totalShipping: 0,
+      grandTotal: 0,
+      paidAmount: 0,
+      dueAmount: 0,
+      shipping: 0,
+    },
+  );
+
+  // Return supplier with status summary + purchase summary
   return {
     ...supplier.toObject(),
     orderStatusSummary,
+    purchasesSummary,
   };
 };
 
@@ -174,7 +206,7 @@ const updateSupplier = async (
   return updatedSupplier;
 };
 
-const permanenatlyDeleteSupplier = async (tenantDomain: string, id: string) => {
+const permanentlyDeleteSupplier = async (tenantDomain: string, id: string) => {
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
 
   const supplier = await Supplier.findById(id);
@@ -218,64 +250,6 @@ export const restoreFromRecycledSupplier = async (
 
   return supplier;
 };
-
-export const recordSupplierPayment = async (
-  tenantDomain: string,
-  payload: any,
-) => {
-  const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
-
-  const supplier = await Supplier.findById(payload.supplierId);
-  if (!supplier) throw new Error('Supplier not found');
-
-  if (payload.amount <= 0) throw new Error('Payment amount must be > 0');
-  if (payload.amount > supplier.balance) throw new Error('Amount > balance');
-
-  const paymentData: any = {
-    amount: payload.amount,
-    method: payload.method,
-    transactionId: payload.transactionId,
-    accountNumber: payload.accountNumber,
-    note: payload.note,
-    isPartial: payload.amount < supplier.balance,
-    date: new Date(),
-  };
-
-  // Method-specific fields
-  switch (payload.method) {
-    case 'Card':
-      paymentData.cardNumber = payload.cardNumber;
-      paymentData.cardHolder = payload.cardHolder;
-      paymentData.expiryDate = payload.expiryDate;
-      paymentData.cvv = payload.cvv;
-      break;
-    case 'Check':
-      paymentData.checkNumber = payload.checkNumber;
-      paymentData.bankName = payload.bankName;
-      break;
-    case 'Bkash':
-    case 'Nagad':
-    case 'Rocket':
-      paymentData.mobileNumber = payload.mobileNumber;
-      if (!payload.transactionId)
-        throw new Error('Transaction ID required for mobile payments');
-      break;
-  }
-
-  // Save payment
-  supplier.payments.push(paymentData);
-
-  // Update financials
-  supplier.totalPaid += payload.amount;
-  supplier.balance = supplier.totalDue - supplier.totalPaid;
-  supplier.totalDue = supplier.totalDue - payload.amount;
-
-  await supplier.save();
-
-  return supplier;
-};
-
-
 export const getSupplierPayments = async (
   tenantDomain: string,
   supplierId: string,
@@ -290,6 +264,218 @@ export const getSupplierPayments = async (
   );
 };
 
+export const recordSupplierPayment = async (
+  tenantDomain: string,
+  payload: {
+    supplierId: string;
+    amount: number;
+    method:
+      | "Cash"
+      | "Bkash"
+      | "Nagad"
+      | "Rocket"
+      | "Check"
+      | "Card"
+      | "Bank Transfer"
+      | "Other";
+    transactionId?: string;
+    accountNumber?: string;
+    note?: string;
+    cardNumber?: string;
+    cardHolder?: string;
+    expiryDate?: string;
+    cvv?: string;
+    checkNumber?: string;
+    bankName?: string;
+    mobileNumber?: string;
+  }
+) => {
+  const { Model: SupplierModel, connection } = await getTenantModel(
+    tenantDomain,
+    "Supplier"
+  );
+  const { Model: Purchase } = await getTenantModel(tenantDomain, "Purchase");
+  const { Model: PurchaseOrder } = await getTenantModel(
+    tenantDomain,
+    "PurchaseOrder"
+  );
+
+  const session = await connection.startSession();
+  session.startTransaction();
+
+  try {
+    // Load Supplier
+    const supplier = await SupplierModel.findById(payload.supplierId).session(
+      session
+    );
+    if (!supplier) throw new Error("Supplier not found");
+
+    if (payload.amount <= 0) throw new Error("Payment amount must be > 0");
+    
+    // Check if payment amount exceeds total due
+    if (payload.amount > supplier.totalDue) {
+      throw new Error("Payment amount exceeds total due amount");
+    }
+
+    // Prepare payment data
+    const paymentData = {
+      amount: payload.amount,
+      method: payload.method,
+      transactionId: payload.transactionId,
+      accountNumber: payload.accountNumber,
+      note: payload.note,
+      isPartial: payload.amount < supplier.totalDue,
+      date: new Date(),
+      cardNumber: payload.cardNumber,
+      cardHolder: payload.cardHolder,
+      expiryDate: payload.expiryDate,
+      cvv: payload.cvv,
+      checkNumber: payload.checkNumber,
+      bankName: payload.bankName,
+      mobileNumber: payload.mobileNumber,
+    };
+
+    // Save payment into supplier
+    supplier.payments.push(paymentData as any);
+    await supplier.save({ session });
+
+    // Update Purchases with payment allocation
+    let remainingAmount = payload.amount;
+
+    const purchases = await Purchase.find({
+      _id: { $in: supplier.purchases as Types.ObjectId[] },
+      dueAmount: { $gt: 0 },
+    })
+      .sort({ date: 1 })
+      .session(session);
+
+    for (const purchase of purchases) {
+      if (remainingAmount <= 0) break;
+
+      const payToThisPurchase = Math.min(purchase.dueAmount, remainingAmount);
+      purchase.paidAmount += payToThisPurchase;
+      purchase.dueAmount = purchase.grandTotal - purchase.paidAmount;
+
+      // Update purchase status
+      if (purchase.dueAmount === 0) {
+        purchase.purchaseStatus = "Paid";
+      } else if (purchase.paidAmount > 0) {
+        purchase.purchaseStatus = "Partial";
+      } else {
+        purchase.purchaseStatus = "Unpaid";
+      }
+
+      await purchase.save({ session });
+      remainingAmount -= payToThisPurchase;
+    }
+
+    // Update PurchaseOrders with payment allocation
+    const purchaseOrders = await PurchaseOrder.find({
+      _id: { $in: supplier.orders as Types.ObjectId[] },
+      paymentStatus: { $ne: "Paid" },
+    })
+      .sort({ orderDate: 1 })
+      .session(session);
+
+    for (const order of purchaseOrders) {
+      if (remainingAmount <= 0) break;
+
+      const alreadyPaid = (order as any).paidAmount || 0;
+      const due = (order.grandTotal || 0) - alreadyPaid;
+      const payToThisOrder = Math.min(due, remainingAmount);
+
+      (order as any).paidAmount = alreadyPaid + payToThisOrder;
+      const newDue = (order.grandTotal || 0) - (order as any).paidAmount;
+
+      // Update order status
+      if (newDue === 0) {
+        order.paymentStatus = "Paid";
+      } else if ((order as any).paidAmount > 0) {
+        order.paymentStatus = "Partial";
+      } else {
+        order.paymentStatus = "Unpaid";
+      }
+
+      await order.save({ session });
+      remainingAmount -= payToThisOrder;
+    }
+
+    // Recalculate supplier totals
+    await reCalcSupplierTotals(tenantDomain, payload.supplierId);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return supplier;
+  } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+    throw err;
+  }
+};
+
+
+
+export const reCalcSupplierTotals = async (tenantDomain: string, supplierId: string) => {
+  const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+  const { Model: Purchase } = await getTenantModel(tenantDomain, 'Purchase');
+  const { Model: PurchaseOrder } = await getTenantModel(tenantDomain, 'PurchaseOrder');
+
+  const supplier = await Supplier.findById(supplierId);
+  if (!supplier) throw new Error('Supplier not found');
+
+  // Get all active purchases
+  const allPurchases = await Purchase.find({
+    _id: { $in: supplier.purchases },
+    isRecycled: { $ne: true },
+  });
+
+  // Calculate totals from purchases
+  const totalDueFromPurchases = allPurchases.reduce((sum, p) => sum + (p.dueAmount || 0), 0);
+  const totalPaidFromPurchases = allPurchases.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+
+  // Get all active orders
+  const allOrders = await PurchaseOrder.find({
+    _id: { $in: supplier.orders },
+    isRecycled: { $ne: true },
+  });
+
+  // Calculate totals from orders
+  const totalDueFromOrders = allOrders.reduce(
+    (sum, o) => sum + ((o.grandTotal || 0) - ((o as any).paidAmount || 0)),
+    0
+  );
+  const totalPaidFromOrders = allOrders.reduce((sum, o) => sum + ((o as any).paidAmount || 0), 0);
+
+  // Calculate total payments from supplier's payment records
+  const totalPaidFromSupplierPayments = supplier.payments.reduce(
+    (sum: number, pay: any) => sum + (pay.amount || 0),
+    0
+  );
+
+  // IMPORTANT FIX: Calculate total paid as the sum of:
+  // 1. Payments applied to purchases
+  // 2. Payments applied to orders
+  // 3. Direct supplier payments
+  // This avoids double-counting
+  const totalPaid = totalPaidFromPurchases + totalPaidFromOrders + totalPaidFromSupplierPayments;
+
+  // Calculate total due (remaining amount to be paid)
+  const totalDue = totalDueFromPurchases + totalDueFromOrders;
+
+  // Update supplier totals
+  supplier.totalDue = totalDue;
+  supplier.totalPaid = totalPaid;
+  
+  // IMPORTANT FIX: Balance should be the net amount owed to supplier
+  // If positive: supplier is owed money
+  // If negative: supplier owes money (overpayment)
+  supplier.balance = totalDue - totalPaid;
+
+  await supplier.save();
+  return supplier;
+};
+
 export const supplierServices = {
   createSupplier,
   getAllSupplier,
@@ -297,8 +483,9 @@ export const supplierServices = {
   updateSupplier,
   moveToRecycledbinSupplier,
   restoreFromRecycledSupplier,
-  permanenatlyDeleteSupplier,
+  permanentlyDeleteSupplier,
   getSupplierWithBillPayments,
   recordSupplierPayment,
   getSupplierPayments,
+  reCalcSupplierTotals
 };
