@@ -49,7 +49,7 @@ const createStockTransfer = async (
     const transferResults = [];
 
     for (const item of items) {
-      // Calculate current stock in source warehouse
+      // Use proper aggregation to calculate current stock
       const stockAggregation = await Stocks.aggregate([
         {
           $match: {
@@ -60,16 +60,8 @@ const createStockTransfer = async (
         {
           $group: {
             _id: null,
-            totalIn: {
-              $sum: {
-                $cond: [{ $eq: ['$type', 'in'] }, '$quantity', 0]
-              }
-            },
-            totalOut: {
-              $sum: {
-                $cond: [{ $eq: ['$type', 'out'] }, '$quantity', 0]
-              }
-            }
+            totalIn: { $sum: { $cond: [{ $eq: ['$type', 'in'] }, '$quantity', 0] } },
+            totalOut: { $sum: { $cond: [{ $eq: ['$type', 'out'] }, '$quantity', 0] } }
           }
         }
       ]).session(session);
@@ -83,7 +75,7 @@ const createStockTransfer = async (
         session.endSession();
         return {
           success: false,
-          message: `Insufficient stock for product ${item.product} in source warehouse. Current stock: ${currentStock}`,
+          message: `Insufficient stock for product ${item.product} in source warehouse. Current stock: ${currentStock}, Requested: ${item.quantity}`,
         };
       }
 
@@ -103,7 +95,7 @@ const createStockTransfer = async (
 
       await transfer.save({ session });
 
-      // Create a new stock record for the source warehouse (out transaction)
+      // Create stock record for source warehouse (out transaction)
       const sourceStockOut = new Stocks({
         product: item.product,
         warehouse: fromWarehouse,
@@ -114,13 +106,13 @@ const createStockTransfer = async (
         date: new Date(date),
         batchNumber: item.batchNumber,
         note: item.note,
-        purchasePrice: 0, 
-        sellingPrice: 0,
+        purchasePrice: 0,
+        sellingPrice: 0, 
       });
 
       await sourceStockOut.save({ session });
 
-      // Create stock transaction for source warehouse (out)
+      // FIXED: Create stock transaction for source warehouse (out)
       const sourceTransaction = new StockTransaction({
         product: item.product,
         warehouse: fromWarehouse,
@@ -133,7 +125,7 @@ const createStockTransfer = async (
 
       await sourceTransaction.save({ session });
 
-      // Create a new stock record for the destination warehouse (in transaction)
+      // FIXED: Create stock record for destination warehouse (in transaction)
       const destStockIn = new Stocks({
         product: item.product,
         warehouse: toWarehouse,
@@ -144,13 +136,14 @@ const createStockTransfer = async (
         date: new Date(date),
         batchNumber: item.batchNumber,
         note: item.note,
+     
         purchasePrice: 0,
-        sellingPrice: 0, 
+        sellingPrice: 0,
       });
 
       await destStockIn.save({ session });
 
-      // Create stock transaction for destination warehouse (in)
+      // FIXED: Create stock transaction for destination warehouse (in)
       const destTransaction = new StockTransaction({
         product: item.product,
         warehouse: toWarehouse,

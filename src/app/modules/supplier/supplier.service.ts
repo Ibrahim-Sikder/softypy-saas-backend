@@ -6,7 +6,7 @@ import AppError from '../../errors/AppError';
 
 import { getTenantModel } from '../../utils/getTenantModels';
 import { generateSupplierId } from './supplier.utils';
-import { Types } from 'mongoose';
+import { ClientSession, Types } from 'mongoose';
 
 const createSupplier = async (tenantDomain: string, payload: any) => {
   try {
@@ -73,7 +73,10 @@ const getSingleSupplier = async (tenantDomain: string, id: string) => {
   );
   const { Model: Purchase } = await getTenantModel(tenantDomain, 'Purchase');
   const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
-  const { Model: PurchaseReturn } = await getTenantModel(tenantDomain, 'PurchaseReturn');
+  const { Model: PurchaseReturn } = await getTenantModel(
+    tenantDomain,
+    'PurchaseReturn',
+  );
 
   const supplier = await Supplier.findById(id)
     .populate({
@@ -140,7 +143,6 @@ const getSingleSupplier = async (tenantDomain: string, id: string) => {
     purchasesSummary,
   };
 };
-
 
 const getSupplierWithBillPayments = async (
   tenantDomain: string,
@@ -264,20 +266,226 @@ export const getSupplierPayments = async (
   );
 };
 
+//  const recordSupplierPayment = async (
+//   tenantDomain: string,
+//   payload: {
+//     supplierId: string;
+//     amount: number;
+//     method:
+//       | "Cash"
+//       | "Bkash"
+//       | "Nagad"
+//       | "Rocket"
+//       | "Check"
+//       | "Card"
+//       | "Bank Transfer"
+//       | "Other";
+//     transactionId?: string;
+//     accountNumber?: string;
+//     note?: string;
+//     cardNumber?: string;
+//     cardHolder?: string;
+//     expiryDate?: string;
+//     cvv?: string;
+//     checkNumber?: string;
+//     bankName?: string;
+//     mobileNumber?: string;
+//   }
+// ) => {
+//   const { Model: SupplierModel, connection } = await getTenantModel(
+//     tenantDomain,
+//     "Supplier"
+//   );
+//   const { Model: Purchase } = await getTenantModel(tenantDomain, "Purchase");
+//   const { Model: PurchaseOrder } = await getTenantModel(
+//     tenantDomain,
+//     "PurchaseOrder"
+//   );
+
+//   //  mechanism for transient errors
+//   const MAX_RETRIES = 5;
+//   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+//     const session = await connection.startSession();
+//     session.startTransaction();
+
+//     try {
+//       // Load Supplier
+//       const supplier = await SupplierModel.findById(payload.supplierId).session(session);
+//       if (!supplier) throw new Error("Supplier not found");
+
+//       if (payload.amount <= 0) throw new Error("Payment amount must be > 0");
+//       if (payload.amount > supplier.totalDue) {
+//         throw new Error("Payment amount exceeds total due amount");
+//       }
+
+//       // Prepare payment data
+//       const paymentData = {
+//         amount: payload.amount,
+//         method: payload.method,
+//         transactionId: payload.transactionId,
+//         accountNumber: payload.accountNumber,
+//         note: payload.note,
+//         isPartial: payload.amount < supplier.totalDue,
+//         date: new Date(),
+//         cardNumber: payload.cardNumber,
+//         cardHolder: payload.cardHolder,
+//         expiryDate: payload.expiryDate,
+//         cvv: payload.cvv,
+//         checkNumber: payload.checkNumber,
+//         bankName: payload.bankName,
+//         mobileNumber: payload.mobileNumber,
+//       };
+//       supplier.payments.push(paymentData as any);
+//       await supplier.save({ session });
+//       let remainingAmount = payload.amount;
+//       const purchases = await Purchase.find({
+//         _id: { $in: supplier.purchases as Types.ObjectId[] },
+//         dueAmount: { $gt: 0 },
+//       })
+//         .sort({ date: 1 })
+//         .session(session);
+
+//       for (const purchase of purchases) {
+//         if (remainingAmount <= 0) break;
+
+//         const payToThisPurchase = Math.min(purchase.dueAmount, remainingAmount);
+//         purchase.paidAmount += payToThisPurchase;
+//         purchase.dueAmount = purchase.grandTotal - purchase.paidAmount;
+
+//         purchase.purchaseStatus =
+//           purchase.dueAmount === 0
+//             ? "Paid"
+//             : purchase.paidAmount > 0
+//             ? "Partial"
+//             : "Unpaid";
+
+//         await purchase.save({ session });
+//         remainingAmount -= payToThisPurchase;
+//       }
+
+//       // Update PurchaseOrders
+//       const purchaseOrders = await PurchaseOrder.find({
+//         _id: { $in: supplier.orders as Types.ObjectId[] },
+//         paymentStatus: { $ne: "Paid" },
+//       })
+//         .sort({ orderDate: 1 })
+//         .session(session);
+
+//       for (const order of purchaseOrders) {
+//         if (remainingAmount <= 0) break;
+
+//         const alreadyPaid = (order as any).paidAmount || 0;
+//         const due = (order.grandTotal || 0) - alreadyPaid;
+//         const payToThisOrder = Math.min(due, remainingAmount);
+
+//         (order as any).paidAmount = alreadyPaid + payToThisOrder;
+//         const newDue = (order.grandTotal || 0) - (order as any).paidAmount;
+
+//         order.paymentStatus =
+//           newDue === 0
+//             ? "Paid"
+//             : (order as any).paidAmount > 0
+//             ? "Partial"
+//             : "Unpaid";
+
+//         await order.save({ session });
+//         remainingAmount -= payToThisOrder;
+//       }
+//       await reCalcSupplierTotals(tenantDomain, payload.supplierId);
+
+//       await session.commitTransaction();
+//       session.endSession();
+//       return supplier;
+//     } catch (err: any) {
+//       await session.abortTransaction();
+//       session.endSession();
+//       if (
+//         err?.errorLabels?.includes("TransientTransactionError") &&
+//         attempt < MAX_RETRIES
+//       ) {
+//         console.warn(`Retrying transaction (attempt ${attempt})...`);
+//         continue;
+//       }
+
+//       throw err;
+//     }
+//   }
+// };
+
+// export const reCalcSupplierTotals = async (tenantDomain: string, supplierId: string) => {
+//   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
+//   const { Model: Purchase } = await getTenantModel(tenantDomain, 'Purchase');
+//   const { Model: PurchaseOrder } = await getTenantModel(tenantDomain, 'PurchaseOrder');
+
+//   const supplier = await Supplier.findById(supplierId);
+//   if (!supplier) throw new Error('Supplier not found');
+
+//   // Get all active purchases
+//   const allPurchases = await Purchase.find({
+//     _id: { $in: supplier.purchases },
+//     isRecycled: { $ne: true },
+//   });
+
+//   // Calculate totals from purchases
+//   const totalDueFromPurchases = allPurchases.reduce((sum, p) => sum + (p.dueAmount || 0), 0);
+//   const totalPaidFromPurchases = allPurchases.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+
+//   // Get all active orders
+//   const allOrders = await PurchaseOrder.find({
+//     _id: { $in: supplier.orders },
+//     isRecycled: { $ne: true },
+//   });
+
+//   // Calculate totals from orders
+//   const totalDueFromOrders = allOrders.reduce(
+//     (sum, o) => sum + ((o.grandTotal || 0) - ((o as any).paidAmount || 0)),
+//     0
+//   );
+//   const totalPaidFromOrders = allOrders.reduce((sum, o) => sum + ((o as any).paidAmount || 0), 0);
+
+//   // Calculate total payments from supplier's payment records
+//   const totalPaidFromSupplierPayments = supplier.payments.reduce(
+//     (sum: number, pay: any) => sum + (pay.amount || 0),
+//     0
+//   );
+
+//   // IMPORTANT FIX: Calculate total paid as the sum of:
+//   // 1. Payments applied to purchases
+//   // 2. Payments applied to orders
+//   // 3. Direct supplier payments
+//   // This avoids double-counting
+//   const totalPaid = totalPaidFromPurchases + totalPaidFromOrders + totalPaidFromSupplierPayments;
+
+//   // Calculate total due (remaining amount to be paid)
+//   const totalDue = totalDueFromPurchases + totalDueFromOrders;
+
+//   // Update supplier totals
+//   supplier.totalDue = totalDue;
+//   supplier.totalPaid = totalPaid;
+
+//   // IMPORTANT FIX: Balance should be the net amount owed to supplier
+//   // If positive: supplier is owed money
+//   // If negative: supplier owes money (overpayment)
+//   supplier.balance = totalDue - totalPaid;
+
+//   await supplier.save();
+//   return supplier;
+// };
+
 export const recordSupplierPayment = async (
   tenantDomain: string,
   payload: {
     supplierId: string;
     amount: number;
     method:
-      | "Cash"
-      | "Bkash"
-      | "Nagad"
-      | "Rocket"
-      | "Check"
-      | "Card"
-      | "Bank Transfer"
-      | "Other";
+      | 'Cash'
+      | 'Bkash'
+      | 'Nagad'
+      | 'Rocket'
+      | 'Check'
+      | 'Card'
+      | 'Bank Transfer'
+      | 'Other';
     transactionId?: string;
     accountNumber?: string;
     note?: string;
@@ -288,191 +496,202 @@ export const recordSupplierPayment = async (
     checkNumber?: string;
     bankName?: string;
     mobileNumber?: string;
-  }
+  },
 ) => {
   const { Model: SupplierModel, connection } = await getTenantModel(
     tenantDomain,
-    "Supplier"
+    'Supplier',
   );
-  const { Model: Purchase } = await getTenantModel(tenantDomain, "Purchase");
+  const { Model: Purchase } = await getTenantModel(tenantDomain, 'Purchase');
   const { Model: PurchaseOrder } = await getTenantModel(
     tenantDomain,
-    "PurchaseOrder"
+    'PurchaseOrder',
   );
 
-  const session = await connection.startSession();
-  session.startTransaction();
+  const MAX_RETRIES = 5;
 
-  try {
-    // Load Supplier
-    const supplier = await SupplierModel.findById(payload.supplierId).session(
-      session
-    );
-    if (!supplier) throw new Error("Supplier not found");
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const session = await connection.startSession();
+    session.startTransaction();
 
-    if (payload.amount <= 0) throw new Error("Payment amount must be > 0");
-    
-    // Check if payment amount exceeds total due
-    if (payload.amount > supplier.totalDue) {
-      throw new Error("Payment amount exceeds total due amount");
-    }
+    try {
+      // Load Supplier
+      const supplier = await SupplierModel.findById(payload.supplierId).session(
+        session,
+      );
+      if (!supplier) throw new Error('Supplier not found');
 
-    // Prepare payment data
-    const paymentData = {
-      amount: payload.amount,
-      method: payload.method,
-      transactionId: payload.transactionId,
-      accountNumber: payload.accountNumber,
-      note: payload.note,
-      isPartial: payload.amount < supplier.totalDue,
-      date: new Date(),
-      cardNumber: payload.cardNumber,
-      cardHolder: payload.cardHolder,
-      expiryDate: payload.expiryDate,
-      cvv: payload.cvv,
-      checkNumber: payload.checkNumber,
-      bankName: payload.bankName,
-      mobileNumber: payload.mobileNumber,
-    };
-
-    // Save payment into supplier
-    supplier.payments.push(paymentData as any);
-    await supplier.save({ session });
-
-    // Update Purchases with payment allocation
-    let remainingAmount = payload.amount;
-
-    const purchases = await Purchase.find({
-      _id: { $in: supplier.purchases as Types.ObjectId[] },
-      dueAmount: { $gt: 0 },
-    })
-      .sort({ date: 1 })
-      .session(session);
-
-    for (const purchase of purchases) {
-      if (remainingAmount <= 0) break;
-
-      const payToThisPurchase = Math.min(purchase.dueAmount, remainingAmount);
-      purchase.paidAmount += payToThisPurchase;
-      purchase.dueAmount = purchase.grandTotal - purchase.paidAmount;
-
-      // Update purchase status
-      if (purchase.dueAmount === 0) {
-        purchase.purchaseStatus = "Paid";
-      } else if (purchase.paidAmount > 0) {
-        purchase.purchaseStatus = "Partial";
-      } else {
-        purchase.purchaseStatus = "Unpaid";
+      if (payload.amount <= 0) throw new Error('Payment amount must be > 0');
+      if (payload.amount > supplier.totalDue) {
+        throw new Error('Payment amount exceeds total due amount');
       }
 
-      await purchase.save({ session });
-      remainingAmount -= payToThisPurchase;
-    }
+      // Prepare payment data
+      const paymentData = {
+        amount: payload.amount,
+        method: payload.method,
+        transactionId: payload.transactionId,
+        accountNumber: payload.accountNumber,
+        note: payload.note,
+        isPartial: payload.amount < supplier.totalDue,
+        date: new Date(),
+        cardNumber: payload.cardNumber,
+        cardHolder: payload.cardHolder,
+        expiryDate: payload.expiryDate,
+        cvv: payload.cvv,
+        checkNumber: payload.checkNumber,
+        bankName: payload.bankName,
+        mobileNumber: payload.mobileNumber,
+      };
 
-    // Update PurchaseOrders with payment allocation
-    const purchaseOrders = await PurchaseOrder.find({
-      _id: { $in: supplier.orders as Types.ObjectId[] },
-      paymentStatus: { $ne: "Paid" },
-    })
-      .sort({ orderDate: 1 })
-      .session(session);
+      // Safer array push
+      await SupplierModel.updateOne(
+        { _id: supplier._id },
+        { $push: { payments: paymentData } },
+        { session },
+      );
 
-    for (const order of purchaseOrders) {
-      if (remainingAmount <= 0) break;
+      // Update Purchases
+      let remainingAmount = payload.amount;
+      const purchases = await Purchase.find({
+        _id: { $in: supplier.purchases as Types.ObjectId[] },
+        dueAmount: { $gt: 0 },
+      })
+        .sort({ date: 1 })
+        .session(session);
 
-      const alreadyPaid = (order as any).paidAmount || 0;
-      const due = (order.grandTotal || 0) - alreadyPaid;
-      const payToThisOrder = Math.min(due, remainingAmount);
+      for (const purchase of purchases) {
+        if (remainingAmount <= 0) break;
 
-      (order as any).paidAmount = alreadyPaid + payToThisOrder;
-      const newDue = (order.grandTotal || 0) - (order as any).paidAmount;
+        const payToThisPurchase = Math.min(purchase.dueAmount, remainingAmount);
+        purchase.paidAmount += payToThisPurchase;
+        purchase.dueAmount = purchase.grandTotal - purchase.paidAmount;
 
-      // Update order status
-      if (newDue === 0) {
-        order.paymentStatus = "Paid";
-      } else if ((order as any).paidAmount > 0) {
-        order.paymentStatus = "Partial";
-      } else {
-        order.paymentStatus = "Unpaid";
+        purchase.purchaseStatus =
+          purchase.dueAmount === 0
+            ? 'Paid'
+            : purchase.paidAmount > 0
+              ? 'Partial'
+              : 'Unpaid';
+
+        await purchase.save({ session });
+        remainingAmount -= payToThisPurchase;
       }
 
-      await order.save({ session });
-      remainingAmount -= payToThisOrder;
+      // Update PurchaseOrders
+      const purchaseOrders = await PurchaseOrder.find({
+        _id: { $in: supplier.orders as Types.ObjectId[] },
+        paymentStatus: { $ne: 'Paid' },
+      })
+        .sort({ orderDate: 1 })
+        .session(session);
+
+      for (const order of purchaseOrders) {
+        if (remainingAmount <= 0) break;
+
+        const alreadyPaid = (order as any).paidAmount || 0;
+        const due = (order.grandTotal || 0) - alreadyPaid;
+        const payToThisOrder = Math.min(due, remainingAmount);
+
+        (order as any).paidAmount = alreadyPaid + payToThisOrder;
+        const newDue = (order.grandTotal || 0) - (order as any).paidAmount;
+
+        order.paymentStatus =
+          newDue === 0
+            ? 'Paid'
+            : (order as any).paidAmount > 0
+              ? 'Partial'
+              : 'Unpaid';
+
+        await order.save({ session });
+        remainingAmount -= payToThisOrder;
+      }
+
+      // Recalculate supplier totals (inside same transaction)
+      await reCalcSupplierTotals(tenantDomain, payload.supplierId, session);
+
+      await session.commitTransaction();
+      session.endSession();
+      return supplier;
+    } catch (err: any) {
+      await session.abortTransaction();
+      session.endSession();
+
+      if (
+        err?.errorLabels?.includes('TransientTransactionError') &&
+        attempt < MAX_RETRIES
+      ) {
+        const delay = 100 * attempt; 
+        console.warn(
+          `Retrying transaction (attempt ${attempt}) after ${delay}ms...`,
+        );
+        await new Promise((res) => setTimeout(res, delay));
+        continue;
+      }
+
+      throw err;
     }
-
-    // Recalculate supplier totals
-    await reCalcSupplierTotals(tenantDomain, payload.supplierId);
-
-    await session.commitTransaction();
-    session.endSession();
-
-    return supplier;
-  } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
-    throw err;
   }
 };
 
-
-
-export const reCalcSupplierTotals = async (tenantDomain: string, supplierId: string) => {
+// reCalcSupplierTotals now accepts session
+export const reCalcSupplierTotals = async (
+  tenantDomain: string,
+  supplierId: string,
+  session?: ClientSession,
+) => {
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
   const { Model: Purchase } = await getTenantModel(tenantDomain, 'Purchase');
-  const { Model: PurchaseOrder } = await getTenantModel(tenantDomain, 'PurchaseOrder');
+  const { Model: PurchaseOrder } = await getTenantModel(
+    tenantDomain,
+    'PurchaseOrder',
+  );
 
-  const supplier = await Supplier.findById(supplierId);
+  const supplier = await Supplier.findById(supplierId).session(session || null);
   if (!supplier) throw new Error('Supplier not found');
 
-  // Get all active purchases
   const allPurchases = await Purchase.find({
     _id: { $in: supplier.purchases },
     isRecycled: { $ne: true },
-  });
+  }).session(session || null);
 
-  // Calculate totals from purchases
-  const totalDueFromPurchases = allPurchases.reduce((sum, p) => sum + (p.dueAmount || 0), 0);
-  const totalPaidFromPurchases = allPurchases.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+  const totalDueFromPurchases = allPurchases.reduce(
+    (sum, p) => sum + (p.dueAmount || 0),
+    0,
+  );
+  const totalPaidFromPurchases = allPurchases.reduce(
+    (sum, p) => sum + (p.paidAmount || 0),
+    0,
+  );
 
-  // Get all active orders
   const allOrders = await PurchaseOrder.find({
     _id: { $in: supplier.orders },
     isRecycled: { $ne: true },
-  });
+  }).session(session || null);
 
-  // Calculate totals from orders
   const totalDueFromOrders = allOrders.reduce(
     (sum, o) => sum + ((o.grandTotal || 0) - ((o as any).paidAmount || 0)),
-    0
+    0,
   );
-  const totalPaidFromOrders = allOrders.reduce((sum, o) => sum + ((o as any).paidAmount || 0), 0);
+  const totalPaidFromOrders = allOrders.reduce(
+    (sum, o) => sum + ((o as any).paidAmount || 0),
+    0,
+  );
 
-  // Calculate total payments from supplier's payment records
   const totalPaidFromSupplierPayments = supplier.payments.reduce(
     (sum: number, pay: any) => sum + (pay.amount || 0),
-    0
+    0,
   );
 
-  // IMPORTANT FIX: Calculate total paid as the sum of:
-  // 1. Payments applied to purchases
-  // 2. Payments applied to orders
-  // 3. Direct supplier payments
-  // This avoids double-counting
-  const totalPaid = totalPaidFromPurchases + totalPaidFromOrders + totalPaidFromSupplierPayments;
-
-  // Calculate total due (remaining amount to be paid)
+  // Avoid double-counting: supplier totalPaid = payments only
+  const totalPaid = totalPaidFromSupplierPayments;
   const totalDue = totalDueFromPurchases + totalDueFromOrders;
 
-  // Update supplier totals
   supplier.totalDue = totalDue;
   supplier.totalPaid = totalPaid;
-  
-  // IMPORTANT FIX: Balance should be the net amount owed to supplier
-  // If positive: supplier is owed money
-  // If negative: supplier owes money (overpayment)
   supplier.balance = totalDue - totalPaid;
 
-  await supplier.save();
+  await supplier.save({ session });
   return supplier;
 };
 
@@ -487,5 +706,5 @@ export const supplierServices = {
   getSupplierWithBillPayments,
   recordSupplierPayment,
   getSupplierPayments,
-  reCalcSupplierTotals
+  reCalcSupplierTotals,
 };
