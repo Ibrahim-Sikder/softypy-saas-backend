@@ -525,7 +525,7 @@ export const createQuotationDetails = async (
 
     const { input_data = [], service_input_data = [] } = quotation;
 
-    // Aggregate stock updates
+    // Aggregate stock updates by product and warehouse only (without batchNumber)
     const productItems = input_data.filter(
       (item) => item.product && item.warehouse && item.quantity,
     );
@@ -535,10 +535,10 @@ export const createQuotationDetails = async (
       {
         product: string;
         warehouse: string;
-        batchNumber?: string;
         totalQuantity: number;
         product_name: string;
         sellingPrice: number;
+        totalValue: number; // Added to calculate average selling price
       }
     >();
 
@@ -547,22 +547,24 @@ export const createQuotationDetails = async (
         product,
         quantity = 0,
         warehouse,
-        batchNumber,
         product_name,
         sellingPrice = 0,
       } = item;
-      const key = `${product}-${warehouse}-${batchNumber || 'no-batch'}`;
+      // Remove batchNumber from the key - now only product and warehouse
+      const key = `${product}-${warehouse}`;
 
       if (stockUpdateMap.has(key)) {
-        stockUpdateMap.get(key)!.totalQuantity += quantity;
+        const entry = stockUpdateMap.get(key)!;
+        entry.totalQuantity += quantity;
+        entry.totalValue += quantity * sellingPrice;
       } else {
         stockUpdateMap.set(key, {
           product: String(product),
           warehouse,
-          batchNumber,
           totalQuantity: quantity,
           product_name,
           sellingPrice,
+          totalValue: quantity * sellingPrice,
         });
       }
     }
@@ -571,17 +573,22 @@ export const createQuotationDetails = async (
     for (const {
       product,
       warehouse,
-      batchNumber,
       totalQuantity,
       product_name,
-      sellingPrice,
+      totalValue,
     } of stockUpdateMap.values()) {
-      const stockQuery: any = { product, warehouse };
-      if (batchNumber) stockQuery.batchNumber = batchNumber;
+      // Calculate average selling price
+      const averageSellingPrice = totalValue / totalQuantity;
 
-      const existingStock = await Stocks.findOne(stockQuery).session(session);
-      if (!existingStock)
-        throw new AppError(404, `Stock "${product_name}" not found.`);
+      // Find existing stock without batchNumber filter
+      const existingStock = await Stocks.findOne({
+        product,
+        warehouse,
+      }).session(session);
+      
+      if (!existingStock) {
+        throw new AppError(404, `Stock for product "${product_name}" not found in warehouse.`);
+      }
 
       if (existingStock.quantity < totalQuantity) {
         throw new AppError(
@@ -594,16 +601,15 @@ export const createQuotationDetails = async (
       existingStock.quantity -= totalQuantity;
       await existingStock.save({ session });
 
-      // Record transaction
+      // Record transaction without batchNumber
       const stockTransaction = new StockTransaction({
         product,
         warehouse,
         quantity: totalQuantity,
-        batchNumber,
         type: 'out',
         referenceType: 'sale',
         referenceId: quotationData._id,
-        sellingPrice,
+        sellingPrice: averageSellingPrice, // Use average selling price
         date: new Date(),
       });
       await stockTransaction.save({ session });

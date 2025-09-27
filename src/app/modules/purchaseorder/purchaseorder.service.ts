@@ -68,6 +68,9 @@ export const updatePurchaseOrder = async (
       throw new AppError(httpStatus.NOT_FOUND, 'Purchase Order not found');
     }
 
+    // Check if order is already received
+    const isAlreadyReceived = existingOrder.status === 'Received';
+
     // Update the purchase order
     const updatedOrder = await PurchaseOrder.findByIdAndUpdate(id, payload, {
       new: true,
@@ -98,8 +101,8 @@ export const updatePurchaseOrder = async (
       );
     }
 
-    // If marking as Received → Create Purchase + update Supplier + Stock + StockTransaction
-    if (isMarkingReceived) {
+    // If marking as Received and it wasn't received before → Create Purchase + update Supplier + Stock + StockTransaction
+    if (isMarkingReceived && !isAlreadyReceived) {
       const purchasePayload: Partial<TPurchase> = {
         date: new Date(),
         referenceNo: updatedOrder.referenceNo?.toString(),
@@ -146,29 +149,34 @@ export const updatePurchaseOrder = async (
 
       // Update stock + product quantities + create StockTransaction
       for (const item of updatedOrder.products) {
+        // Find existing stock without considering batchNumber
         const existingStock = await Stocks.findOne({
           product: item.productId,
           warehouse: updatedOrder.warehouse,
-          batchNumber: item.batchNumber || null,
         }).session(session);
 
+        // Prepare stock data with all required fields
         const stockData = {
           product: item.productId,
           warehouse: updatedOrder.warehouse,
           quantity: item.quantity,
-          batchNumber: item.batchNumber || null,
-          expiryDate: null,
           type: 'in',
           referenceType: 'purchase',
+          referenceId: newPurchase[0]._id,
           purchasePrice: item.unit_price,
           date: new Date(),
         };
 
+        // Add batchNumber if it exists in the item
+
         if (existingStock) {
+          // Update existing stock: add quantity
           existingStock.quantity += item.quantity;
           await existingStock.save({ session });
         } else {
-          await Stocks.create([stockData], { session });
+          // Create new stock
+          const res = await Stocks.create([stockData], { session });
+          console.log('stock create check', res);
         }
 
         // Create StockTransaction record
@@ -179,11 +187,14 @@ export const updatePurchaseOrder = async (
           type: 'in',
           referenceType: 'purchase',
           referenceId: newPurchase[0]._id,
-          batchNumber: item.batchNumber || null,
           date: new Date(),
         };
+
+        // Add batchNumber to transaction if it exists
+
         await StockTransaction.create([transactionData], { session });
 
+        // Update product stock quantity
         await Product.findByIdAndUpdate(
           item.productId,
           { $inc: { stock: item.quantity } },
@@ -206,7 +217,6 @@ export const updatePurchaseOrder = async (
     );
   }
 };
-
 const deletePurchaseOrder = async (tenantDomain: string, id: string) => {
   const { Model: PurchaseOrder, connection } = await getTenantModel(
     tenantDomain,
