@@ -18,7 +18,7 @@ const createWarranty = catchAsync(async (req, res) => {
 
 const getAllWarranty = catchAsync(async (req, res) => {
   const tenantDomain = req.query.tenantDomain as string;
-  const result = await WarrantyServices.getAllWarranty(tenantDomain);
+  const result = await WarrantyServices.getAllWarranty(tenantDomain, req.query);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
