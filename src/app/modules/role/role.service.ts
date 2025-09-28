@@ -1,10 +1,10 @@
+// src/modules/role/role.service.ts
 import httpStatus from 'http-status';
 import { IRole, IRoleDocument } from './role.interface';
 import Role from './role.model';
 import AppError from '../../errors/AppError';
 import Page from '../page/page.model';
 import { User } from '../user/user.model';
-
 
 const createRole = async (payload: IRole): Promise<IRoleDocument> => {
   // Check if the role name already exists
@@ -29,11 +29,13 @@ const createRole = async (payload: IRole): Promise<IRoleDocument> => {
   return result;
 };
 
-const getAllRoles = async ()=>{
+const getAllRoles = async () => {
+  const result = await Role.find().populate('permissions.pageId');
+  return result;
+};
 
-}
 const getRoleById = async (id: string): Promise<IRoleDocument> => {
-  const result = await Role.findById(id);
+  const result = await Role.findById(id).populate('permissions.pageId');
   if (!result) {
     throw new AppError(httpStatus.NOT_FOUND, 'Role not found!');
   }
@@ -70,7 +72,7 @@ const updateRole = async (id: string, payload: Partial<IRole>): Promise<IRoleDoc
   const result = await Role.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
-  });
+  }).populate('permissions.pageId');
   
   if (!result) {
     throw new AppError(httpStatus.NOT_FOUND, 'Role not found!');

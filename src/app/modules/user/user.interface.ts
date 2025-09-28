@@ -1,3 +1,4 @@
+// src/modules/user/user.interface.ts
 import { Model, ObjectId } from 'mongoose';
 import { USER_ROLE } from './user.constant';
 
@@ -8,6 +9,7 @@ export interface TUser {
   password: string;
   tenantDomain: string;
   tenantId?: ObjectId;
+  roleId: ObjectId;
   tenantInfo?: {
     name: string;
     domain: string;
@@ -31,7 +33,7 @@ export interface TUser {
   lastLogin?: Date;
   passwordChangeAt: Date;
   isDeleted?: boolean;
-  image:string;
+  image: string;
 }
 
 export interface UserModel extends Model<TUser> {
@@ -45,4 +47,5 @@ export interface UserModel extends Model<TUser> {
     jwtIssuedTimestamp: number,
   ): boolean;
 }
+
 export type TUserRole = keyof typeof USER_ROLE;

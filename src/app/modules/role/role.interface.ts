@@ -1,3 +1,4 @@
+// src/modules/role/role.interface.ts
 import { Document, Model, Types } from 'mongoose';
 import { IPage } from '../page/page.interface';
 
@@ -38,7 +39,6 @@ export interface IRoleModel extends Model<IRole, {}, IRoleMethods> {
   isRoleExistsByName(name: string): Promise<IRoleDocument | null>;
 }
 
-// The key change is here - permissionCount is marked as optional with ?
 export interface IRoleDocument extends IRole, Document, IRoleMethods {
   permissionCount?: IPermissionCount;
 }

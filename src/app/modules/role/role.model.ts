@@ -1,3 +1,4 @@
+// src/modules/role/role.model.ts
 import { Schema, model } from 'mongoose';
 import { IRole, IRoleMethods, IRoleModel, IPermission } from './role.interface';
 

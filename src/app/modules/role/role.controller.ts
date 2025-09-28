@@ -1,3 +1,4 @@
+// src/modules/role/role.controller.ts
 import { Request, Response } from 'express';
 import httpStatus from 'http-status';
 import catchAsync from '../../utils/catchAsync';
@@ -17,7 +18,14 @@ const createRole = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAllRoles = catchAsync(async (req: Request, res: Response) => {
+  const result = await RoleService.getAllRoles();
   
+  sendResponse<IRoleDocument[]>(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Roles retrieved successfully!',
+    data: result,
+  });
 });
 
 const getRoleById = catchAsync(async (req: Request, res: Response) => {

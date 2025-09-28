@@ -1,3 +1,4 @@
+// src/modules/permission/permission.routes.ts
 import express from 'express';
 import { PermissionController } from './permission.controller';
 import { auth } from '../../middlewares/auth';
@@ -7,7 +8,6 @@ const router = express.Router();
 // Check permission
 router.post(
   '/check',
-//   validateRequest(PermissionValidation.checkPermissionZodSchema),
   auth('admin', 'manager'),
   PermissionController.checkPermission
 );
@@ -29,7 +29,6 @@ router.get(
 // Update role permissions
 router.put(
   '/role/:roleId',
-//   validateRequest(PermissionValidation.updateRolePermissionsZodSchema),
   auth('admin'),
   PermissionController.updateRolePermissions
 );

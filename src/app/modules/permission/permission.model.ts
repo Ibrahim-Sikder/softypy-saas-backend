@@ -1,6 +1,6 @@
+// src/modules/permission/permission.model.ts
 import { Schema, model } from 'mongoose';
 import { IPermissionDocument, IPermissionModel } from './permission.interface';
-
 
 const permissionSchema = new Schema<IPermissionDocument, IPermissionModel>(
   {

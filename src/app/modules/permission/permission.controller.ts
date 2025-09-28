@@ -1,3 +1,4 @@
+// src/modules/permission/permission.controller.ts
 import { Request, Response } from 'express';
 import httpStatus from 'http-status';
 import catchAsync from '../../utils/catchAsync';

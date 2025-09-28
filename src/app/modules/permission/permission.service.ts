@@ -1,3 +1,4 @@
+// src/modules/permission/permission.service.ts
 import httpStatus from 'http-status';
 import { Types } from 'mongoose';
 import { IPermissionCheck, IPermissionMatrix, IPermissionRequest, IUserPermissions } from './permission.interface';
@@ -13,18 +14,18 @@ const checkPermission = async (payload: IPermissionCheck): Promise<boolean> => {
   const { userId, pageId, action } = payload;
 
   // Get user with role
-  const user = await User.findById(userId).populate('role');
+  const user = await User.findById(userId).populate('roleId');
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  // Admin has all permissions
-  // if (user.role && user.role.type === 'admin') {
-  //   return true;
-  // }
+  // Superadmin has all permissions
+  if (user.role === 'superadmin') {
+    return true;
+  }
 
   // Find the role
-  const role = await Role.findById(user.role);
+  const role = await Role.findById(user.roleId);
   if (!role) {
     throw new AppError(httpStatus.NOT_FOUND, 'Role not found');
   }
@@ -46,17 +47,18 @@ const checkPermission = async (payload: IPermissionCheck): Promise<boolean> => {
  */
 const getUserPermissions = async (userId: string): Promise<IUserPermissions> => {
   // Get user with role
-  const user = await User.findById(userId).populate('role');
+  const user = await User.findById(userId).populate('roleId');
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not found');
   }
 
   // Find the role
-  const role = await Role.findById(user.role);
+  const role = await Role.findById(user.roleId);
   if (!role) {
     throw new AppError(httpStatus.NOT_FOUND, 'Role not found');
   }
 
+  
   // Get all pages
   const pages = await Page.find({ status: 'active' });
 
@@ -64,7 +66,7 @@ const getUserPermissions = async (userId: string): Promise<IUserPermissions> => 
   const permissionMatrix: IPermissionMatrix = {};
 
   // If admin, grant all permissions
-  if (role.type === 'admin') {
+  if (role.type === 'admin' || user.role === 'superadmin') {
     pages.forEach(page => {
       permissionMatrix[page._id.toString()] = {
         create: true,
