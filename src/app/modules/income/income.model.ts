@@ -12,21 +12,12 @@ export const incomeItemSchema = new Schema(
 export const incomeSchema = new Schema<IIncome>(
   {
     date: { type: String },
-    invoice_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Invoice',
-      unique: true,
-      sparse: true,
-    },
     income_items: { type: [incomeItemSchema] },
     payment_method: { type: String },
     accountNumber: { type: String },
     transactionNumber: { type: String },
     note: { type: String },
     totalAmount: { type: Number },
-    serviceIncomeAmount: { type: Number },
-    partsIncomeAmount: { type: Number },
-    totalInvoiceIncome: { type: Number },
     totalOtherIncome: { type: Number },
     referanceNo: { type: Number },
   },

@@ -2,7 +2,6 @@ import { StatusCodes } from 'http-status-codes';
 import AppError from '../../errors/AppError';
 import { TAttendance } from './attendance.interface';
 import { getTenantModel } from '../../utils/getTenantModels';
-import dayjs from 'dayjs';
 
 export const createAttendanceIntoDB = async (
   tenantDomain: string,

@@ -214,14 +214,12 @@ const addPartialPayment = async (
   }
 };
 
-
-
-
 const deleteSalaryFromDB = async (tenantDomain: string, id: string) => {
   const { Model: Salary, connection } = await getTenantModel(
     tenantDomain,
     'Salary',
   );
+  console.log('from salary tenant',tenantDomain);
   const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
 
   const session = await connection.startSession();
@@ -287,7 +285,6 @@ const getSalariesForCurrentMonth = async (
     salaries,
   };
 };
-
 
 export const getAllSalaries = async (
   tenantDomain: string,
@@ -615,14 +612,12 @@ const calculateTotalPaymentManually = (
   );
 };
 
-
 export const getSingleSalary = async (
   tenantDomain: string,
   employeeId?: string,
   month?: string,
   year?: string,
   day?: number,
-  
 ) => {
   const { Model: Salary } = await getTenantModel(tenantDomain, 'Salary');
 
@@ -728,11 +723,13 @@ export const getSingleSalary = async (
   return { salaries };
 };
 
-export const getSalariesByMonth = async (tenantDomain: string, month: string) => {
+export const getSalariesByMonth = async (
+  tenantDomain: string,
+  month: string,
+) => {
   const { Model: Salary } = await getTenantModel(tenantDomain, 'Salary');
 
   const matchQuery: any = {};
-  console.log('from salary', month);
 
   // ===== Month filter =====
   if (month && month.trim() !== '') {
@@ -853,11 +850,11 @@ const updateSalaryIntoDB = async (
     if (payload.advance !== undefined || payload.pay !== undefined) {
       const currentAdvance = Number(payload.advance) || 0;
       const currentPay = Number(payload.pay) || 0;
-      
+
       // Calculate the difference from existing values
       const advanceDiff = currentAdvance - existingSalary.advance;
       const payDiff = currentPay - existingSalary.pay;
-      
+
       // Update payment history with new payments
       if (advanceDiff > 0) {
         existingSalary.payment_history.push({
@@ -867,7 +864,7 @@ const updateSalaryIntoDB = async (
           payment_method: 'cash',
         });
       }
-      
+
       if (payDiff > 0) {
         existingSalary.payment_history.push({
           amount: payDiff,
@@ -876,7 +873,7 @@ const updateSalaryIntoDB = async (
           payment_method: 'cash',
         });
       }
-      
+
       // Update the legacy fields
       existingSalary.advance = currentAdvance;
       existingSalary.pay = currentPay;
@@ -911,5 +908,5 @@ export const SalaryServices = {
   getSalaryStatistics,
   recalculateAllSalaries,
   calculateTotalPaymentManually,
-  getSalariesByMonth
+  getSalariesByMonth,
 };

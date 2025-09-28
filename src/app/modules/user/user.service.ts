@@ -1,3 +1,4 @@
+import bcrypt from 'bcrypt';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
@@ -123,6 +124,14 @@ const updateUser = async (
       throw new AppError(httpStatus.BAD_REQUEST, 'Username already taken!');
     }
   }
+
+ if (payload.password && typeof payload.password === 'string') {
+  const hashedPassword = await bcrypt.hash(
+    payload.password,
+    Number(config.bcrypt_salt_round),
+  );
+  payload.password = hashedPassword;
+}
 
   const updatedUser = await User.findByIdAndUpdate(id, payload, {
     new: true,
