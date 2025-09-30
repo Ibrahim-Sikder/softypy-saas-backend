@@ -95,7 +95,7 @@ const approvePurchaseReturn = async (req: Request, res: Response, next: NextFunc
       id,
       { 
         status: 'completed',
-        approvedBy: req.user._id,
+        // approvedBy: req.user._id,
         approvedDate: new Date()
       },
       { new: true }

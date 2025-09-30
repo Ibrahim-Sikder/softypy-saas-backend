@@ -1,3 +1,4 @@
+// src/modules/user/user.model.ts
 import { Schema, model } from 'mongoose';
 import bcrypt from 'bcrypt';
 import { TUser, UserModel } from './user.interface';
@@ -13,14 +14,12 @@ export const userSchema = new Schema<TUser>(
     },
     email: {
       type: String,
-      required: [true, 'Email is required'],
       unique: true,
       trim: true,
       lowercase: true,
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
       select: false,
     },
     tenantDomain: {
@@ -33,6 +32,18 @@ export const userSchema = new Schema<TUser>(
       type: Schema.Types.ObjectId,
       ref: 'Tenant',
     },
+    roleId: [{
+      type: Schema.Types.ObjectId,
+      ref: 'Role',
+    }],
+    pageId: [{
+      type: Schema.Types.ObjectId,
+      ref: 'Page',
+    }],
+    permission: [{
+      type: Schema.Types.ObjectId,
+      ref: 'Permission',
+    }],
     tenantInfo: {
       name: String,
       domain: String,
@@ -61,6 +72,7 @@ export const userSchema = new Schema<TUser>(
     },
     role: {
       type: String,
+      required: [true, 'Role is required'],
     },
     lastLogin: {
       type: Date,

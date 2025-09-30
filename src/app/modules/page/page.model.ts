@@ -1,7 +1,7 @@
 import { Schema, model } from 'mongoose';
-import { IPage, IPageMethods, IPageModel } from './page.interface';
+import { IPage } from './page.interface';
 
-const pageSchema = new Schema<IPage, IPageModel, IPageMethods>(
+export const pageSchema = new Schema<IPage>(
   {
     name: {
       type: String,
@@ -35,11 +35,7 @@ const pageSchema = new Schema<IPage, IPageModel, IPageMethods>(
   }
 );
 
-// Check if page exists by path
-pageSchema.statics.isPageExistsByPath = async function (path: string) {
-  return await this.findOne({ path });
-};
 
-const Page = model<IPage, IPageModel>('Page', pageSchema);
+const Page = model<IPage>('Page', pageSchema);
 
 export default Page;

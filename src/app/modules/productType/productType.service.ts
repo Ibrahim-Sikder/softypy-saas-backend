@@ -8,7 +8,6 @@ export const createProductType = async (
   tenantDomain: string,
   payload: TProductType,
 ) => {
-  console.log('from product type', tenantDomain);
   const { Model: ProductType } = await getTenantModel(
     tenantDomain,
     'ProductType',

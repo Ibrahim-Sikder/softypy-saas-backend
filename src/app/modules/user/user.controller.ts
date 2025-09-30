@@ -1,3 +1,4 @@
+// src/modules/user/user.controller.ts
 import httpStatus from 'http-status';
 import { UserServices } from './user.service';
 import catchAsync from '../../utils/catchAsync';
@@ -58,5 +59,3 @@ export const UserController = {
   deleteUser,
   updateUser,
 };
-
-

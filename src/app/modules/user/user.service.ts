@@ -1,3 +1,4 @@
+// src/modules/user/user.service.ts
 import bcrypt from 'bcrypt';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -83,11 +84,10 @@ export const createUser = async (payload: TUser) => {
 const getAllUser = async (tenantDomain: string) => {
   if (tenantDomain) {
     const { Model: User } = await getTenantModel(tenantDomain, 'User');
-    const result = await User.find();
+    const result = await User.find().populate('roleId');
     return result;
   } else {
-    const result = await User.find();
-
+    const result = await User.find().populate('roleId');
     return result;
   }
 };
@@ -136,7 +136,7 @@ const updateUser = async (
   const updatedUser = await User.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
-  });
+  }).populate('roleId');
 
   return updatedUser;
 };
@@ -147,5 +147,3 @@ export const UserServices = {
   deleteUser,
   updateUser,
 };
-
-

@@ -6,6 +6,7 @@ import { CustomerServices } from './customer.service';
 const createCustomer = catchAsync(async (req, res) => {
   //  const domain = (req.headers.origin as string) || (req.headers.host as string) || '';
   const { tenantDomain } = req.body;
+  console.log(tenantDomain, 'tenant check this ')
 
   const customer = await CustomerServices.createCustomerDetails(
     tenantDomain,

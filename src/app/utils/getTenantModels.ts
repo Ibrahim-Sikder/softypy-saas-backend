@@ -40,10 +40,26 @@ import { DonationSchema } from '../modules/donation/donatin.model';
 import { BillPaySchema } from '../modules/bill-pay/bill-pay.model';
 import { noteSchema } from '../modules/note/note.model';
 import { warrantySchema } from '../modules/warranties/warranties.model';
+import { pageSchema } from '../modules/page/page.model';
+import { roleSchema } from '../modules/role/role.model';
+import { permissionSchema } from '../modules/permission/permission.model';
+
+type AnySchema = mongoose.Schema<
+  any,
+  mongoose.Model<any, any, any, any, any, any>,
+  any,
+  any,
+  any,
+  any,
+  mongoose.DefaultSchemaOptions,
+  any,
+  any
+>;
 
 type SchemaMap = {
   [key: string]: mongoose.Schema;
 };
+
 
 const schemas: SchemaMap = {
   User: userSchema,
@@ -82,15 +98,25 @@ const schemas: SchemaMap = {
   BillPay: BillPaySchema,
   Note: noteSchema,
   Warranty: warrantySchema,
+  Role: roleSchema,
+  Page:pageSchema,
+  Permission:permissionSchema
 };
 
 export const getTenantModel = async (
-  tenantDomain: string,
+  tenantIdentifier: string,
   modelName: keyof typeof schemas,
 ) => {
-  const tenant = await Tenant.findOne({
-    domain: { $regex: new RegExp(`^${tenantDomain}$`, 'i') },
-  });
+  let tenant;
+  if (mongoose.Types.ObjectId.isValid(tenantIdentifier)) {
+    // Search by _id
+    tenant = await Tenant.findById(tenantIdentifier);
+  } else {
+    // Search by domain
+    tenant = await Tenant.findOne({
+      domain: { $regex: new RegExp(`^${tenantIdentifier}$`, 'i') },
+    });
+  }
 
   if (!tenant || !tenant.isActive) {
     throw new AppError(httpStatus.NOT_FOUND, 'Tenant not found or inactive');
@@ -111,6 +137,5 @@ export const getTenantModel = async (
     tenantConnection.models[modelNameStr] ||
     tenantConnection.model(modelNameStr, schema);
 
-  // Add connection to the returned object here
   return { Model, tenant, connection: tenantConnection };
 };

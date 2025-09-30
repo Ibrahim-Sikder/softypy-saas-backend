@@ -31,6 +31,7 @@ export const loginUser = async (payload: TLoginUser) => {
       userId: user._id.toString(),
       role: user.role,
       name: user.name,
+      tenantDomain:user.tenantDomain
     };
 
     if (!config.jwt_access_secret || !config.jwt_refresh_secret) {
@@ -112,52 +113,11 @@ export const loginUser = async (payload: TLoginUser) => {
 
 
 
-const changePassword = async (
-  userData: JwtPayload,
-  payload: { oldPassword: string; newPassword: string },
-) => {
-  
-  const user = await User.isUserExistsByCustomId(userData.userId);
-
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found ');
-  }
-
-  const isDeleted = user?.isDeleted;
-  if (isDeleted) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is deleted!');
-  }
-
-
-  if (!(await User.isPasswordMatched(payload?.oldPassword, user?.password))) {
-    throw new AppError(httpStatus.FORBIDDEN, 'Password do not matched');
-  }
-
-  const newHashedPassword = await bcrypt.hash(
-    payload.newPassword,
-    Number(config.bcrypt_salt_round),
-  );
-
-  const result = await User.findOneAndUpdate(
-    {
-      id: userData.userId,
-      role: userData.role,
-    },
-    {
-      password: newHashedPassword,
-      needsPasswordChange: false,
-      passwordChangedAt: new Date(),
-    },
-  );
-
-  return result;
-};
 
 
 
 
 export const AuthServices = {
   loginUser,
-  changePassword,
 
 };

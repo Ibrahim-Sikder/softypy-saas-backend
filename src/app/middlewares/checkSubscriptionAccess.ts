@@ -2,7 +2,8 @@ import { NextFunction, Request, Response } from "express";
 import { SubscriptionModel } from "../modules/subscription/subscription.model";
 
 export const checkSubscriptionAccess = async (req:Request, res:Response, next:NextFunction) => {
-  const userId = req.user._id;
+  // const userId = req.user._id;
+  let userId
 
   const subscription = await SubscriptionModel.findOne({ user: userId });
 

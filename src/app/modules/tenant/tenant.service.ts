@@ -5,7 +5,6 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { createSubscription } from '../subscription/subscription.service';
 import { connectToTenantDatabase } from '../../../server';
-import mongoose from 'mongoose';
 import { userSchema } from '../user/user.model';
 import { subscriptionSchema } from '../subscription/subscription.model';
 import { getTenantModel } from '../../utils/getTenantModels';
@@ -64,7 +63,7 @@ export const createTenant = async (
     await tenant.save();
 
     // Create Admin User (in tenant DB)
-    const fullName = `${userPayload.firstName} ${userPayload.lastName}`.trim();
+    const fullName = `${userPayload?.firstName} ${userPayload?.lastName}`.trim();
     const newUser = await UserModel.create({
       name: fullName,
       email: userPayload.email,
