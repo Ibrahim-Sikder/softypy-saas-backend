@@ -7,26 +7,31 @@ import QueryBuilder from '../../builder/QueryBuilder';
 
 const createWarranty = async (payload: TWarranty, tenantDomain: string) => {
   const { Model: Warranty } = await getTenantModel(tenantDomain, 'Warranty');
+  console.log(payload);
 
   const newWarranty = await Warranty.create(payload);
+  console.log('new warranty', newWarranty);
   return newWarranty;
 };
 
-export const getAllWarranty = async (tenantDomain: string, query: Record<string, unknown>) => {
+export const getAllWarranty = async (
+  tenantDomain: string,
+  query: Record<string, unknown>,
+) => {
   const { Model: Warranty } = await getTenantModel(tenantDomain, 'Warranty');
   const { Model: Product } = await getTenantModel(tenantDomain, 'Product');
-
+console.log(tenantDomain)
   const qb = new QueryBuilder(
-    Warranty.find().populate({ 
-      path: 'products', 
-      model: Product, 
-      select: 'product_name' // only return product_name
+    Warranty.find().populate({
+      path: 'products',
+      model: Product,
+      select: 'product_name',
     }),
-    query
+    query,
   )
     .search(['name', 'description'])
-    .filter()
-    .sort()
+    // .filter()
+    // .sort()
     .paginate()
     .fields();
 
@@ -45,7 +50,6 @@ export const getAllWarranty = async (tenantDomain: string, query: Record<string,
     ...total,
   };
 };
-
 
 const getSingleWarranty = async (tenantDomain: string, id: string) => {
   const { Model: Warranty } = await getTenantModel(tenantDomain, 'Warranty');

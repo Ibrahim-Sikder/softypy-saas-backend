@@ -5,7 +5,7 @@ import { WarrantyServices } from './warranties.service';
 
 const createWarranty = catchAsync(async (req, res) => {
   const tenantDomain = req.query.tenantDomain as string;
-  console.log('from creeate', tenantDomain)
+
   const result = await WarrantyServices.createWarranty(req.body, tenantDomain);
 
   sendResponse(res, {
