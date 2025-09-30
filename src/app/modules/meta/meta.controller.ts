@@ -42,7 +42,27 @@ const getAllMetaFromDB = async (
     next(err);
   }
 };
+const calculateAccountingSummary  = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+     const tenantDomain = req.query.tenantDomain as string;
+    const result = await metServices.calculateAccountingSummary(tenantDomain , req.query);
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: 'All running project fetched successfully.',
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 export const metaController = {
   getAllCustomer,
   getAllMetaFromDB,
+  calculateAccountingSummary
 };

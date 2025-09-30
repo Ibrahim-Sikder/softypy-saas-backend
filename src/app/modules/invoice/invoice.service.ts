@@ -20,7 +20,6 @@ import { TVehicle } from '../vehicle/vehicle.interface';
 import { Customer, customerSchema } from '../customer/customer.model';
 import { Company, companySchema } from '../company/company.model';
 import { ShowRoom, showRoomSchema } from '../showRoom/showRoom.model';
-import { Vehicle, vehicleSchema } from '../vehicle/vehicle.model';
 import { Model } from 'mongoose';
 import { generateInvoiceNo } from './invoice.utils';
 import puppeteer from 'puppeteer';
@@ -29,7 +28,6 @@ import ejs from 'ejs';
 import { amountInWords } from '../../middlewares/taka-in-words';
 import { formatToIndianCurrency } from '../quotation/quotation.utils';
 import { getTenantModel } from '../../utils/getTenantModels';
-
 
 const createInvoiceDetails = async (
   tenantDomain: string,
@@ -63,7 +61,7 @@ const createInvoiceDetails = async (
     const sanitizeVehicle = sanitizePayload(vehicle);
     const sanitizeInvoice = sanitizePayload(invoice);
 
-    const invoiceNumber = await generateInvoiceNo();
+    const invoiceNumber = await generateInvoiceNo(tenantDomain);
 
     const partsInWords = amountInWords(sanitizeInvoice.parts_total as number);
     const serviceInWords = amountInWords(
@@ -438,8 +436,7 @@ const updateInvoiceIntoDB = async (
     throw error;
   }
 };
-
-export const removeInvoiceFromUpdate = async (
+const removeInvoiceFromUpdate = async (
   tenantDomain: string,
   id: string,
   index: number,
@@ -569,12 +566,10 @@ const deleteInvoice = async (tenantDomain: string, id: string) => {
 };
 
 const permanantlyDeleteInvoice = async (tenantDomain: string, id: string) => {
-  console.log('permanently delete', tenantDomain);
-
   // Get tenant-specific models and connection
   const { Model: Invoice, connection: tenantConnection } = await getTenantModel(
     tenantDomain,
-    'Invoice'
+    'Invoice',
   );
   const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
   const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
@@ -613,7 +608,7 @@ const permanantlyDeleteInvoice = async (tenantDomain: string, id: string) => {
         await model.findByIdAndUpdate(
           existingEntity._id,
           { $pull: { invoices: id } },
-          { new: true, runValidators: true, session }
+          { new: true, runValidators: true, session },
         );
       }
     }
@@ -739,13 +734,14 @@ const generateInvoicePDF = async (
   tenantDomain: string,
   id: string,
   imageUrl: string,
+  companyData: string,
 ): Promise<Buffer> => {
   const { Model: Invoice } = await getTenantModel(tenantDomain, 'Invoice');
   const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
   const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
   const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
   const { Model: Vehicle } = await getTenantModel(tenantDomain, 'Vehicle');
-
+  const companyProfile = JSON.parse(companyData || '{}');
   const invoice = await Invoice.findById(id)
     .populate({ path: 'customer', model: Customer })
     .populate({ path: 'company', model: Company })
@@ -766,12 +762,20 @@ const generateInvoicePDF = async (
     console.warn('Failed to load logo:', error);
   }
 
+  console.log(invoice);
+
   const filePath = join(__dirname, '../../templates/invoice.ejs');
 
   const html = await new Promise<string>((resolve, reject) => {
     ejs.renderFile(
       filePath,
-      { invoice, imageUrl, formatToIndianCurrency, logoBase64 },
+      {
+        invoice,
+        imageUrl,
+        formatToIndianCurrency,
+        logoBase64,
+        companyData: companyProfile,
+      },
       (err, str) => {
         if (err) return reject(err);
         resolve(str);

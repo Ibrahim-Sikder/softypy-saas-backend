@@ -4,11 +4,11 @@ import AppError from '../../errors/AppError';
 import sanitizePayload from '../../middlewares/updateDataValidation';
 import { TMoneyReceipt } from './money-receipt.interface';
 import { MoneyReceipt, moneyReceiptSchema } from './money-receipt.model';
-import {  customerSchema } from '../customer/customer.model';
-import {  companySchema } from '../company/company.model';
-import {  showRoomSchema } from '../showRoom/showRoom.model';
+import { customerSchema } from '../customer/customer.model';
+import { companySchema } from '../company/company.model';
+import { showRoomSchema } from '../showRoom/showRoom.model';
 import mongoose from 'mongoose';
-import {  vehicleSchema } from '../vehicle/vehicle.model';
+import { vehicleSchema } from '../vehicle/vehicle.model';
 import { SearchableFields } from './money-receipt.const';
 import { generateMoneyReceiptId } from './money-receipt.utils';
 import { amountInWords } from '../../middlewares/taka-in-words';
@@ -58,7 +58,7 @@ const createMoneyReceiptDetails = async (
     } = payload;
 
     const sanitizeData = sanitizePayload(payload);
-    const moneyReceiptId = await generateMoneyReceiptId();
+    const moneyReceiptId = await generateMoneyReceiptId(tenantDomain);
 
     const totalAmountInWords = amountInWords(
       sanitizeData.total_amount as number,
@@ -627,14 +627,17 @@ const deleteMoneyReceipt = async (tenantDomain: string, id: string) => {
   return null;
 };
 
-
 export const generateMoneyPdf = async (
   tenantDomain: string,
   id: string,
   imageUrl: string,
+  companyData: string,
 ): Promise<Buffer> => {
-  const { Model: MoneyReceipt } = await getTenantModel(tenantDomain, 'MoneyReceipt');
-
+  const { Model: MoneyReceipt } = await getTenantModel(
+    tenantDomain,
+    'MoneyReceipt',
+  );
+  const companyProfile = JSON.parse(companyData || '{}');
   const money = await MoneyReceipt.findById(id).populate('vehicle');
   if (!money) {
     throw new Error('Money receipt not found');
@@ -655,7 +658,13 @@ export const generateMoneyPdf = async (
   const html = await new Promise<string>((resolve, reject) => {
     ejs.renderFile(
       filePath,
-      { money, imageUrl, formatToIndianCurrency, logoBase64 },
+      {
+        money,
+        imageUrl,
+        formatToIndianCurrency,
+        logoBase64,
+        companyData: companyProfile,
+      },
       (err, str) => {
         if (err) return reject(err);
         resolve(str);
@@ -696,10 +705,8 @@ const permanantlyDeleteMoneyReceipt = async (
   id: string,
 ) => {
   // ✅ Get model and connection from tenant
-  const { Model: MoneyReceipt, connection: tenantConnection } = await getTenantModel(
-    tenantDomain,
-    'MoneyReceipt',
-  );
+  const { Model: MoneyReceipt, connection: tenantConnection } =
+    await getTenantModel(tenantDomain, 'MoneyReceipt');
   const { Model: Customer } = await getTenantModel(tenantDomain, 'Customer');
   const { Model: Company } = await getTenantModel(tenantDomain, 'Company');
   const { Model: ShowRoom } = await getTenantModel(tenantDomain, 'ShowRoom');
@@ -709,7 +716,8 @@ const permanantlyDeleteMoneyReceipt = async (
   session.startTransaction();
 
   try {
-    const existingMoneyReceipt = await MoneyReceipt.findById(id).session(session);
+    const existingMoneyReceipt =
+      await MoneyReceipt.findById(id).session(session);
 
     if (!existingMoneyReceipt) {
       throw new AppError(StatusCodes.NOT_FOUND, 'Money receipt not available.');
@@ -729,7 +737,8 @@ const permanantlyDeleteMoneyReceipt = async (
       showRoom: { model: ShowRoom, queryKey: 'showRoomId' },
     };
 
-    const userTypeHandler = userTypeMap[existingMoneyReceipt.user_type as UserType];
+    const userTypeHandler =
+      userTypeMap[existingMoneyReceipt.user_type as UserType];
 
     if (userTypeHandler) {
       const { model, queryKey } = userTypeHandler;
@@ -869,7 +878,6 @@ const getDueAllMoneyReceipts = async (
 
   let idMatchQuery: any = {};
   let searchQuery: { [key: string]: any } = {};
-console.log('due all money ', tenantDomain)
   if (id) {
     idMatchQuery = {
       $or: [

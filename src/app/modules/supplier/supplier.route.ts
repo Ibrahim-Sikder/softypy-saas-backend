@@ -32,6 +32,18 @@ router
 
 router
   .route('/delete-permenantly/:id')
-  .delete(supplierController.permanenatlyDeleteSupplier);
+  .delete(supplierController.permanentlyDeleteSupplier);
+router.post(
+  '/payments',                            
+  supplierController.recordSupplierPayment
+);
 
-export const SupplierRoutes = router;
+router.get(
+  '/:supplierId/payments',supplierController.getSupplierPayments
+  
+);
+
+router.post('/:supplierId/recalc-totals', supplierController.recalcSupplierTotals);
+
+
+export const SupplierRoutes = router;  

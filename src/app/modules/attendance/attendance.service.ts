@@ -5,11 +5,17 @@ import { getTenantModel } from '../../utils/getTenantModels';
 
 export const createAttendanceIntoDB = async (
   tenantDomain: string,
-  payload: TAttendance[]
+  payload: TAttendance[],
 ) => {
   // Get Employee model and connection from tenant model getter
-  const { Model: Employee, connection } = await getTenantModel(tenantDomain, 'Employee');
-  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+  const { Model: Employee, connection } = await getTenantModel(
+    tenantDomain,
+    'Employee',
+  );
+  const { Model: Attendance } = await getTenantModel(
+    tenantDomain,
+    'Attendance',
+  );
 
   // Start session from tenant-specific connection
   const session = await connection.startSession();
@@ -29,7 +35,7 @@ export const createAttendanceIntoDB = async (
       const checkTodaysAttendance = await Attendance.findOneAndUpdate(
         { employee: id, date: data.date },
         { $set: data },
-        { session, new: true, runValidators: true }
+        { session, new: true, runValidators: true },
       );
 
       if (!checkTodaysAttendance) {
@@ -43,7 +49,7 @@ export const createAttendanceIntoDB = async (
         await Employee.findByIdAndUpdate(
           existingEmployee._id,
           { $push: { attendance: attendance._id } },
-          { new: true, runValidators: true, session }
+          { new: true, runValidators: true, session },
         );
       }
     }
@@ -58,9 +64,11 @@ export const createAttendanceIntoDB = async (
   }
 };
 
-
 export const getTodayAttendanceFromDB = async (tenantDomain: string) => {
-  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+  const { Model: Attendance } = await getTenantModel(
+    tenantDomain,
+    'Attendance',
+  );
 
   const parsedDate = new Date();
   const day = parsedDate.getDate().toString().padStart(2, '0');
@@ -71,20 +79,40 @@ export const getTodayAttendanceFromDB = async (tenantDomain: string) => {
   const todayAttendance = await Attendance.find({ date: formattedDate });
 
   if (!todayAttendance.length) {
-    throw new AppError(StatusCodes.NOT_FOUND, 'No today\'s attendance found');
+    throw new AppError(StatusCodes.NOT_FOUND, "No today's attendance found");
   }
 
-  const presentEntries = todayAttendance.filter(attendance => attendance.present).length;
-  const absentEntries = todayAttendance.filter(attendance => attendance.absent).length;
-  const lateEntries = todayAttendance.filter(attendance => attendance.late_status).length;
+  const presentEntries = todayAttendance.filter(
+    (attendance) => attendance.present,
+  ).length;
+  const absentEntries = todayAttendance.filter(
+    (attendance) => attendance.absent,
+  ).length;
+  const lateEntries = todayAttendance.filter(
+    (attendance) => attendance.late_status,
+  ).length;
 
-  const presentPercentage = ((presentEntries / todayAttendance.length) * 100).toFixed(2);
-  const absentPercentage = ((absentEntries / todayAttendance.length) * 100).toFixed(2);
-  const latePercentage = ((lateEntries / todayAttendance.length) * 100).toFixed(2);
+  const presentPercentage = (
+    (presentEntries / todayAttendance.length) *
+    100
+  ).toFixed(2);
+  const absentPercentage = (
+    (absentEntries / todayAttendance.length) *
+    100
+  ).toFixed(2);
+  const latePercentage = ((lateEntries / todayAttendance.length) * 100).toFixed(
+    2,
+  );
 
-  const finalPresentPercentage = presentPercentage.endsWith('.00') ? parseInt(presentPercentage) : presentPercentage;
-  const finalAbsentPercentage = absentPercentage.endsWith('.00') ? parseInt(absentPercentage) : absentPercentage;
-  const finalLatePercentage = latePercentage.endsWith('.00') ? parseInt(latePercentage) : latePercentage;
+  const finalPresentPercentage = presentPercentage.endsWith('.00')
+    ? parseInt(presentPercentage)
+    : presentPercentage;
+  const finalAbsentPercentage = absentPercentage.endsWith('.00')
+    ? parseInt(absentPercentage)
+    : absentPercentage;
+  const finalLatePercentage = latePercentage.endsWith('.00')
+    ? parseInt(latePercentage)
+    : latePercentage;
 
   return {
     presentPercentage: finalPresentPercentage,
@@ -102,7 +130,10 @@ export const getAllAttendanceByCurrentMonth = async (
   page: number,
   searchTerm: string,
 ) => {
-  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+  const { Model: Attendance } = await getTenantModel(
+    tenantDomain,
+    'Attendance',
+  );
 
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
@@ -138,41 +169,50 @@ export const getAllAttendanceByCurrentMonth = async (
   for (const date of currentMonthDates) {
     const todayAttendance = await Attendance.find({ date });
 
-    const presentEntries = todayAttendance.filter(a => a.present).length;
+    const presentEntries = todayAttendance.filter((a) => a.present).length;
     const presentPercentage = Number(
-      (presentEntries / todayAttendance.length) * 100
+      (presentEntries / todayAttendance.length) * 100,
     ).toFixed(2);
 
-    const absentEntries = todayAttendance.filter(a => a.absent).length;
+    const absentEntries = todayAttendance.filter((a) => a.absent).length;
     const absentPercentage = Number(
-      (absentEntries / todayAttendance.length) * 100
+      (absentEntries / todayAttendance.length) * 100,
     ).toFixed(2);
 
-    const lateEntries = todayAttendance.filter(a => a.late_status).length;
+    const lateEntries = todayAttendance.filter((a) => a.late_status).length;
     const latePercentage = Number(
-      (lateEntries / todayAttendance.length) * 100
+      (lateEntries / todayAttendance.length) * 100,
     ).toFixed(2);
 
     if (!todayAttendance.length) {
       throw new AppError(
         StatusCodes.NOT_FOUND,
-        `No attendance found for date: ${date}`
+        `No attendance found for date: ${date}`,
       );
     }
 
     attendanceResults.push({
       date,
-      presentPercentage: presentPercentage.endsWith('.00') ? parseInt(presentPercentage) : presentPercentage,
+      presentPercentage: presentPercentage.endsWith('.00')
+        ? parseInt(presentPercentage)
+        : presentPercentage,
       presentEntries,
-      absentPercentage: absentPercentage.endsWith('.00') ? parseInt(absentPercentage) : absentPercentage,
+      absentPercentage: absentPercentage.endsWith('.00')
+        ? parseInt(absentPercentage)
+        : absentPercentage,
       absentEntries,
-      latePercentage: latePercentage.endsWith('.00') ? parseInt(latePercentage) : latePercentage,
+      latePercentage: latePercentage.endsWith('.00')
+        ? parseInt(latePercentage)
+        : latePercentage,
       lateEntries,
     });
   }
 
   const startIndex = (page - 1) * limit;
-  const paginatedResults = attendanceResults.slice(startIndex, startIndex + limit);
+  const paginatedResults = attendanceResults.slice(
+    startIndex,
+    startIndex + limit,
+  );
 
   return {
     totalPages: Math.ceil(attendanceResults.length / limit),
@@ -182,8 +222,14 @@ export const getAllAttendanceByCurrentMonth = async (
   };
 };
 
-export const getSingleAttendance = async (tenantDomain: string, employee: string) => {
-  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+export const getSingleAttendance = async (
+  tenantDomain: string,
+  employee: string,
+) => {
+  const { Model: Attendance } = await getTenantModel(
+    tenantDomain,
+    'Attendance',
+  );
 
   const singleAttendance = await Attendance.find({ employee });
 
@@ -194,8 +240,14 @@ export const getSingleAttendance = async (tenantDomain: string, employee: string
   return singleAttendance;
 };
 
-export const getSingleDateAttendance = async (tenantDomain: string, date: string) => {
-  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+export const getSingleDateAttendance = async (
+  tenantDomain: string,
+  date: string,
+) => {
+  const { Model: Attendance } = await getTenantModel(
+    tenantDomain,
+    'Attendance',
+  );
 
   const singleAttendance = await Attendance.find({ date });
 
@@ -208,43 +260,159 @@ export const getSingleDateAttendance = async (tenantDomain: string, date: string
 
 export const deleteAttendanceFromDB = async (
   tenantDomain: string,
-  dateObj: { date: string },
+  attendanceId: string,
 ) => {
-  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+  const { Model: Attendance } = await getTenantModel(
+    tenantDomain,
+    'Attendance',
+  );
   const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
-  console.log(dateObj)
 
-  // Step 1: Find all attendance records for the given date
-  const existingAttendance = await Attendance.find({ date: dateObj.date });
+  const existingAttendance = await Attendance.findById(attendanceId);
 
-  if (existingAttendance.length === 0) {
-    return []; // Nothing to delete
+  if (!existingAttendance) {
+    return null;
   }
 
-  const deletedAttendances: any[] = [];
+  const deleted = await Attendance.findByIdAndDelete(attendanceId);
 
-  for (const attendance of existingAttendance) {
-    const existingEmployee = await Employee.findById(attendance.employee);
+  if (deleted) {
+    const existingEmployee = await Employee.findById(deleted.employee);
 
-    // Step 2: Remove attendance record
-    const deleted = await Attendance.findByIdAndDelete(attendance._id);
-
-    if (deleted) {
-      deletedAttendances.push(deleted); // Collect deleted data to return
-
-      // Step 3: Remove the attendance reference from the employee
-      if (existingEmployee) {
-        await Employee.findByIdAndUpdate(
-          existingEmployee._id,
-          { $pull: { attendance: attendance._id } },
-          { new: true, runValidators: true },
-        );
-      }
+    if (existingEmployee) {
+      await Employee.findByIdAndUpdate(
+        existingEmployee._id,
+        { $pull: { attendance: attendanceId } },
+        { new: true, runValidators: true },
+      );
     }
   }
 
-  return deletedAttendances;
+  return deleted;
 };
+
+export const getAllAttendance = async (
+  tenantDomain: string,
+  limit: number,
+  page: number,
+  searchTerm?: string,
+  startDate?: string,
+  endDate?: string,
+  month?: string,
+  year?: string,
+  status?: string
+) => {
+  const { Model: Attendance } = await getTenantModel(tenantDomain, 'Attendance');
+  const { Model: Employee } = await getTenantModel(tenantDomain, 'Employee');
+
+  const aggregationPipeline: any[] = [];
+
+  // Lookup employee
+  aggregationPipeline.push({
+    $lookup: {
+      from: Employee.collection.name,
+      localField: 'employee',
+      foreignField: '_id',
+      as: 'employee',
+    },
+  });
+
+  aggregationPipeline.push({ $unwind: '$employee' });
+
+  // Convert date field safely and normalize to ignore time
+  aggregationPipeline.push({
+    $addFields: {
+      dateObj: {
+        $cond: [
+          { $eq: [{ $type: '$date' }, 'string'] },
+          {
+            $dateFromString: {
+              dateString: '$date',
+              timezone: 'UTC',
+            },
+          },
+          '$date',
+        ],
+      },
+    },
+  });
+
+  // Normalize date to remove time (keep only year, month, day)
+  aggregationPipeline.push({
+    $addFields: {
+      dateNormalized: {
+        $dateFromParts: {
+          year: { $year: '$dateObj' },
+          month: { $month: '$dateObj' },
+          day: { $dayOfMonth: '$dateObj' },
+        },
+      },
+    },
+  });
+
+  const matchStage: any = {};
+
+  // Date filters (normalized)
+  if (startDate && endDate) {
+    const start = new Date(`${startDate}T00:00:00.000Z`);
+    const end = new Date(`${endDate}T23:59:59.999Z`);
+    matchStage.dateNormalized = { $gte: start, $lte: end };
+  } else if (month) {
+    const [y, m] = month.split('-');
+    const start = new Date(Number(y), Number(m) - 1, 1, 0, 0, 0, 0);
+    const end = new Date(Number(y), Number(m), 0, 23, 59, 59, 999);
+    matchStage.dateNormalized = { $gte: start, $lte: end };
+  } else if (year) {
+    const start = new Date(Number(year), 0, 1, 0, 0, 0, 0);
+    const end = new Date(Number(year), 11, 31, 23, 59, 59, 999);
+    matchStage.dateNormalized = { $gte: start, $lte: end };
+  }
+
+  // Status filter
+  if (status && status !== '') {
+    if (status === 'present') matchStage.present = true;
+    if (status === 'absent') matchStage.absent = true;
+    if (status === 'late') matchStage.late_status = true;
+  }
+
+  // Search filter
+  if (searchTerm && searchTerm.trim() !== '') {
+    matchStage.$or = [
+      { 'employee.full_name': new RegExp(searchTerm, 'i') },
+      { 'employee.employeeId': new RegExp(searchTerm, 'i') },
+    ];
+  }
+
+  // Apply match stage
+  if (Object.keys(matchStage).length > 0) {
+    aggregationPipeline.push({ $match: matchStage });
+  }
+
+  // Sort by normalized date descending
+  aggregationPipeline.push({ $sort: { dateNormalized: -1 } });
+
+  // Pagination
+  aggregationPipeline.push({
+    $facet: {
+      metadata: [{ $count: 'totalRecords' }],
+      data: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+    },
+  });
+
+  const result = await Attendance.aggregate(aggregationPipeline);
+
+  const totalRecords = result[0]?.metadata[0]?.totalRecords || 0;
+  const attendances = result[0]?.data || [];
+
+  return {
+    totalRecords,
+    totalPages: Math.ceil(totalRecords / limit),
+    currentPage: page,
+    attendances,
+  };
+};
+
+
 
 export const AttendanceServices = {
   createAttendanceIntoDB,
@@ -253,4 +421,5 @@ export const AttendanceServices = {
   getSingleDateAttendance,
   deleteAttendanceFromDB,
   getSingleAttendance,
+  getAllAttendance,
 };

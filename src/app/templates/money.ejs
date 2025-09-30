@@ -5,6 +5,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Money Receipt</title>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 </head>
 <style>
   @page {
@@ -37,52 +40,39 @@
     <div
       style="display: flex; align-items: center; justify-content: space-between; flex-direction: row; gap: 3px; align-items: center ;">
       <div style="display: flex; align-items: center; justify-content: space-between;  margin-bottom: 8px;">
-        <% if (logoBase64) { %>
-        <img style="width: 120px;" src="data:image/png;base64,<%= logoBase64 %>" alt="SofyPy Garages" />
-        <% } else { %>
-        <img style="width: 120px;" src="<%= imageUrl %>/images/logo.png" alt="SofyPy Garages"
-          onerror="this.onerror=null; this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';" />
-        <% } %>
+        <img style="width: 100px; height: 100px; object-fit: contain;" src="<%= companyData.logo %>"
+          alt="<%= companyData.companyName || 'Company Logo' %>">
 
       </div>
 
       <div style="width: 570px; text-align: center; color: #0950a1;">
-        <span style="font-size: 40px; font-family: Merriweather, serif;">
-          SofyPy Garage
+       <div style="display:flex ; justify-content:center; align-items:center;flex-direction: column;">
+         <span style="font-size: 40px; font-family: 'Hind Siliguri', sans-serif; display: block ;">
+          <%= companyData?.companyNameBN %>
         </span>
-        <span
-          style="margin-top: 1px; display: block; width: 377px; margin: 3px auto; font-size: 10px; line-height: 14px;">
-          It's trusted computerized Organization for all kinds of vehicle check up & maintenance such as computerized
-          Engine Analysis, Engine tune up, Denting, Painting, Engine, AC, Electrical Works & Car Wash.
-        </span>
+        <b style=" font-size: 18px; color: #333; display: block;">
+          (<%= companyData?.companyName %>)
+        </b>
+       </div>
+        <small style="margin-top: -20px;"><%= companyData.address%></small>
       </div>
 
 
-      <div style="display: flex; flex-direction: column; gap:3px ;margin-top: 30px ;">
-        <div style="display: flex; align-items: center;gap: 5px;">
-
+      <div style="display: flex; flex-direction: column; gap: 3px; margin-top: 30px;">
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <i class="fa-solid fa-phone"></i>
           <small>+880 1821-216465</small>
-
         </div>
-        <div style="display: flex; align-items: center;gap: 5px;">
-
-          <small>+88 01710-700324 </small>
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <i class="fa-solid fa-phone"></i>
+          <small><%= companyData?.phone %></small>
         </div>
-        <div style="display: flex; align-items: center;gap: 5px;">
-
-          <small>trustautosolution@gmail.com </small>
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <i class="fa-solid fa-envelope"></i>
+          <small><%= companyData?.email %></small>
         </div>
-        <div style="display: flex; align-items: center;gap: 5px;">
-
-          <small>
-            Ka-93/4/C Kuril Bishawroad,
-            Dhaka-1212
-
-
-          </small>
-        </div>
-
       </div>
+
     </div>
 
     <div style=" display: flex;justify-content: center; align-items: center; width:100%">

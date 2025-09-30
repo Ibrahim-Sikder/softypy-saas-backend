@@ -1,3 +1,5 @@
+// src/modules/user/user.service.ts
+import bcrypt from 'bcrypt';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
@@ -31,6 +33,7 @@ export const createUser = async (payload: TUser) => {
     throw new AppError(httpStatus.BAD_REQUEST, 'Tenant not found!');
   }
 
+  
   const newUser = await User.create({
     ...payload,
     tenantId: tenantInfo._id,
@@ -81,12 +84,10 @@ export const createUser = async (payload: TUser) => {
 const getAllUser = async (tenantDomain: string) => {
   if (tenantDomain) {
     const { Model: User } = await getTenantModel(tenantDomain, 'User');
-    const result = await User.find();
-    console.log('with tenant domain ', result)
+    const result = await User.find().populate('roleId');
     return result;
   } else {
-    const result = await User.find();
-
+    const result = await User.find().populate('roleId');
     return result;
   }
 };
@@ -124,10 +125,18 @@ const updateUser = async (
     }
   }
 
+ if (payload.password && typeof payload.password === 'string') {
+  const hashedPassword = await bcrypt.hash(
+    payload.password,
+    Number(config.bcrypt_salt_round),
+  );
+  payload.password = hashedPassword;
+}
+
   const updatedUser = await User.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
-  });
+  }).populate('roleId');
 
   return updatedUser;
 };
@@ -138,5 +147,3 @@ export const UserServices = {
   deleteUser,
   updateUser,
 };
-
-

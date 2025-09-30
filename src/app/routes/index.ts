@@ -23,7 +23,6 @@ import { adjustmentRoutes } from '../modules/adjustment/adjustment.route';
 import { productRoutes } from '../modules/product/product.route';
 import { productTypeRoutes } from '../modules/productType/productType.route';
 import { barcodeRoutes } from '../modules/barcode/barcode.router';
-import { StockCountRoutes } from '../modules/stockCount/stockCount.router';
 import { metaroute } from '../modules/meta/meta.route';
 import { leaveRequestRoutes } from '../modules/leave/leave.route';
 import { holidayRoutes } from '../modules/holiday/holiday.route';
@@ -42,6 +41,10 @@ import { CompanyProfileRoutes } from '../modules/companyProfile/companyProfile.r
 import { noteRoutes } from '../modules/note/note.route';
 import { contactRoutes } from '../contact/contact.route';
 import { companyBrandRoutes } from '../modules/companyBrand/route';
+import { warrantyRoutes } from '../modules/warranties/warranties.route';
+
+import { PageRoutes } from '../modules/page/page.route';
+import { permissionRouters } from '../modules/permission/permission.route';
 
 const router = Router();
 
@@ -159,10 +162,6 @@ const moduleRoutes = [
     route: barcodeRoutes,
   },
   {
-    path: '/stock-count',
-    route: StockCountRoutes,
-  },
-  {
     path: '/stocks',
     route: stockRoutes,
   },
@@ -215,6 +214,19 @@ const moduleRoutes = [
     path: '/company-brand',
     route: companyBrandRoutes,
   },
+  {
+    path: '/warranties',
+    route: warrantyRoutes,
+  },
+  {
+    path: '/permission',
+    route: permissionRouters,
+  },
+  {
+    path: '/page',
+    route: PageRoutes,
+  },
+  
   {
     path: '/meta',
     route: metaroute,

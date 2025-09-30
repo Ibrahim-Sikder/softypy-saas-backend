@@ -11,14 +11,8 @@ const createProductType = async (
   next: NextFunction,
 ) => {
   try {
-    const file = req.file;
     const payload = req.body;
-    const { tenantDomain } = req.body;
-
-    if (payload.data) {
-      Object.assign(payload, JSON.parse(payload.data));
-      delete payload.data;
-    }
+    const tenantDomain = req.query.tenantDomain as string;
 
     const result = await productTypeServices.createProductType(
       tenantDomain,
@@ -48,8 +42,6 @@ const getAllProductType = async (
       (req.query.tenantDomain as string) ||
       req.headers.host ||
       '';
-    //  const tenantDomain = req.headers.host || '';
-    console.log('for get p', tenantDomain);
     const result = await productTypeServices.getAllProductType(
       tenantDomain,
       req.query,

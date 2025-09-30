@@ -1,37 +1,37 @@
-import express from 'express';
+// src/modules/permission/permission.routes.ts
+import { Router } from 'express';
 import { PermissionController } from './permission.controller';
 import { auth } from '../../middlewares/auth';
+import validateRequest from '../../middlewares/validateRequest';
+import { permissionRequestSchema } from './permission.validation';
 
-const router = express.Router();
+const router = Router();
 
-// Check permission
+router.post(
+  '/user/:userId',
+  validateRequest(permissionRequestSchema),
+  auth('admin', 'superadmin'),
+  PermissionController.createUserPermission,
+);
 router.post(
   '/check',
-//   validateRequest(PermissionValidation.checkPermissionZodSchema),
-  auth('admin', 'manager'),
-  PermissionController.checkPermission
+  auth('admin', 'superadmin'),
+  PermissionController.checkPermission,
 );
-
-// Get user permissions
 router.get(
   '/user/:userId',
-  auth('admin', 'manager'),
-  PermissionController.getUserPermissions
+  auth('admin', 'superadmin'),
+  PermissionController.getUserPermissions,
 );
-
-// Get current user's permissions
 router.get(
   '/my-permissions',
-  auth(),
-  PermissionController.getMyPermissions
+  auth('admin', 'superadmin'),
+  PermissionController.getMyPermissions,
 );
-
-// Update role permissions
 router.put(
   '/role/:roleId',
-//   validateRequest(PermissionValidation.updateRolePermissionsZodSchema),
-  auth('admin'),
-  PermissionController.updateRolePermissions
+  auth('admin', 'superadmin'),
+  PermissionController.updateRolePermissions,
 );
 
-export const PermissionRoutes = router;
+export const permissionRouters = router;

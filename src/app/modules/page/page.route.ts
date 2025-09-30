@@ -1,16 +1,12 @@
+// src/modules/page/page.routes.ts
 import express from 'express';
-
-import validateRequest from '../../middlewares/validateRequest';
-import { PageValidation } from './page.validation';
 import { PageController } from './page.controller';
 import { auth } from '../../middlewares/auth';
 
 const router = express.Router();
 
-// Create a new page
 router.post(
   '/',
-//   validateRequest(PageValidation.createPageZodSchema),
   auth('admin'),
   PageController.createPage
 );
@@ -46,7 +42,6 @@ router.get(
 // Update a page
 router.put(
   '/:id',
-//   validateRequest(PageValidation.updatePageZodSchema),
   auth('admin'),
   PageController.updatePage
 );

@@ -1,14 +1,17 @@
+// src/modules/role/role.controller.ts
 import { Request, Response } from 'express';
 import httpStatus from 'http-status';
 import catchAsync from '../../utils/catchAsync';
 import { RoleService } from './role.service';
-import { IRole, IRoleDocument } from './role.interface';
+import { IRole } from './role.interface';
 import sendResponse from '../../utils/sendResponse';
 
 const createRole = catchAsync(async (req: Request, res: Response) => {
-  const result = await RoleService.createRole(req.body as IRole);
-  
-  sendResponse<IRoleDocument>(res, {
+  const tenantDomain = req.query.tenantDomain as string;
+
+  const result = await RoleService.createRole(tenantDomain, req.body as IRole);
+
+  sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
     message: 'Role created successfully!',
@@ -17,13 +20,22 @@ const createRole = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAllRoles = catchAsync(async (req: Request, res: Response) => {
-  
+    const tenantDomain = req.query.tenantDomain as string;
+  const result = await RoleService.getAllRoles(tenantDomain, );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Roles retrieved successfully!',
+    data: result,
+  });
 });
 
 const getRoleById = catchAsync(async (req: Request, res: Response) => {
-  const result = await RoleService.getRoleById(req.params.id);
-  
-  sendResponse<IRoleDocument>(res, {
+    const tenantDomain = req.query.tenantDomain as string;
+  const result = await RoleService.getRoleById(tenantDomain, req.params.id);
+
+  sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Role retrieved successfully!',
@@ -32,9 +44,10 @@ const getRoleById = catchAsync(async (req: Request, res: Response) => {
 });
 
 const updateRole = catchAsync(async (req: Request, res: Response) => {
-  const result = await RoleService.updateRole(req.params.id, req.body);
-  
-  sendResponse<IRoleDocument>(res, {
+    const tenantDomain = req.query.tenantDomain as string;
+  const result = await RoleService.updateRole(tenantDomain, req.params.id, req.body);
+
+  sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Role updated successfully!',
@@ -43,9 +56,10 @@ const updateRole = catchAsync(async (req: Request, res: Response) => {
 });
 
 const deleteRole = catchAsync(async (req: Request, res: Response) => {
-  const result = await RoleService.deleteRole(req.params.id);
-  
-  sendResponse<IRoleDocument>(res, {
+    const tenantDomain = req.query.tenantDomain as string;
+  const result = await RoleService.deleteRole(tenantDomain, req.params.id);
+
+  sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Role deleted successfully!',

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Schema for creating a page
-const createPageZodSchema = {
+export const createPageZodSchema = {
   body: z.object({
     name: z.string({
       required_error: 'Page name is required',
@@ -18,7 +18,7 @@ const createPageZodSchema = {
 };
 
 // Schema for updating a page
-const updatePageZodSchema = {
+export const updatePageZodSchema = {
   body: z.object({
     name: z.string().optional(),
     category: z.string().optional(),
@@ -33,7 +33,3 @@ const updatePageZodSchema = {
   }),
 };
 
-export const PageValidation = {
-  createPageZodSchema,
-  updatePageZodSchema,
-};

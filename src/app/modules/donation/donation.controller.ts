@@ -10,6 +10,7 @@ const createDonation = async (
 ) => {
   try {
      const tenantDomain = req.query.tenantDomain as string
+     console.log('from controller donation ',req.query)
     const result = await DonationServices.createDonation(tenantDomain, req.body);
     sendResponse(res, {
       statusCode: StatusCodes.OK,

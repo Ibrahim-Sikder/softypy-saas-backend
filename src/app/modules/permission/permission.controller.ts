@@ -3,15 +3,13 @@ import httpStatus from 'http-status';
 import catchAsync from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { PermissionService } from './permission.service';
-import { IPermissionCheck, IUserPermissions } from './permission.interface';
 import AppError from '../../errors/AppError';
 
-/**
- * Check if a user has permission for a specific action on a page
- */
 const checkPermission = catchAsync(async (req: Request, res: Response) => {
+  const tenantDomain = req.query.tenantDomain as string;
   const result = await PermissionService.checkPermission(
-    req.body as IPermissionCheck,
+    tenantDomain,
+    req.body,
   );
 
   sendResponse<{ hasPermission: boolean }>(res, {
@@ -22,10 +20,8 @@ const checkPermission = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-/**
- * Get all permissions for a user
- */
 const getUserPermissions = catchAsync(async (req: Request, res: Response) => {
+  const tenantDomain = req.query.tenantDomain as string;
   const userId = req.params.userId || (req.user?.userId as string);
 
   if (!userId) {
@@ -33,14 +29,14 @@ const getUserPermissions = catchAsync(async (req: Request, res: Response) => {
       statusCode: httpStatus.BAD_REQUEST,
       success: false,
       message: 'User ID is required',
-      data: userId,
+      data: null,
     });
     return;
   }
 
-  const result = await PermissionService.getUserPermissions(userId);
+  const result = await PermissionService.getUserPermissions(tenantDomain, userId);
 
-  sendResponse<IUserPermissions>(res, {
+  sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'User permissions retrieved successfully',
@@ -48,12 +44,32 @@ const getUserPermissions = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-/**
- * Update permissions for a role
- */
+const createUserPermission = catchAsync(async (req: Request, res: Response) => {
+  const tenantDomain = req.query.tenantDomain as string;
+
+  // Ensure userId comes as array from body (better than params)
+  const userIds = Array.isArray(req.params.userId) ? req.params.userId : [req.params.userId];
+
+  const result = await PermissionService.createUserPermission(
+    tenantDomain,
+    userIds,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: 'User permission created successfully',
+    data: result,
+  });
+});
+
+
 const updateRolePermissions = catchAsync(
   async (req: Request, res: Response) => {
-    const result = await PermissionService.updateRolePermissions(
+    const tenantDomain = req.query.tenantDomain as string;
+    await PermissionService.updateRolePermissions(
+      tenantDomain,
       req.params.roleId,
       req.body,
     );
@@ -62,22 +78,20 @@ const updateRolePermissions = catchAsync(
       statusCode: httpStatus.OK,
       success: true,
       message: 'Role permissions updated successfully',
-      data: result,
+      data: null,
     });
   },
 );
 
-/**
- * Get current user's permissions
- */
 const getMyPermissions = catchAsync(async (req: Request, res: Response) => {
+  const tenantDomain = req.query.tenantDomain as string;
   if (!req.user?.userId) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not authenticated');
   }
 
-  const result = await PermissionService.getUserPermissions(req.user.userId);
+  const result = await PermissionService.getUserPermissions(tenantDomain, req.user.userId);
 
-  sendResponse<IUserPermissions>(res, {
+  sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Your permissions retrieved successfully',
@@ -88,6 +102,7 @@ const getMyPermissions = catchAsync(async (req: Request, res: Response) => {
 export const PermissionController = {
   checkPermission,
   getUserPermissions,
+  createUserPermission,
   updateRolePermissions,
   getMyPermissions,
 };

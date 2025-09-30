@@ -15,6 +15,7 @@ export interface IExpense extends Document {
   note?: string;
    totalAmount?: number;
    totalOtherExpense?: number;
+   referanceNo: number;
 
 }
 

@@ -5,7 +5,6 @@ import AppError from '../../errors/AppError';
 import httpStatus from 'http-status';
 import { createSubscription } from '../subscription/subscription.service';
 import { connectToTenantDatabase } from '../../../server';
-import mongoose from 'mongoose';
 import { userSchema } from '../user/user.model';
 import { subscriptionSchema } from '../subscription/subscription.model';
 import { getTenantModel } from '../../utils/getTenantModels';
@@ -64,7 +63,7 @@ export const createTenant = async (
     await tenant.save();
 
     // Create Admin User (in tenant DB)
-    const fullName = `${userPayload.firstName} ${userPayload.lastName}`.trim();
+    const fullName = `${userPayload?.firstName} ${userPayload?.lastName}`.trim();
     const newUser = await UserModel.create({
       name: fullName,
       email: userPayload.email,
@@ -89,13 +88,7 @@ export const createTenant = async (
       user: newUser._id,
     });
 
-    // Optional: Create a dummy collection to trigger DB creation
-    const DummyModel = connection.model(
-      'Dummy',
-      new mongoose.Schema({ name: String }),
-    );
-    await DummyModel.create({ name: 'trigger' });
-
+  
     return tenant;
   } catch (error: any) {
     throw new AppError(
@@ -189,7 +182,6 @@ const renewTenantSubscription = async (
 ) => {
   const tenant = await Tenant.findById(tenantId);
 
-  console.log(tenantId, plan);
 
   if (!tenant) {
     throw new AppError(httpStatus.NOT_FOUND, 'Tenant not found');

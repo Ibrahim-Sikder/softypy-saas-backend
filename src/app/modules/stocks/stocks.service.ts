@@ -25,7 +25,6 @@ export const getSingleStock = async (
   ]);
   return stock;
 };
-
 export const updateStock = async (
   tenantDomain: string,
   id: string,
@@ -61,13 +60,13 @@ const getAllStocks = async (tenantDomain: string) => {
   const { Model: Category } = await getTenantModel(tenantDomain, 'Category');
   const { Model: Supplier } = await getTenantModel(tenantDomain, 'Supplier');
   const { Model: Brand } = await getTenantModel(tenantDomain, 'Brand');
-  const { Model: ProductType } = await getTenantModel(
-    tenantDomain,
-    'ProductType',
-  );
+  const { Model: ProductType } = await getTenantModel(tenantDomain, 'ProductType');
   const { Model: Unit } = await getTenantModel(tenantDomain, 'Unit');
-  console.log('stocks tenant ', tenantDomain);
+
   const stocks = await Stocks.aggregate([
+    {
+      $sort: { date: 1 }, // ✅ last purchase/selling ঠিকভাবে পেতে sort করা লাগবে
+    },
     {
       $group: {
         _id: {
@@ -92,14 +91,18 @@ const getAllStocks = async (tenantDomain: string) => {
         totalSellingValue: {
           $sum: {
             $cond: [
-              { $eq: ['$type', 'in'] },
+              { $eq: ['$type', 'out'] },
               { $multiply: ['$quantity', '$sellingPrice'] },
               0,
             ],
           },
         },
-        lastPurchasePrice: { $last: '$purchasePrice' },
-        lastSellingPrice: { $last: '$sellingPrice' },
+        lastPurchasePrice: {
+          $last: { $cond: [{ $eq: ['$type', 'in'] }, '$purchasePrice', null] },
+        },
+        lastSellingPrice: {
+          $last: { $cond: [{ $eq: ['$type', 'out'] }, '$sellingPrice', null] },
+        },
         allPurchasePrices: {
           $push: {
             $cond: [{ $eq: ['$type', 'in'] }, '$purchasePrice', '$$REMOVE'],
@@ -107,7 +110,7 @@ const getAllStocks = async (tenantDomain: string) => {
         },
         allSellingPrices: {
           $push: {
-            $cond: [{ $eq: ['$type', 'in'] }, '$sellingPrice', '$$REMOVE'],
+            $cond: [{ $eq: ['$type', 'out'] }, '$sellingPrice', '$$REMOVE'],
           },
         },
       },
@@ -131,6 +134,7 @@ const getAllStocks = async (tenantDomain: string) => {
         },
       },
     },
+    // Product Join
     {
       $lookup: {
         from: Product.collection.name,
@@ -141,6 +145,22 @@ const getAllStocks = async (tenantDomain: string) => {
     },
     { $unwind: '$product' },
 
+    // ✅ Calculate minimumSalePrice correctly
+    {
+      $addFields: {
+        minimumSalePrice: {
+          $cond: [
+            { $ifNull: ['$product.minimumSalePrice', false] },
+            '$product.minimumSalePrice',
+            { $add: ['$product.purchasePrice', { $ifNull: ['$product.expense', 0] }] },
+          ],
+        },
+        productPurchasePrice: '$product.purchasePrice',
+        productSellingPrice: '$product.sellingPrice',
+      },
+    },
+
+    // Warehouse join
     {
       $lookup: {
         from: Warehouse.collection.name,
@@ -151,6 +171,7 @@ const getAllStocks = async (tenantDomain: string) => {
     },
     { $unwind: '$warehouse' },
 
+    // Category join
     {
       $lookup: {
         from: Category.collection.name,
@@ -163,6 +184,7 @@ const getAllStocks = async (tenantDomain: string) => {
       $unwind: { path: '$product.category', preserveNullAndEmptyArrays: true },
     },
 
+    // Supplier join
     {
       $lookup: {
         from: Supplier.collection.name,
@@ -172,6 +194,7 @@ const getAllStocks = async (tenantDomain: string) => {
       },
     },
 
+    // Brand join
     {
       $lookup: {
         from: Brand.collection.name,
@@ -182,6 +205,7 @@ const getAllStocks = async (tenantDomain: string) => {
     },
     { $unwind: { path: '$product.brand', preserveNullAndEmptyArrays: true } },
 
+    // ProductType join
     {
       $lookup: {
         from: ProductType.collection.name,
@@ -191,12 +215,10 @@ const getAllStocks = async (tenantDomain: string) => {
       },
     },
     {
-      $unwind: {
-        path: '$product.product_type',
-        preserveNullAndEmptyArrays: true,
-      },
+      $unwind: { path: '$product.product_type', preserveNullAndEmptyArrays: true },
     },
 
+    // Unit join
     {
       $lookup: {
         from: Unit.collection.name,
@@ -210,6 +232,7 @@ const getAllStocks = async (tenantDomain: string) => {
 
   return stocks;
 };
+
 
 export const transferStock = async (
   tenantDomain: string,
@@ -243,6 +266,10 @@ export const transferStock = async (
     tenantDomain,
     'StockTransfer',
   );
+  const { Model: StockTransaction } = await getTenantModel(
+    tenantDomain,
+    'StockTransaction',
+  );
 
   // 🚨 Start session from the tenantConnection, not from mongoose
   const session = await tenantConnection.startSession();
@@ -262,6 +289,7 @@ export const transferStock = async (
 
     const transferId = new mongoose.Types.ObjectId().toString();
 
+    // Create stock records for the transfer
     await Stocks.create(
       [
         {
@@ -296,6 +324,7 @@ export const transferStock = async (
       },
     );
 
+    // Create StockTransfer record
     const transferRecord = await StockTransfer.create(
       [
         {
@@ -307,6 +336,35 @@ export const transferStock = async (
           batchNumber,
           expiryDate,
           note,
+        },
+      ],
+      { session },
+    );
+
+    // Create StockTransaction records for the transfer
+    await StockTransaction.create(
+      [
+        {
+          product,
+          warehouse: fromWarehouse,
+          quantity,
+          type: 'out',
+          referenceType: 'transfer',
+          referenceId: transferRecord[0]._id,
+          batchNumber,
+          expiryDate,
+          date: new Date(),
+        },
+        {
+          product,
+          warehouse: toWarehouse,
+          quantity,
+          type: 'in',
+          referenceType: 'transfer',
+          referenceId: transferRecord[0]._id,
+          batchNumber,
+          expiryDate,
+          date: new Date(),
         },
       ],
       { session },
@@ -346,6 +404,7 @@ export const transferStock = async (
     session.endSession();
   }
 };
+
 
 export const calculateCurrentStock = async (
   tenantDomain: string,
@@ -395,3 +454,4 @@ export const stockServices = {
   deleteStock,
   transferStock,
 };
+

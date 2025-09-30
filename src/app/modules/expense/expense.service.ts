@@ -3,11 +3,27 @@ import QueryBuilder from '../../builder/QueryBuilder';
 import { SearchableFields } from './expense.const';
 import { IExpense } from './expense.interface';
 import { getTenantModel } from '../../utils/getTenantModels';
+import mongoose from 'mongoose';
 
-const createExpense = async (tenantDomain: string, payload: any) => {
+export const createExpense = async (tenantDomain: string, payload: any) => {
   const { Model: Expense } = await getTenantModel(tenantDomain, 'Expense');
 
   try {
+    // validate invoice id
+    if (payload.invoice_id) {
+      const exists = await Expense.findOne({ invoice_id: payload.invoice_id });
+      if (exists) {
+        throw new Error('This invoice id already create  to another expense');
+      }
+    }
+    // Remove invoice_id if not provided or invalid
+    if (!payload.invoice_id) {
+      delete payload.invoice_id;
+    } else if (!mongoose.Types.ObjectId.isValid(payload.invoice_id)) {
+      throw new Error('Invalid invoice_id');
+    }
+
+    // Calculate totals
     const expenseItems = payload.expense_items ?? [];
     const totalOtherExpense = expenseItems.reduce(
       (sum: number, item: any) => sum + (Number(item.amount) || 0),
@@ -17,6 +33,7 @@ const createExpense = async (tenantDomain: string, payload: any) => {
     const invoiceCost = Number(payload.invoiceCost) || 0;
     const totalAmount = totalOtherExpense + invoiceCost;
 
+    // Create new expense
     const newExpense = await Expense.create({
       totalOtherExpense,
       totalAmount,
@@ -31,7 +48,6 @@ const createExpense = async (tenantDomain: string, payload: any) => {
     );
   }
 };
-
 
 const getAllExpense = async (
   tenantDomain: string,
@@ -87,7 +103,6 @@ const updateExpense = async (
       totalAmount = someExpense + (Number(payload.invoiceCost) || 0);
     }
 
-
     const updatedPayload = {
       ...payload,
       ...(totalAmount !== undefined && { totalAmount }),
@@ -109,11 +124,11 @@ const updateExpense = async (
     return result;
   } catch (error: any) {
     throw new Error(
-      error.message || 'An unexpected error occurred while updating the expense',
+      error.message ||
+        'An unexpected error occurred while updating the expense',
     );
   }
 };
-
 
 const deleteExpense = async (tenantDomain: string, id: string) => {
   const { Model: Expense } = await getTenantModel(tenantDomain, 'Expense');

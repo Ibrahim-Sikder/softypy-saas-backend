@@ -126,7 +126,10 @@ const deleteQuotation = catchAsync(async (req, res) => {
 
 const generateQuotationPdf: RequestHandler = catchAsync(async (req, res) => {
   const { quotationId } = req.params;
- const tenantDomain = req.query.tenantDomain as string;
+  const tenantDomain = req.query.tenantDomain as string;
+  const companyData = req.query.companyProfileData
+    ? decodeURIComponent(req.query.companyProfileData as string)
+    : '{}';
   const baseUrl = (
     process.env.NEXT_PUBLIC_IMAGE_BASE_URL ||
     'https://api.trustautosolution.com'
@@ -134,9 +137,10 @@ const generateQuotationPdf: RequestHandler = catchAsync(async (req, res) => {
 
   try {
     const pdfBuffer = await QuotationServices.generateQuotationPdf(
-      tenantDomain, 
+      tenantDomain,
       quotationId,
       baseUrl,
+      companyData,
     );
 
     res.setHeader('Content-Type', 'application/pdf');

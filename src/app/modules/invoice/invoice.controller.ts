@@ -78,7 +78,6 @@ const getSingleInvoice = catchAsync(async (req, res) => {
 const updateInvoice = catchAsync(async (req, res) => {
   const { id } = req.params;
   const { tenantDomain } = req.body;
-console.log(tenantDomain)
   const invoice = await InvoiceServices.updateInvoiceIntoDB(tenantDomain,id, req.body);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -180,6 +179,9 @@ const restoreAllFromRecycledBinMoneyReceipts = catchAsync(async (req, res) => {
 const generateQuotationPdf: RequestHandler = catchAsync(async (req, res) => {
   const { invoiceId } = req.params;
    const tenantDomain = req.query.tenantDomain as string;
+     const companyData = req.query.companyProfileData
+    ? decodeURIComponent(req.query.companyProfileData as string)
+    : '{}';
   const baseUrl = (
     process.env.NEXT_PUBLIC_IMAGE_BASE_URL || 'https://api.trustautosolution.com'
   ).replace(/\/$/, '');
@@ -189,6 +191,7 @@ const generateQuotationPdf: RequestHandler = catchAsync(async (req, res) => {
       tenantDomain,
       invoiceId,
       baseUrl,
+      companyData
     );
 
     res.setHeader('Content-Type', 'application/pdf');

@@ -7,7 +7,6 @@ import { IWarehouse } from './warehouse.interface';
 import { generateWarehouseId } from "./warehouse.utils"; 
 
 const createWarehouse = async (tenantDomain: string, payload: IWarehouse) => {
-  console.log("warehouse ", tenantDomain);
   const { Model: Warehouse } = await getTenantModel(tenantDomain, "Warehouse");
 
   try {

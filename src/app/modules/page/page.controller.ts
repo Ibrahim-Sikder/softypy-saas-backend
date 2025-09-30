@@ -1,8 +1,9 @@
+// src/modules/page/page.controller.ts
 import { Request, Response } from 'express';
 import httpStatus from 'http-status';
 import catchAsync from '../../utils/catchAsync';
 import { PageService } from './page.service';
-import { IPage, IPageDocument } from './page.interface';
+import { IPage } from './page.interface';
 import sendResponse from '../../utils/sendResponse';
 import pick from '../../utils/pick';
 
@@ -10,9 +11,10 @@ import pick from '../../utils/pick';
  * Create a new page
  */
 const createPage = catchAsync(async (req: Request, res: Response) => {
-  const result = await PageService.createPage(req.body as IPage);
+   const tenantDomain = req.query.tenantDomain as string;
+  const result = await PageService.createPage(tenantDomain, req.body as IPage);
   
-  sendResponse<IPageDocument>(res, {
+  sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
     message: 'Page created successfully!',
@@ -24,16 +26,11 @@ const createPage = catchAsync(async (req: Request, res: Response) => {
  * Get all pages with filtering and pagination
  */
 const getAllPages = catchAsync(async (req: Request, res: Response) => {
+   const tenantDomain = req.query.tenantDomain as string;
+  const filters = pick(req.query, ['searchTerm', 'category', 'status']);
+  const result = await PageService.getAllPages(tenantDomain, filters);
   
-});
-
-/**
- * Get all pages for dropdown options
- */
-const getAllPagesForOptions = catchAsync(async (req: Request, res: Response) => {
-  const result = await PageService.getAllPagesForOptions();
-  
-  sendResponse<IPageDocument[]>(res, {
+  sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Pages retrieved successfully!',
@@ -41,13 +38,24 @@ const getAllPagesForOptions = catchAsync(async (req: Request, res: Response) => 
   });
 });
 
-/**
- * Get page by ID
- */
-const getPageById = catchAsync(async (req: Request, res: Response) => {
-  const result = await PageService.getPageById(req.params.id);
+const getAllPagesForOptions = catchAsync(async (req: Request, res: Response) => {
+   const tenantDomain = req.query.tenantDomain as string;
+  const result = await PageService.getAllPagesForOptions(tenantDomain);
   
-  sendResponse<IPageDocument>(res, {
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Pages retrieved successfully!',
+    data: result,
+  });
+});
+
+
+const getPageById = catchAsync(async (req: Request, res: Response) => {
+   const tenantDomain = req.query.tenantDomain as string;
+  const result = await PageService.getPageById(tenantDomain, req.params.id);
+  
+  sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Page retrieved successfully!',
@@ -59,9 +67,10 @@ const getPageById = catchAsync(async (req: Request, res: Response) => {
  * Update page
  */
 const updatePage = catchAsync(async (req: Request, res: Response) => {
-  const result = await PageService.updatePage(req.params.id, req.body);
+   const tenantDomain = req.query.tenantDomain as string;
+  const result = await PageService.updatePage(tenantDomain, req.params.id, req.body);
   
-  sendResponse<IPageDocument>(res, {
+  sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Page updated successfully!',
@@ -73,9 +82,10 @@ const updatePage = catchAsync(async (req: Request, res: Response) => {
  * Delete page
  */
 const deletePage = catchAsync(async (req: Request, res: Response) => {
-  const result = await PageService.deletePage(req.params.id);
+   const tenantDomain = req.query.tenantDomain as string;
+  const result = await PageService.deletePage(tenantDomain, req.params.id);
   
-  sendResponse<IPageDocument>(res, {
+  sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Page deleted successfully!',
@@ -87,9 +97,10 @@ const deletePage = catchAsync(async (req: Request, res: Response) => {
  * Get pages by category
  */
 const getPagesByCategory = catchAsync(async (req: Request, res: Response) => {
-  const result = await PageService.getPagesByCategory(req.params.category);
+   const tenantDomain = req.query.tenantDomain as string;
+  const result = await PageService.getPagesByCategory(tenantDomain, req.params.category);
   
-  sendResponse<IPageDocument[]>(res, {
+  sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: 'Pages retrieved successfully!',
