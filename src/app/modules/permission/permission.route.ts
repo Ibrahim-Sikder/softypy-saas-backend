@@ -3,35 +3,40 @@ import { Router } from 'express';
 import { PermissionController } from './permission.controller';
 import { auth } from '../../middlewares/auth';
 import validateRequest from '../../middlewares/validateRequest';
-import { permissionRequestSchema } from './permission.validation';
-
+import { checkPermissionZodSchema, permissionRequestSchema } from './permission.validation';
 const router = Router();
 
+router.get(
+  '/user/:userId',
+  auth('admin', 'superadmin'),
+  PermissionController.getUserPermissions
+);
+
 router.post(
   '/user/:userId',
+  auth('admin', 'superadmin'),
   validateRequest(permissionRequestSchema),
-  auth('admin', 'superadmin'),
-  PermissionController.createUserPermission,
+  PermissionController.createUserPermission
 );
-router.post(
-  '/check',
-  auth('admin', 'superadmin'),
-  PermissionController.checkPermission,
-);
-router.get(
-  '/user/:userId',
-  auth('admin', 'superadmin'),
-  PermissionController.getUserPermissions,
-);
-router.get(
-  '/my-permissions',
-  auth('admin', 'superadmin'),
-  PermissionController.getMyPermissions,
-);
+
 router.put(
   '/role/:roleId',
   auth('admin', 'superadmin'),
-  PermissionController.updateRolePermissions,
+  validateRequest(permissionRequestSchema),
+  PermissionController.updateRolePermissions
+);
+
+router.post(
+  '/check',
+  auth('admin', 'superadmin'),
+  validateRequest(checkPermissionZodSchema),
+  PermissionController.checkPermission
+);
+
+router.get(
+  '/my-permissions',
+  auth('admin', 'superadmin', 'manager', 'user'),
+  PermissionController.getMyPermissions
 );
 
 export const permissionRouters = router;
