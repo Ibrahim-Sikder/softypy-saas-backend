@@ -12,6 +12,7 @@ import config from './app/config';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import morgan from 'morgan';
+
 const app: Application = express();
 app.use(helmet());
 
@@ -33,7 +34,32 @@ app.use(
   })
 );
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+
+    if (origin.match(/^https?:\/\/([a-z0-9-]+\.)*localhost:5173$/)) {
+      return callback(null, true);
+    }
+
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://trustautosolution.com' 
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Handle preflight requests
+app.options('*', cors());
 
 app.set('view engine', 'ejs');
 app.use(express.static(path.join('public')));
@@ -47,7 +73,6 @@ app.get('/', (req: Request, res: Response) => {
     message: 'Welcome to the API',
   });
 });
-
 
 app.get('/api/v1/logs', async (req: Request, res: Response) => {
   try {
@@ -68,34 +93,12 @@ app.post('/api/v1/backup', async (req: Request, res: Response) => {
 });
 
 cron.schedule('0 0 * * *', async () => {
-  
   try {
     await backupMongoDB();
   } catch (error: any) {
+    console.error('Backup failed:', error);
   }
 });
-
-// cron.schedule('0 1 * * *', async () => {
-//   const now = new Date();
-
-//   try {
-//     const result = await Subscription.updateMany(
-//       {
-//         endDate: { $lt: now },
-//         isActive: true,
-//       },
-//       {
-//         $set: {
-//           status: 'Expired',
-//           isActive: false,
-//         },
-//       }
-//     );
-
-//    
-//   } catch (error) {
-//   }
-// });
 
 app.post('/api/v1/restore', async (req: Request, res: Response) => {
   try {
@@ -105,27 +108,24 @@ app.post('/api/v1/restore', async (req: Request, res: Response) => {
     res.status(500).json({ status: 'error', message: 'Restore failed', error: error.message });
   }
 });
+
 app.get('/api/v1/download-backup', (req: Request, res: Response) => {
   res.download(ARCHIVE_PATH, 'trust-auto-solutions.gzip');
 });
-app.get('/api/v1/backup-logs',  (req: Request, res: Response) => {
+
+app.get('/api/v1/backup-logs', (req: Request, res: Response) => {
   const logPath = path.join(process.cwd(), 'public', 'backup_logs.json');
 
   if (fs.existsSync(logPath)) {
     const logs = JSON.parse(fs.readFileSync(logPath, 'utf8'));
-
-    // Sort logs by backupEndTime in descending order
     logs.sort(
       (a: any, b: any) => new Date(b.backupEndTime).getTime() - new Date(a.backupEndTime).getTime()
     );
-
     res.json(logs);
   } else {
     res.status(404).json({ message: 'No logs found' });
   }
 });
-
-
 
 app.use(globalErrorHandler);
 app.use(notFound);

@@ -3,13 +3,15 @@ import { z } from "zod";
 
 // Permission Schema Validation
 const permissionSchema = z.object({
-  pageId: z.string({
+  body:z.object({
+    pageId: z.string({
     required_error: "Page ID is required",
   }),
   create: z.boolean().optional().default(false),
   edit: z.boolean().optional().default(false),
   view: z.boolean().optional().default(false),
   delete: z.boolean().optional().default(false),
+  })
 });
 
 // Role Schema Validation

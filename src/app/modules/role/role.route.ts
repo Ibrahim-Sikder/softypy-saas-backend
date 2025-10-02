@@ -9,14 +9,14 @@ const router = express.Router();
 
 router.post(
   '/',
-  auth('admin'),
-  validateRequest(createRoleValidationSchema),
+  auth('admin', 'superadmin'),
+  // validateRequest(createRoleValidationSchema),
   RoleController.createRole
 );
 
 router.get(
   '/',
-  auth('admin', 'manager'),
+  auth('admin', 'superadmin'),
   RoleController.getAllRoles
 );
 
@@ -37,6 +37,12 @@ router.delete(
   '/:id',
   auth('admin'),
   RoleController.deleteRole
+);
+
+router.post(
+  '/:roleId/permissions',
+  auth('admin'),
+  RoleController.assignPermissionsToRole
 );
 
 export const RoleRoutes = router;
