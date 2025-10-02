@@ -32,18 +32,24 @@ export const userSchema = new Schema<TUser>(
       type: Schema.Types.ObjectId,
       ref: 'Tenant',
     },
-    roleId: [{
-      type: Schema.Types.ObjectId,
-      ref: 'Role',
-    }],
-    pageId: [{
-      type: Schema.Types.ObjectId,
-      ref: 'Page',
-    }],
-    permission: [{
-      type: Schema.Types.ObjectId,
-      ref: 'Permission',
-    }],
+    roleId: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Role',
+      },
+    ],
+    pageId: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Page',
+      },
+    ],
+    permission: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Permission',
+      },
+    ],
     tenantInfo: {
       name: String,
       domain: String,
@@ -92,7 +98,7 @@ export const userSchema = new Schema<TUser>(
         return ret;
       },
     },
-  }
+  },
 );
 
 userSchema.pre('save', async function (next) {
@@ -121,7 +127,8 @@ userSchema.statics.isJWTIssuedBeforePasswordChanged = function (
   passwordChangedTimestamp: Date,
   jwtIssuedTimestamp: number,
 ) {
-  const passwordChangedTime = new Date(passwordChangedTimestamp).getTime() / 1000;
+  const passwordChangedTime =
+    new Date(passwordChangedTimestamp).getTime() / 1000;
   return passwordChangedTime > jwtIssuedTimestamp;
 };
 

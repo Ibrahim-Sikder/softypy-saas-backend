@@ -7,10 +7,8 @@ import { IPage } from './page.interface';
 import sendResponse from '../../utils/sendResponse';
 import pick from '../../utils/pick';
 
-/**
- * Create a new page
- */
 const createPage = catchAsync(async (req: Request, res: Response) => {
+  console.log(req.query)
    const tenantDomain = req.query.tenantDomain as string;
   const result = await PageService.createPage(tenantDomain, req.body as IPage);
   
@@ -22,25 +20,10 @@ const createPage = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-/**
- * Get all pages with filtering and pagination
- */
 const getAllPages = catchAsync(async (req: Request, res: Response) => {
    const tenantDomain = req.query.tenantDomain as string;
   const filters = pick(req.query, ['searchTerm', 'category', 'status']);
   const result = await PageService.getAllPages(tenantDomain, filters);
-  
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Pages retrieved successfully!',
-    data: result,
-  });
-});
-
-const getAllPagesForOptions = catchAsync(async (req: Request, res: Response) => {
-   const tenantDomain = req.query.tenantDomain as string;
-  const result = await PageService.getAllPagesForOptions(tenantDomain);
   
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -63,9 +46,6 @@ const getPageById = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-/**
- * Update page
- */
 const updatePage = catchAsync(async (req: Request, res: Response) => {
    const tenantDomain = req.query.tenantDomain as string;
   const result = await PageService.updatePage(tenantDomain, req.params.id, req.body);
@@ -78,11 +58,9 @@ const updatePage = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-/**
- * Delete page
- */
 const deletePage = catchAsync(async (req: Request, res: Response) => {
    const tenantDomain = req.query.tenantDomain as string;
+   console.log('id check',req.params.id)
   const result = await PageService.deletePage(tenantDomain, req.params.id);
   
   sendResponse(res, {
@@ -93,27 +71,12 @@ const deletePage = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-/**
- * Get pages by category
- */
-const getPagesByCategory = catchAsync(async (req: Request, res: Response) => {
-   const tenantDomain = req.query.tenantDomain as string;
-  const result = await PageService.getPagesByCategory(tenantDomain, req.params.category);
-  
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Pages retrieved successfully!',
-    data: result,
-  });
-});
+
 
 export const PageController = {
   createPage,
   getAllPages,
-  getAllPagesForOptions,
   getPageById,
   updatePage,
   deletePage,
-  getPagesByCategory,
 };
