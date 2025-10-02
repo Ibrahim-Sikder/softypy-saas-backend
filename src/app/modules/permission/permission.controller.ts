@@ -1,37 +1,18 @@
+// src/modules/permission/permission.controller.ts
 import { Request, Response } from 'express';
 import httpStatus from 'http-status';
 import catchAsync from '../../utils/catchAsync';
-import sendResponse from '../../utils/sendResponse';
 import { PermissionService } from './permission.service';
+import { IPermissionRequest } from './permission.interface';
+import sendResponse from '../../utils/sendResponse';
 import AppError from '../../errors/AppError';
-
-const checkPermission = catchAsync(async (req: Request, res: Response) => {
-  const tenantDomain = req.query.tenantDomain as string;
-  const result = await PermissionService.checkPermission(
-    tenantDomain,
-    req.body,
-  );
-
-  sendResponse<{ hasPermission: boolean }>(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Permission checked successfully',
-    data: { hasPermission: result },
-  });
-});
 
 const getUserPermissions = catchAsync(async (req: Request, res: Response) => {
   const tenantDomain = req.query.tenantDomain as string;
   const userId = req.params.userId || (req.user?.userId as string);
 
   if (!userId) {
-    sendResponse(res, {
-      statusCode: httpStatus.BAD_REQUEST,
-      success: false,
-      message: 'User ID is required',
-      data: null,
-    });
-    return;
+    throw new AppError(httpStatus.BAD_REQUEST, 'User ID is required');
   }
 
   const result = await PermissionService.getUserPermissions(tenantDomain, userId);
@@ -46,15 +27,10 @@ const getUserPermissions = catchAsync(async (req: Request, res: Response) => {
 
 const createUserPermission = catchAsync(async (req: Request, res: Response) => {
   const tenantDomain = req.query.tenantDomain as string;
+  const userId = req.params.userId;
+  const permissionData = req.body as IPermissionRequest;
 
-  // Ensure userId comes as array from body (better than params)
-  const userIds = Array.isArray(req.params.userId) ? req.params.userId : [req.params.userId];
-
-  const result = await PermissionService.createUserPermission(
-    tenantDomain,
-    userIds,
-    req.body,
-  );
+  const result = await PermissionService.createUserPermission(tenantDomain, userId, permissionData);
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -64,27 +40,36 @@ const createUserPermission = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateRolePermissions = catchAsync(async (req: Request, res: Response) => {
+  const tenantDomain = req.query.tenantDomain as string;
+  const roleId = req.params.roleId;
+  const permissions = req.body as IPermissionRequest[];
 
-const updateRolePermissions = catchAsync(
-  async (req: Request, res: Response) => {
-    const tenantDomain = req.query.tenantDomain as string;
-    await PermissionService.updateRolePermissions(
-      tenantDomain,
-      req.params.roleId,
-      req.body,
-    );
+  const result = await PermissionService.updateRolePermissions(tenantDomain, roleId, permissions);
 
-    sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: 'Role permissions updated successfully',
-      data: null,
-    });
-  },
-);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Role permissions updated successfully',
+    data: result,
+  });
+});
+
+const checkPermission = catchAsync(async (req: Request, res: Response) => {
+  const tenantDomain = req.query.tenantDomain as string;
+  const result = await PermissionService.checkPermission(tenantDomain, req.body);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Permission checked successfully',
+    data: { hasPermission: result },
+  });
+});
 
 const getMyPermissions = catchAsync(async (req: Request, res: Response) => {
   const tenantDomain = req.query.tenantDomain as string;
+  
   if (!req.user?.userId) {
     throw new AppError(httpStatus.NOT_FOUND, 'User not authenticated');
   }
@@ -100,9 +85,9 @@ const getMyPermissions = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const PermissionController = {
-  checkPermission,
   getUserPermissions,
   createUserPermission,
   updateRolePermissions,
+  checkPermission,
   getMyPermissions,
 };
